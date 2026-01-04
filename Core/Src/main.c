@@ -121,7 +121,7 @@ const osThreadAttr_t ActionTask_Name_attributes = {
 osThreadId_t AudioPlaybackTaHandle;
 const osThreadAttr_t AudioPlaybackTa_attributes = {
   .name = "AudioPlaybackTa",
-  .stack_size = 128 * 4,
+  .stack_size = 512 * 4,
   .priority = (osPriority_t) osPriorityLow,
 };
 /* Definitions for xButtonQueue */
@@ -173,7 +173,7 @@ void AudioPlaybackTask(void *argument);
 /* USER CODE BEGIN PFP */
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
-	if (huart->Instance == USART1)
+	if (huart->Instance == USART2)
 	{
 		rs232_uart_rx_callback();
 	}
@@ -226,11 +226,11 @@ int main(void)
   MX_I2C5_Init();
   MX_I2S2_Init();
   MX_USART2_UART_Init();
-  MX_FATFS_Init();
   MX_I2C1_Init();
   MX_I2C2_Init();
   MX_I2C4_Init();
   MX_SPI1_Init();
+  MX_FATFS_Init();
   /* USER CODE BEGIN 2 */
 
   /* USER CODE END 2 */

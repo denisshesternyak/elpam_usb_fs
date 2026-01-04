@@ -4,6 +4,7 @@
 #include "math.h"
 //#include "test_audio.h"
 #include "string.h"
+#include "audiofs.h"
 
 extern I2S_HandleTypeDef hi2s2;
 
@@ -135,6 +136,8 @@ void AIC3204_Init_Audio(void)
 
 	AIC3204_Init_Playback();
 	//AIC3204_Init_Record();
+
+	FS_Read();
 }
 
 void AIC3204_Start_Playback(void)
