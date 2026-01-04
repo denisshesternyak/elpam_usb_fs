@@ -1,0 +1,1394 @@
+
+
+#include <lcd_widget_test_drivers_indicator.h>
+#include "main.h"
+#include "lcd_menu.h"
+#include <stdio.h>
+#include "cmsis_os.h"
+#include "lcd_color_rgb565.h"
+#include "Speaker-1_80x74.h"
+#include "m2_80x74.h"
+#include "queue.h"
+#include "lcd_display.h"
+#include "lcd_widget_status_indicator.h"
+#include "lcd_widget_batteries_indicator.h"
+#include "lcd_widget_volume_indicator.h"
+#include "lcd_widget_test_drivers_indicator.h"
+#include "lcd_widget_test_ampl_indicator.h"
+#include "lcd_widget_report_indicator.h"
+#include "lcd_widget_siren_info_indicator.h"
+#include "lcd_widget_password.h"
+#include "lcd_widget_progress_bar.h"
+#include "system_status.h" 
+
+//#include "ff.h"
+#include <string.h>
+#include <stdio.h>
+
+bool isResetPasswordAfterIdle = false;
+
+extern QueueHandle_t audioQueue;
+
+uint32_t lastInteractionTick = 0;
+const uint32_t INACTIVITY_TIMEOUT_MS = 20000; // 20 sec
+
+#define BACKLIGHT_TIMEOUT_MS 10000 // 10 sec
+
+bool isPlayAudioFile = false;
+bool isIdle = false;
+bool isBacklightOn = true;
+
+static Menu menuPool[40];         
+uint8_t menuPoolIndex = 0;
+
+
+
+
+#define MAX_FILENAME_LEN 64
+
+char messageFilenames[MAX_MENU_ITEMS][MAX_FILENAME_LEN];  
+const char* selectedFile = NULL;
+
+Menu* currentMenu = NULL;
+Menu* idleMenu = NULL;
+Menu* rootMenu = NULL;
+Menu* messagesMenu = NULL;
+Menu* sirenMenu = NULL;
+Menu* announcementMenu = NULL;
+Menu* testMenu = NULL;
+Menu* reportMenu = NULL;
+Menu* maintenanceMenu = NULL;
+Menu* messagePlayMenu = NULL;  
+Menu* batteriesTestMenu = NULL;
+Menu* apmplifiresTestMunu = NULL;
+Menu* driversTestMenu = NULL;
+Menu* alarmInfoMenu = NULL; 
+Menu* passwordMenu = NULL;
+
+static uint8_t volumeValue = 10;
+
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////
+MenuImage menu_speaker_img = {
+		.image = speaker_img,
+		.x = ((480/2) - (SPEAKER_IMG_WIDTH /2)),
+		.y = 120,
+		.w = SPEAKER_IMG_WIDTH,
+		.h = SPEAKER_IMG_HEIGHT
+};
+//////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+MenuImage menu_microfon_img = {
+		.image = microfon_img,
+		.x = ((480/2) - (MICROFON_IMG_WIDTH /2)),
+		.y = 120,
+		.w = MICROFON_IMG_WIDTH,
+		.h = MICROFON_IMG_HEIGHT
+};
+//////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+#define MAX_VISIBLE_ITEMS 12
+
+#define TIME_HEIGHT 9
+
+#define MENU_ITEM_HEIGHT 20  
+
+#define MENU_BASE_X 20        
+#define MENU_BASE_Y 60       
+#define SELECTOR_OFFSET -20  
+
+
+#define DEBUG_INFO_Y 290
+#define STATUS_BAR_HEIGHT 24  
+#define LOGO_X_POS 8        
+#define LOGO_Y_POS 5
+
+#define TIME_X_POS 340       
+#define TIME_Y_POS 5
+
+#define SERIAL_X_POS 340     
+#define SERIAL_Y_POS 22
+
+#define STATUS_BAR_LINE_Y_POS  35
+
+char* serialNumber = "123456";
+
+
+///////////////////////////////////////////////////////////////////
+void RunSilentTest(void);
+void RunBatteriesTest(void);
+void RunAmplifiresTest(void);
+void RunDriversTest(void);
+void MenuLoadSDCardSirens(void);
+void MenuLoadSDCardMessages(void);
+///////////////////////////////////////////////////////////////////
+
+void _basic_init_menu(Menu* m)
+{
+    if (m == NULL)
+        return;
+
+    m->parent = NULL;
+    m->type = MENU_TYPE_UNK;
+    m->scrollOffset = 0;
+    m->itemCount = 0;
+    m->currentSelection = 0;
+
+    for (int i = 0; i < MAX_MENU_ITEMS; ++i)
+    {
+        for (int lang = 0; lang < LANG_COUNT; ++lang)
+        {
+            m->items[i].name[lang] = NULL;
+        }
+        m->items[i].prepareAction = NULL;
+        m->items[i].postAction = NULL;
+        m->items[i].submenu = NULL;
+        m->items[i].filepath = NULL;
+    }
+
+    for (int lang = 0; lang < LANG_COUNT; ++lang) {
+        m->screenText[lang] = NULL;
+    }
+
+    m->textFilename = NULL;
+    m->imageData = NULL;
+    m->buttonHandler = NULL;
+}
+
+void Menu_Init(void)
+{
+
+	void InitMenuPool(void)
+	{
+	    for (int i = 0; i < 60; ++i) {
+	        _basic_init_menu(&menuPool[i]);
+	    }
+	    menuPoolIndex = 0;
+	}
+
+
+	menuPoolIndex = 0;
+
+	passwordMenu = &menuPool[menuPoolIndex++];
+	passwordMenu->type = MENU_TYPE_PASSWORD;
+	passwordMenu->parent = rootMenu;
+	passwordMenu->buttonHandler = passwordMenu_HandleButtonPress;
+
+	///////////////////////////////////////////////////////////////////////
+	idleMenu = &menuPool[menuPoolIndex++];
+	idleMenu->parent = idleMenu;
+	idleMenu->type = MENU_TYPE_IDLE;
+	idleMenu->scrollOffset = 0;
+	idleMenu->currentSelection = 0;
+	idleMenu->screenText[LANG_EN] = "Fault indication";
+	idleMenu->screenText[LANG_HE] = "---";
+	idleMenu->textFilename  = NULL;
+	idleMenu->itemCount = 0;
+	idleMenu->buttonHandler = HandleButtonPress;
+
+	///////////////////////////////////////////////
+    rootMenu = &menuPool[menuPoolIndex++];
+    rootMenu->parent = idleMenu;
+    rootMenu->type = MENU_TYPE_LIST;
+    rootMenu->scrollOffset = 0;
+    rootMenu->currentSelection = 0;
+    rootMenu->screenText[LANG_EN] = NULL;
+    rootMenu->screenText[LANG_HE] = NULL;
+    rootMenu->textFilename  = NULL;
+    rootMenu->buttonHandler = HandleButtonPress;
+
+    rootMenu->items[0] = (MenuItem){ .name = { "1. Siren", "1. סירנה" }, .prepareAction = &MenuLoadSDCardSirens, .postAction = NULL, .submenu = NULL  };
+    rootMenu->items[1] = (MenuItem){ .name = { "2. Messages", "2. הודעות" }, .prepareAction = &MenuLoadSDCardMessages, .postAction = NULL, .submenu = NULL  };
+    rootMenu->items[2] = (MenuItem){ .name = { "3. Announcement", "3. הכרזה" }, .prepareAction = NULL, .postAction = NULL, .submenu = NULL    };
+    rootMenu->items[3] = (MenuItem){ .name = { "4. Test", "4. בדיקה" }, .prepareAction = NULL,  .postAction = NULL,.submenu = NULL    };
+    rootMenu->items[4] = (MenuItem){ .name = { "5. Report", "5. דוח" }, .prepareAction = NULL,  .postAction = NULL, .submenu = NULL    };
+    rootMenu->items[5] = (MenuItem){ .name = { "6. Maintenance", "6. תחזוקה" }, .prepareAction = NULL, .postAction = NULL, .submenu = NULL  };
+    rootMenu->itemCount = 6;
+
+    /////////////////////////////////////////
+    // "Siren"
+    sirenMenu = &menuPool[menuPoolIndex++];
+    sirenMenu->parent = rootMenu;  
+    sirenMenu->currentSelection = 0;
+    sirenMenu->scrollOffset = 0;
+    sirenMenu->itemCount = 0;
+    sirenMenu->type = MENU_TYPE_LIST;
+    sirenMenu->screenText[LANG_EN] = NULL;
+    sirenMenu->screenText[LANG_HE] = NULL;
+    sirenMenu->buttonHandler = HandleButtonPress;
+    
+
+    alarmInfoMenu = &menuPool[menuPoolIndex++];
+    alarmInfoMenu->parent = sirenMenu;
+    alarmInfoMenu->type = MENU_TYPE_SIREN_INFO;
+    alarmInfoMenu->screenText[LANG_EN] = "Alarm info";
+    alarmInfoMenu->screenText[LANG_HE] = "-Alarm info-";
+    alarmInfoMenu->currentSelection = 0;
+    alarmInfoMenu->scrollOffset = 0;
+    alarmInfoMenu->itemCount = 0;
+    alarmInfoMenu->buttonHandler = alarmInfoMenu_HandleButtonPress;
+
+
+    //-----------------------------------------------------------------------------------------------------------
+	messagesMenu = &menuPool[menuPoolIndex++];
+	messagesMenu->parent = rootMenu;
+	messagesMenu->type = MENU_TYPE_LIST;
+	messagesMenu->currentSelection = 0;
+	messagesMenu->scrollOffset = 0;
+	messagesMenu->screenText[LANG_EN] = NULL;
+	messagesMenu->screenText[LANG_HE] = NULL;
+	messagesMenu->itemCount = 0;
+	messagesMenu->buttonHandler = HandleButtonPress;
+
+
+	// paly message
+	messagePlayMenu = &menuPool[menuPoolIndex++];
+	messagePlayMenu->parent = messagesMenu;
+	messagePlayMenu->currentSelection = 0;
+	messagePlayMenu->scrollOffset = 0;
+	messagePlayMenu->itemCount = 0;
+	messagePlayMenu->type = MENU_TYPE_MESSAGE_PLAY;
+	messagePlayMenu->screenText[LANG_EN] = "Play message";
+	messagePlayMenu->screenText[LANG_HE] = "---";
+	messagePlayMenu->textFilename = "filename #1.wav";
+	messagePlayMenu->imageData = &menu_speaker_img;
+	messagePlayMenu->buttonHandler = HandleButtonPress;
+
+    //-----------------------------------------------------------------------------------------------------------
+	announcementMenu = &menuPool[menuPoolIndex++];
+	announcementMenu->parent = rootMenu;
+	announcementMenu->currentSelection = 0;
+	announcementMenu->itemCount = 0;
+	announcementMenu->scrollOffset = 0;
+	announcementMenu->type = MENU_TYPE_ANNOUNCEMENT;
+	announcementMenu->screenText[LANG_EN] = "Announcement";
+	announcementMenu->screenText[LANG_HE] = "כרזה";
+	announcementMenu->textFilename = NULL;
+	announcementMenu->imageData = &menu_microfon_img;
+	announcementMenu->buttonHandler = VolumeControlButtonHandler;
+
+	// VolumeIndicator_Init(&volumeIndicator, 30, 250, 420, 30,
+	// 		             //30,
+	// 					 system_get_volume(),
+	// 					 COLOR_DARKGRAY, 0x00FF, 0xC618, 0x0D00, 1, 1);
+	VolumeIndicator_Init(
+        &volumeIndicator,
+        30, 250, 420, 30,
+        NUM_VOLUME_BARS,      // 
+        COLOR_DARKGRAY,       // barColor
+        0x00FF,               // bgColor
+        0xC618,               // inactiveBgColor
+        0x0D00,               // frameColor
+        1,                    // frameWidth
+        1                     // barSpacing
+    );
+
+
+	testMenu = &menuPool[menuPoolIndex++];
+	testMenu->parent = rootMenu;
+	testMenu->screenText[LANG_EN] = "Test";
+	testMenu->screenText[LANG_HE] = "---";
+	testMenu->type = MENU_TYPE_LIST;
+	testMenu->items[0] = (MenuItem){ .name = { "1. Silent Test", "" },     .postAction = &RunSilentTest, .submenu = NULL    };
+	testMenu->items[1] = (MenuItem){ .name = { "2. Batteries Test", "" },  .postAction = &RunBatteriesTest, .submenu = NULL    };
+	testMenu->items[2] = (MenuItem){ .name = { "3. Amplifiers Test", "" }, .postAction = &RunAmplifiresTest,   .submenu = NULL    };
+	testMenu->items[3] = (MenuItem){ .name = { "4. Drivers Test", "" },    .postAction = &RunDriversTest, .submenu = NULL  };
+	testMenu->parent = rootMenu;
+	testMenu->currentSelection = 0;
+	testMenu->itemCount = 4;
+	testMenu->scrollOffset = 0;
+	testMenu->buttonHandler = HandleButtonPress;
+
+	//---------------------------------------------------------------
+	batteriesTestMenu = &menuPool[menuPoolIndex++];
+	batteriesTestMenu->parent = testMenu;
+	batteriesTestMenu->screenText[LANG_EN] = "Batteries Test";
+	batteriesTestMenu->screenText[LANG_HE] = "---";
+	batteriesTestMenu->type = MENU_TYPE_TEST_BAT;
+	batteriesTestMenu->currentSelection = 0;
+	batteriesTestMenu->itemCount = 0;
+	batteriesTestMenu->scrollOffset = 0;
+	batteriesTestMenu->buttonHandler = HandleButtonPress;
+
+	//--------------------------------------------------------
+	apmplifiresTestMunu = &menuPool[menuPoolIndex++];
+	apmplifiresTestMunu->parent = testMenu;
+	apmplifiresTestMunu->screenText[LANG_EN] = "Amplifires Test";
+	apmplifiresTestMunu->screenText[LANG_HE] = "---";
+	apmplifiresTestMunu->type = MENU_TYPE_TEST_AMP;
+	apmplifiresTestMunu->currentSelection = 0;
+	apmplifiresTestMunu->itemCount = 0;
+	apmplifiresTestMunu->scrollOffset = 0;
+	apmplifiresTestMunu->buttonHandler = HandleButtonPress;
+
+	//-----------------------------------
+	driversTestMenu = &menuPool[menuPoolIndex++];
+	driversTestMenu->parent = testMenu;
+	driversTestMenu->screenText[LANG_EN] = "Drivers Test";
+	driversTestMenu->screenText[LANG_HE] = "---";
+	driversTestMenu->type = MENU_TYPE_TEST_DRIV;
+	driversTestMenu->currentSelection = 0;
+	driversTestMenu->itemCount = 0;
+	driversTestMenu->scrollOffset = 0;
+	driversTestMenu->buttonHandler = HandleButtonPress;
+
+
+	testMenu->items[0].submenu =  NULL; // ,,,,
+	testMenu->items[1].submenu = batteriesTestMenu;
+	testMenu->items[2].submenu = apmplifiresTestMunu;
+	testMenu->items[3].submenu = driversTestMenu;
+	testMenu->buttonHandler = HandleButtonPress;
+
+	////////////////////////////////////////////////////////
+	reportMenu = &menuPool[menuPoolIndex++];
+	reportMenu->parent = rootMenu;
+	reportMenu->screenText[LANG_EN] = "Report";
+	reportMenu->screenText[LANG_HE] = "---";
+	reportMenu->type = MENU_TYPE_REPORT;
+	reportMenu->itemCount = 0;
+	reportMenu->scrollOffset = 0;
+	reportMenu->buttonHandler = HandleButtonPress;
+
+//	reportMenu = &menuPool[menuPoolIndex++];
+//	reportMenu->screenText[LANG_EN] = "Repor";
+//	reportMenu->screenText[LANG_HE] = "--";
+//
+//
+//	maintenanceMenu = &menuPool[menuPoolIndex++];
+//	maintenanceMenu->screenText[LANG_EN] = "Maintenance";
+//	maintenanceMenu->screenText[LANG_HE] = "--";
+
+	rootMenu->items[0].submenu = sirenMenu;
+	rootMenu->items[1].submenu = messagesMenu;
+	rootMenu->items[2].submenu = announcementMenu;
+	rootMenu->items[3].submenu = testMenu;
+	rootMenu->items[4].submenu = reportMenu;
+
+    currentMenu = rootMenu;
+
+    // testing
+//    currentMenu = sirenMenu;
+   // currentMenu = messagesMenu; //???
+    //currentMenu->action();
+     // currentMenu = messagePlayMenu;
+    //currentMenu = announcementMenu; // work ok
+    //currentMenu = reportMenu; //ok
+    //currentMenu = sirenMenu; // ok
+
+//      currentMenu = testMenu;
+//      //
+//    currentMenu = driversTestMenu; // ok
+   // currentMenu = apmplifiresTestMunu; //ok
+    //currentMenu = batteriesTestMenu; // ok
+
+    //currentMenu = idleMenu;
+    //currentMenu = reportMenu;
+    //currentLevel = 0;
+
+    currentMenu = passwordMenu;
+
+
+}
+
+
+void MenuDrawImage(Menu *m)
+{
+	if (m->imageData == NULL) return;
+
+	LCD_DrawImage(m->imageData->x, m->imageData->y,
+				  m->imageData->w, m->imageData->h, 
+                  (const uint16_t*)m->imageData->image);
+}
+
+void MenuActionSystemReset(void)
+{
+
+    NVIC_SystemReset();
+}
+
+
+//#action
+void PlayMessageStart(void)
+{
+	uint8_t index = currentMenu->currentSelection;
+	if (!currentMenu || index >= currentMenu->itemCount) return;
+
+	const char* filepath = currentMenu->items[index].filepath;
+	if (!filepath || !messagePlayMenu) return;
+
+	messagePlayMenu->textFilename = filepath;
+	currentMenu = messagePlayMenu;
+}
+
+void PlayMessageStartPost(void)
+{
+	isPlayAudioFile = true;
+	xQueueSend(audioQueue, &messagePlayMenu->textFilename, 0);
+}
+
+bool PlayMessageProgress(const uint8_t value)
+{
+	lastInteractionTick = osKernelGetTickCount();
+
+	if (isPlayAudioFile == false) return false;
+
+	MenuDrawProgress(value);
+	//MenuDrawProgress((LCD_GetWidth() - PROGRESS_BAR_W) / 2, PROGRESS_BAR_Y, PROGRESS_BAR_W, PROGRESS_BAR_HEIGHT, value);
+
+	//MenuDrawProgress2(&bar, value);
+	return true;
+}
+
+
+void PlayMessageEnd(void)
+{
+	isPlayAudioFile = false;
+	currentMenu = currentMenu->parent;
+	DrawMenuScreen(true);
+}
+
+void ClearMenu(Menu* menu)
+{
+    if (!menu) return;
+    if (menu->type != MENU_TYPE_LIST) return;
+
+    menu->itemCount = 0;
+    menu->currentSelection = 0;
+    menu->scrollOffset = 0;
+
+    for (int i = 0; i < MAX_MENU_ITEMS; ++i)
+    {
+        for (int lang = 0; lang < LANG_COUNT; ++lang)
+        {
+            menu->items[i].name[lang] = NULL;
+        }
+
+        menu->items[i].prepareAction = NULL;
+        menu->items[i].postAction = NULL;
+        menu->items[i].submenu = NULL;
+        menu->items[i].filepath = NULL;
+    }
+}
+
+void MenuShowMessages(void)
+{
+    if (!messagesMenu || !messagePlayMenu) return;
+
+    ClearMenu(messagesMenu);
+
+//    DIR dir;
+//    FILINFO fno;
+//    FRESULT res;
+//    uint8_t count = 0;
+//
+//    res = f_opendir(&dir, "0:/message");
+//    if (res != FR_OK) return;
+//
+//    while ((f_readdir(&dir, &fno) == FR_OK) && fno.fname[0] && count < MAX_MESSAGES) {
+//        if (strncmp(fno.fname, "msg_", 4) == 0) {
+//            strncpy(messageFilenames[count], fno.fname, MAX_FILENAME_LEN);
+//
+//            messagesMenu->items[count].name[LANG_EN] = messageFilenames[count];
+//            messagesMenu->items[count].name[LANG_HE] = messageFilenames[count];
+//            messagesMenu->items[count].prepareAction = &PlaySelectedMessageWrapper;
+//            messagesMenu->items[count].submenu = messagePlayMenu;
+//            messagesMenu->items[count].filepath = messageFilenames[count];
+//
+//            count++;
+//        }
+//    }
+//    f_closedir(&dir);
+//
+//    messagesMenu->itemCount = count;
+//    messagesMenu->currentSelection = 0;
+//    currentMenu = messagesMenu;
+
+}
+
+
+void RunSilentTest(void)
+{
+	currentMenu = batteriesTestMenu;
+	currentMenu->currentSelection = 0;
+	DrawMenuScreen(true);
+	RunBatteriesTest();
+
+	//for(int i =0; i<2000;i++)
+	  {
+	    osDelay(2000);
+	  }
+
+	currentMenu = apmplifiresTestMunu;
+	currentMenu->currentSelection = 0;
+	DrawMenuScreen(true);
+	RunAmplifiresTest();
+
+	//for(int i =0; i<2000;i++)
+	{
+		osDelay(2000);
+	}
+
+	currentMenu = driversTestMenu;
+	currentMenu->currentSelection = 0;
+	DrawMenuScreen(true);
+	RunDriversTest();
+
+	//for(int i =0; i<2000;i++)
+	{
+		osDelay(2000);
+	}
+
+
+	currentMenu = testMenu; //driversTestMenu->parent;
+	currentMenu->currentSelection = 0;
+	DrawMenuScreen(true);
+}
+
+void RunBatteriesTest(void)
+{
+
+	BatteriesDisplay_SetStatus(0, true);
+	BatteriesDisplay_SetStatus(1, false);
+	BatteriesDisplay_SetStatus(2, true);
+}
+
+void RunAmplifiresTest(void)
+{
+
+	TestAmplDisplay_SetStatus(0, true);
+	TestAmplDisplay_SetStatus(1, true);
+	TestAmplDisplay_SetStatus(2, true);
+	TestAmplDisplay_SetStatus(3, true);
+	TestAmplDisplay_SetStatus(4, false);
+	TestAmplDisplay_SetStatus(5, true);
+	TestAmplDisplay_SetStatus(6, true);
+	TestAmplDisplay_SetStatus(7, true);
+	TestAmplDisplay_SetStatus(8, false);
+	TestAmplDisplay_SetStatus(9, true);
+}
+
+void RunDriversTest(void)
+{
+
+}
+
+void MenuLoadSDCardSirens(void)
+{
+	if (!sirenMenu) return;
+
+	ClearMenu(sirenMenu);
+
+	static const char* list[] = {
+		  "ALARM 1",
+		  "ALARM 2",
+		  "ALARM 3",
+		  "ALARM 4",
+		  "ALARM 5",
+		  "ALARM 6"
+	  };
+
+	const uint8_t count = sizeof(list) / sizeof(list[0]);
+
+	for (uint8_t i = 0; i < count && i < MAX_MENU_ITEMS; ++i)
+	{
+	   strncpy(messageFilenames[i], list[i], MAX_FILENAME_LEN);
+
+	   sirenMenu->items[i].name[LANG_EN] = messageFilenames[i];
+	   sirenMenu->items[i].name[LANG_HE] = messageFilenames[i];
+	   sirenMenu->items[i].prepareAction = &sirenPrepareAction;
+	   sirenMenu->items[i].postAction = &sirenPostAction;
+	   sirenMenu->items[i].submenu = alarmInfoMenu;
+	   sirenMenu->items[i].filepath = messageFilenames[i];
+	}
+
+	sirenMenu->itemCount = count;
+	sirenMenu->currentSelection = 0;
+	currentMenu = sirenMenu;
+}
+
+void sirenPrepareAction(void)
+{
+	
+	if (!currentMenu || currentMenu->currentSelection >= currentMenu->itemCount)
+		return;
+
+
+	const char* filepath = currentMenu->items[currentMenu->currentSelection].filepath;
+
+	
+	if (!filepath || !alarmInfoMenu)
+		return;
+
+	
+	alarmInfoMenu->textFilename = filepath;
+	currentMenu = alarmInfoMenu;
+}
+
+void sirenPostAction(void)
+{
+	isPlayAudioFile = true;
+	xQueueSend(audioQueue, &alarmInfoMenu->textFilename, 0);
+}
+
+void MenuLoadSDCardMessages(void)
+{
+    if (!messagesMenu || !messagePlayMenu) return;
+
+   ClearMenu(messagesMenu);
+
+    static const char* dummyFilenames[] = {
+        "msg1_hello.wav",
+        "msg2_alert.wav",
+        "msg3_night.wav",
+        "msg4_test.wav",
+		"msg5_test-00.wav",
+		"msg6_test-11.wav",
+		"msg7_test-22.wav",
+		"msg8_test-33.wav",
+		"msg9_test-44.wav",
+		"msg10_test-55.wav",
+		"msg11_test-66.wav",
+		"msg12_test-77.wav",
+		"msg13_test-77.wav",
+		"msg14_test-77.wav",
+		"msg15_test-77.wav",
+		"msg16_test-77.wav"
+
+    };
+
+    const uint8_t count = sizeof(dummyFilenames) / sizeof(dummyFilenames[0]);
+
+    for (uint8_t i = 0; i < count && i < MAX_MENU_ITEMS; ++i)
+    {
+        strncpy(messageFilenames[i], dummyFilenames[i], MAX_FILENAME_LEN);
+
+        messagesMenu->items[i].name[LANG_EN] = messageFilenames[i];
+        messagesMenu->items[i].name[LANG_HE] = messageFilenames[i];
+        messagesMenu->items[i].prepareAction = &PlayMessageStart;
+        messagesMenu->items[i].postAction = &PlayMessageStartPost;
+        messagesMenu->items[i].submenu = messagePlayMenu;
+        messagesMenu->items[i].filepath = messageFilenames[i];
+    }
+
+    messagesMenu->itemCount = count;
+    messagesMenu->currentSelection = 0;
+    currentMenu = messagesMenu;
+}
+
+
+void menu_handle_button(ButtonEvent_t event)
+{
+
+	lastInteractionTick = osKernelGetTickCount(); 
+
+	if (!currentMenu) return;
+
+	if (event.action == BA_RELEASED) return;
+
+	if (!isBacklightOn)
+	{
+		HAL_GPIO_WritePin(LCD_LED_GPIO_Port, LCD_LED_Pin, GPIO_PIN_SET); 
+		isBacklightOn = true;
+		return;
+	}
+	
+	if (hot_key_handle_button(event) == true) return;
+
+	if (isIdle == true)
+	{
+		if(isResetPasswordAfterIdle){
+			Password_Reset(false);
+		}
+
+		isIdle = false;
+
+		if (Password_IsCorrect())
+		{
+			currentMenu = rootMenu;
+		}
+		else
+		{
+			Password_Reset(false);
+			currentMenu = passwordMenu;
+		}
+		currentMenu->currentSelection = 0;
+		DrawMenuScreen(true);
+
+		return;
+	}
+
+	if (currentMenu->buttonHandler) {
+	    currentMenu->buttonHandler(event);
+	    return;
+	}
+
+}
+bool hot_key_handle_button(ButtonEvent_t event)
+{
+	switch (event.button)
+    {
+		case BTN_TEST:
+			currentMenu = testMenu;
+			currentMenu->currentSelection = 0;
+			DrawMenuScreen(true);
+			return true;
+		case BTN_ANNOUNCEMENT:
+			currentMenu = rootMenu;
+			currentMenu->currentSelection = 0;
+			DrawMenuScreen(true);
+			return true;
+		case BTN_MESSAGE:
+			currentMenu = messagesMenu;
+			currentMenu->currentSelection = 0;
+			DrawMenuScreen(true);
+			return true;
+		case BTN_ALARM:
+			currentMenu = sirenMenu;
+			currentMenu->currentSelection = 0;
+			DrawMenuScreen(true);
+			return true;
+		default:
+			return false;
+		}
+
+		return false;
+}
+
+void HandleButtonPress(ButtonEvent_t event)
+{
+	 if (!currentMenu) return;
+
+    switch(event.button)
+    {
+        case BTN_UP:
+        	 if (currentMenu->itemCount == 0) return;
+
+            if (currentMenu->currentSelection > 0)
+            {
+                currentMenu->currentSelection--;
+
+                if (currentMenu->currentSelection < currentMenu->scrollOffset)
+                {
+                    currentMenu->scrollOffset--;
+                    DrawMenuScreen(true);
+                }
+                else
+				{
+					DrawMenuScreen(false);
+				}
+            }
+            else
+            {
+                currentMenu->currentSelection = currentMenu->itemCount - 1;
+
+                if (currentMenu->itemCount > MAX_VISIBLE_ITEMS)
+                    currentMenu->scrollOffset = currentMenu->itemCount - MAX_VISIBLE_ITEMS;
+                else
+                    currentMenu->scrollOffset = 0;
+
+                DrawMenuScreen(false);
+            }
+            break;
+
+
+        case BTN_DOWN:
+            if (!currentMenu || currentMenu->itemCount == 0) return;
+
+            {
+                uint8_t oldScroll = currentMenu->scrollOffset;
+                uint8_t oldSelection = currentMenu->currentSelection;
+
+                if (currentMenu->currentSelection < currentMenu->itemCount - 1)
+                {
+                    currentMenu->currentSelection++;
+
+                    if (currentMenu->currentSelection >= currentMenu->scrollOffset + MAX_VISIBLE_ITEMS)
+                    {
+                        currentMenu->scrollOffset++;
+                    }
+                }
+                else
+                {
+                    
+                    currentMenu->currentSelection = 0;
+                    currentMenu->scrollOffset = 0;
+                }
+
+                
+                if (currentMenu->scrollOffset != oldScroll)
+                    DrawMenuScreen(true);
+                else if (currentMenu->currentSelection != oldSelection)
+                    DrawMenuScreen(false);
+            }
+            break;
+
+        case BTN_SELECT:
+        		if (currentMenu->itemCount == 0) return;
+
+				{
+					MenuItem* item = &currentMenu->items[currentMenu->currentSelection];
+
+					if (item == NULL) return;
+					if (item->prepareAction != NULL) {
+						item->prepareAction();
+					}
+					if (item->submenu != NULL) {
+						currentMenu = item->submenu;
+						currentMenu->scrollOffset = 0;
+						DrawMenuScreen(true);
+					}
+					if (item->postAction != NULL) {
+						item->postAction();
+					}
+					return;
+				}
+
+        case BTN_BACK:
+            if (currentMenu->parent != NULL) {
+
+            	if ((currentMenu->type == MENU_TYPE_MESSAGE_PLAY) && (isPlayAudioFile == true))
+				{
+					isPlayAudioFile = false;
+				}
+
+                currentMenu = currentMenu->parent;
+
+                if (currentMenu->type == MENU_TYPE_IDLE){
+                    isIdle = true;
+                }
+
+                DrawMenuScreen(true);
+            }
+            return;
+
+        default:
+            return;
+    }
+}
+
+void passwordMenu_HandleButtonPress(ButtonEvent_t event)
+{
+	if ((!passwordMenu) && (currentMenu != passwordMenu)) return;
+
+	switch(event.button)
+	{
+		//case BTN__BACK:	 Password_Reset(true);      break;
+		case BTN_BACK:
+				Password_Backspace();  break;
+		case BTN_SELECT:
+						Password_Enter();
+						if (Password_IsCorrect())
+						{
+							currentMenu = rootMenu;
+							DrawMenuScreen(true);
+						}
+						break;
+
+		case BTN_A:
+						Password_AddChar('1'); break;
+		case BTN_B:
+					Password_AddChar('1'); break;
+
+		case BTN_1:          Password_AddChar('1'); break;
+		case BTN_2:          Password_AddChar('2'); break;
+		case BTN_3:          Password_AddChar('3'); break;
+		case BTN_4:          Password_AddChar('4'); break;
+		case BTN_5:          Password_AddChar('5'); break;
+		case BTN_6:          Password_AddChar('6'); break;
+		case BTN_7:          Password_AddChar('7'); break;
+		case BTN_8:          Password_AddChar('8'); break;
+		case BTN_9:          Password_AddChar('9'); break;
+		case BTN_0:          Password_AddChar('0'); break;
+
+	}
+}
+
+void alarmInfoMenu_HandleButtonPress(ButtonEvent_t event)
+{
+	if (!alarmInfoMenu) return;
+
+	switch(event.button)
+	{
+		case BTN_BACK:
+			isPlayAudioFile = false;
+			if (currentMenu->parent != NULL) {
+				currentMenu = currentMenu->parent;
+
+				if (currentMenu->type == MENU_TYPE_IDLE){
+					isIdle = true;
+				}
+				DrawMenuScreen(true);
+			}
+			break;
+
+		default:
+				return;
+	}
+
+}
+
+void VolumeControlButtonHandler(ButtonEvent_t event)
+{
+	 if (!currentMenu) return;
+
+	switch (event.button)
+	{
+		case BTN_UP:
+			IncreaseVolume(); // VOLUME +
+			break;
+		case BTN_DOWN:
+			DecreaseVolume(); // VOLUME -
+			break;
+		case BTN_SELECT:
+			break;
+		case BTN_BACK:
+			currentMenu = currentMenu->parent;
+			DrawMenuScreen(true);
+			break;
+
+		default:
+			return;
+	}
+
+}
+
+// void IncreaseVolume(void)
+// {
+//     if (currentMenu->type == MENU_TYPE_ANNOUNCEMENT) {
+//         uint8_t level = volumeIndicator.level;
+
+//         if (level < volumeIndicator.numBars) {
+//             level++;
+//             VolumeIndicator_SetLevel(&volumeIndicator, level);
+// 			system_set_volume(volumeIndicator.level);
+//         }
+//     }
+// }
+
+// void DecreaseVolume(void)
+// {
+//     if (currentMenu->type == MENU_TYPE_ANNOUNCEMENT) {
+//         uint8_t level = volumeIndicator.level;
+
+//         if (level > 0) {
+//             level--;
+//             VolumeIndicator_SetLevel(&volumeIndicator, level);
+// 			system_set_volume(volumeIndicator.level);
+//         }
+//     }
+// }
+
+//
+//void IncreaseVolume(void)
+//{
+//    if (currentMenu->type == MENU_TYPE_ANNOUNCEMENT) {
+//        uint8_t current_bars = volumeIndicator.level;
+//
+//        if (current_bars < NUM_VOLUME_BARS) {
+//            uint8_t new_bars = current_bars + 1;
+//            int new_volume_db = volume_bars_to_db(new_bars);
+//
+//
+//
+//            VolumeIndicator_StepUp(&volumeIndicator);
+//            system_set_volume(new_volume_db);
+//
+//        }
+//    }
+//}
+//
+//void DecreaseVolume(void)
+//{
+//    if (currentMenu->type == MENU_TYPE_ANNOUNCEMENT) {
+//        uint8_t current_bars = volumeIndicator.level;
+//
+//        if (current_bars > 0) {
+//            uint8_t new_bars = current_bars - 1;
+//            int new_volume_db = volume_bars_to_db(new_bars);
+//
+//
+//
+//            VolumeIndicator_StepDown(&volumeIndicator);
+//            system_set_volume(new_volume_db);
+//        }
+//    }
+//}
+
+void IncreaseVolume(void)
+{
+    if (currentMenu->type == MENU_TYPE_ANNOUNCEMENT) {
+    	if (system_get_volume() >= MAX_VOLUME){
+    		return;
+    	}
+
+       int new_volume = system_get_volume() + VOLUME_STEP;
+
+        if (new_volume <= MAX_VOLUME) {
+        	system_set_volume(new_volume);
+
+        	VolumeIndicator_StepUp(&volumeIndicator);
+        }
+    }
+}
+
+void DecreaseVolume(void)
+{
+    if (currentMenu->type == MENU_TYPE_ANNOUNCEMENT) {
+        int new_volume = system_get_volume() - VOLUME_STEP;
+        if (new_volume >= MIN_VOLUME) {
+        	system_set_volume(new_volume);
+        	VolumeIndicator_StepDown(&volumeIndicator);
+            //
+
+
+        }
+    }
+}
+
+#define DEBUG_PRINT_BUTTON_STATE
+
+void DisplayMenuItem(uint8_t visualIndex, const MenuItem* item, bool selected)
+{
+	//const Menu* submenu = item->submenu;
+
+	uint16_t y_pos = MENU_BASE_Y + (visualIndex * MENU_ITEM_HEIGHT);
+    uint16_t text_color = selected ? COLOR_WHITE : COLOR_GREEN;
+    uint16_t bg_color   = selected ? COLOR_BLUE  : COLOR_BLACK;
+
+    LCD_FillRectangle(MENU_BASE_X-2 , y_pos-1,  310, 19, bg_color); //19 - Font_11x18
+
+    const char* text = item->name[GetLanguage()];
+    LCD_WriteString(MENU_BASE_X, y_pos, text, &Font_11x18, text_color, bg_color);
+
+}
+#define DEBUG_PRINT_BUTTON_STATE_2
+
+void Draw_MENU_TYPE_IDLE()
+{
+	uint16_t bg_color = COLOR_BLACK;
+
+	const char* text = currentMenu->screenText[GetLanguage()];
+	if (text) {
+		LCD_WriteStringAligned(STATUS_BAR_LINE_Y_POS + 20, text, &Font_11x18, COLOR_WHITE, bg_color, ALIGN_CENTER);
+	}
+
+	StatusDisplay_DrawAll(15, STATUS_BAR_LINE_Y_POS + 50 );
+}
+
+void Draw_MENU_TYPE_ANNOUNCEMENT(void)
+{
+	uint16_t bg_color = COLOR_BLACK;
+
+	const char* text = currentMenu->screenText[GetLanguage()];
+	if (text) {
+		LCD_WriteStringAligned(STATUS_BAR_LINE_Y_POS + 20, text, &Font_16x26, COLOR_WHITE, bg_color, ALIGN_CENTER);
+	}
+
+	MenuDrawImage(currentMenu);
+
+
+	VolumeIndicator_Draw(&volumeIndicator);
+	
+	// Set the initial level
+	//uint8_t initial_bars = volume_db_to_bars(system_get_volume());
+	//VolumeIndicator_SetLevel(&volumeIndicator, initial_bars);
+
+}
+
+void Draw_MENU_TYPE_SIREN_INFO(void)
+{
+	uint16_t bg_color = COLOR_BLACK;
+	const char* text = currentMenu->screenText[GetLanguage()];
+	if (text) {
+		LCD_WriteStringAligned(STATUS_BAR_LINE_Y_POS + 20, text, &Font_16x26, COLOR_WHITE, bg_color, ALIGN_CENTER);
+	}
+	if (currentMenu->textFilename)
+	{
+		LCD_WriteStringAligned(STATUS_BAR_LINE_Y_POS + 55, currentMenu->textFilename, &Font_11x18, COLOR_MAGENTA, bg_color, ALIGN_CENTER);
+	}
+	//MenuDrawImage(currentMenu);
+
+	isPlayAudioFile = true;
+
+	MenuDrawProgress(0);//
+	//MenuDrawProgress((LCD_GetWidth() - PROGRESS_BAR_W) / 2, PROGRESS_BAR_Y, PROGRESS_BAR_W, PROGRESS_BAR_HEIGHT, 10);
+	//MenuDrawProgress2(&bar, 1);
+
+	osDelay(3);
+}
+
+void Draw_MENU_TYPE_REPORT(void)
+{
+	uint16_t bg_color = COLOR_BLACK;
+	const char* text = currentMenu->screenText[GetLanguage()];
+	
+	if (text) {
+		LCD_WriteStringAligned(STATUS_BAR_LINE_Y_POS + 20, text, &Font_16x26, COLOR_WHITE, bg_color, ALIGN_CENTER);
+	}
+
+	ReportIndicator_DrawAll(10, STATUS_BAR_LINE_Y_POS + 80);
+}
+
+void Draw_MENU_TYPE_TEST_BAT(void)
+{
+ 	uint16_t bg_color = COLOR_BLACK;
+	const char* text = currentMenu->screenText[GetLanguage()];
+	if (text) {
+		LCD_WriteStringAligned(STATUS_BAR_LINE_Y_POS + 20, text, &Font_16x26, COLOR_WHITE, bg_color, ALIGN_CENTER);
+	}
+
+	BatteriesDisplay_DrawAll(15, STATUS_BAR_LINE_Y_POS + 80);
+
+}
+
+void Draw_MENU_TYPE_TEST_DRIV(void)
+{
+	uint16_t bg_color = COLOR_BLACK;
+	const char* text = currentMenu->screenText[GetLanguage()];
+	if (text) {
+		LCD_WriteStringAligned(STATUS_BAR_LINE_Y_POS + 20, text, &Font_16x26, COLOR_WHITE, bg_color, ALIGN_CENTER);
+	}
+
+	TestDevDisplay_DrawAll(17, STATUS_BAR_LINE_Y_POS + 200);
+}
+
+void Draw_MENU_TYPE_TEST_AMP(void)
+{
+	uint16_t bg_color = COLOR_BLACK;
+
+	const char* text = currentMenu->screenText[GetLanguage()];
+	if (text) {
+		LCD_WriteStringAligned(STATUS_BAR_LINE_Y_POS + 20, text, &Font_16x26, COLOR_WHITE, bg_color, ALIGN_CENTER);
+	}
+
+	TestAmplDisplay_DrawAll(18, STATUS_BAR_LINE_Y_POS + 200 );
+}
+
+void Draw_MENU_TYPE_MESSAGE_PLAY(void)
+{
+	uint16_t bg_color = COLOR_BLACK;
+
+	const char* text = currentMenu->screenText[GetLanguage()];
+	if (text) {
+		LCD_WriteStringAligned(STATUS_BAR_LINE_Y_POS + 10, text, &Font_11x18, COLOR_WHITE, bg_color, ALIGN_CENTER);
+	}
+
+	if (currentMenu->textFilename) {
+		LCD_WriteStringAligned(STATUS_BAR_LINE_Y_POS + 45, currentMenu->textFilename, &Font_11x18, COLOR_MAGENTA, bg_color, ALIGN_CENTER);
+	}
+
+	MenuDrawImage(currentMenu);
+
+	isPlayAudioFile = true;
+	MenuDrawProgress(0);
+
+	osDelay(3);
+}
+
+void DrawMenuScreen(bool forceFullRedraw)
+{
+    static uint8_t prevSelection = 0;
+    static Menu* prevMenu = NULL;
+
+    if (forceFullRedraw || prevMenu != currentMenu)
+    {
+        uint16_t bg_color = COLOR_BLACK;
+
+      
+        LCD_FillRectangle(1,
+						 STATUS_BAR_LINE_Y_POS + 2,
+						 LCD_GetWidth() - 3,
+						 LCD_GetHeight() - (STATUS_BAR_LINE_Y_POS + 3),
+						 bg_color);
+        osDelay(1);
+
+        LCD_DrawRect(0, 0, LCD_GetWidth(), LCD_GetHeight(), COLOR_YELLOW);
+
+
+        if (currentMenu->type == MENU_TYPE_IDLE)
+        {
+			Draw_MENU_TYPE_IDLE();
+        }
+        else if (currentMenu->type == MENU_TYPE_PASSWORD)
+        {
+        	 Draw_MENU_TYPE_PASSWORD();
+        }
+        else if (currentMenu->type == MENU_TYPE_ANNOUNCEMENT)
+        {
+			Draw_MENU_TYPE_ANNOUNCEMENT();
+        }
+        else if (currentMenu->type == MENU_TYPE_SIREN_INFO)
+        {
+			Draw_MENU_TYPE_SIREN_INFO();
+        }
+        else if (currentMenu->type == MENU_TYPE_REPORT)
+        {
+			Draw_MENU_TYPE_REPORT();
+        }
+        else if (currentMenu->type == MENU_TYPE_TEST_BAT)
+        {
+			Draw_MENU_TYPE_TEST_BAT();
+        }
+        else if (currentMenu->type == MENU_TYPE_TEST_DRIV)
+		{
+			Draw_MENU_TYPE_TEST_DRIV();
+		}
+        else if (currentMenu->type == MENU_TYPE_TEST_AMP)
+		{
+			Draw_MENU_TYPE_TEST_AMP();
+		}
+        // else if (currentMenu->type == MENU_TYPE_SCREEN)
+        // {
+        //     const char* text = currentMenu->screenText[GetLanguage()];
+        //     if (text) {
+        //         LCD_WriteStringAligned(STATUS_BAR_LINE_Y_POS + 10, text, &Font_11x18, COLOR_WHITE, bg_color, ALIGN_CENTER);
+        //     }
+
+        //     if (currentMenu->textFilename) {
+        //         LCD_WriteStringAligned(STATUS_BAR_LINE_Y_POS + 45, currentMenu->textFilename, &Font_11x18, COLOR_MAGENTA, bg_color, ALIGN_CENTER);
+        //     }
+
+        //     MenuDrawImage(currentMenu);
+        // }
+		else if (currentMenu->type == MENU_TYPE_MESSAGE_PLAY)
+		{
+			Draw_MENU_TYPE_MESSAGE_PLAY();
+		}
+		else if (currentMenu->type == MENU_TYPE_LIST)
+		{
+           uint8_t start = currentMenu->scrollOffset;
+           uint8_t end = start + MAX_VISIBLE_ITEMS;
+           if (end > currentMenu->itemCount) end = currentMenu->itemCount;
+
+           const char* text = currentMenu->screenText[GetLanguage()];
+			if (text) {
+				LCD_WriteStringAligned(STATUS_BAR_LINE_Y_POS + 5, text, &Font_11x18, COLOR_WHITE, bg_color, ALIGN_CENTER);
+			}
+
+           for (uint8_t i = start; i < end; ++i)
+           {
+               uint8_t visualIndex = i - start;
+               DisplayMenuItem(visualIndex, &currentMenu->items[i], (i == currentMenu->currentSelection));
+               osDelay(3);
+           }
+
+           prevSelection = currentMenu->currentSelection;
+       }
+
+      
+       prevMenu = currentMenu;
+    }
+    else if (currentMenu->type == MENU_TYPE_LIST)
+    {
+        if (prevSelection != currentMenu->currentSelection)
+        {
+            uint8_t start = currentMenu->scrollOffset;
+
+            if (prevSelection >= start && prevSelection < start + MAX_VISIBLE_ITEMS)
+            {
+                 uint8_t visualIndex = prevSelection - start;
+                 DisplayMenuItem(visualIndex, &currentMenu->items[prevSelection], false);
+            }
+
+            if (currentMenu->currentSelection >= start && currentMenu->currentSelection < start + MAX_VISIBLE_ITEMS)
+            {
+                 uint8_t visualIndex = currentMenu->currentSelection - start;
+                 DisplayMenuItem(visualIndex, &currentMenu->items[currentMenu->currentSelection], true);
+            }
+            osDelay(5);
+            prevSelection = currentMenu->currentSelection;
+        }
+    }
+
+    osDelay(1);
+
+#ifdef DEBUG_PRINT_BUTTON_STATE_2
+   // DrawDebugInfo(&lastButtonEvent);
+#endif
+
+    osDelay(1);
+}
+
+static char debugInfo[50];
+
+void DrawDebugInfo(const ButtonEvent_t* event)
+{
+return;
+	//LCD_FillRectangle(0, DEBUG_INFO_Y, LCD_GetWidth(), LCD_GetHeight(), debug_bg_color);
+
+
+	sprintf(debugInfo,
+			//sizeof(debugInfo),
+		"Btn:%s %s Level:%d Sel:%d/%d",
+		ButtonToString(event->button),
+		ButtonActionToString(event->action),
+		0,//currentLevel,
+		currentMenu->currentSelection + 1,
+		currentMenu->itemCount);
+
+	LCD_WriteString(10, DEBUG_INFO_Y, debugInfo, &Font_7x10, COLOR_WHITE, COLOR_DARKGRAY);
+}
+
+static char serialStr[20]={0};
+
+void DrawStatusBar()
+{
+	LCD_FillRectangle(0, 0, LCD_GetWidth(), STATUS_BAR_LINE_Y_POS -1, COLOR_BLACK);
+	LCD_WriteString(LOGO_X_POS, LOGO_Y_POS, "EES-3000", &Font_11x18, COLOR_WHITE, COLOR_BLACK);
+
+	snprintf(serialStr, sizeof(serialStr), "Serial: %s", serialNumber);
+	LCD_WriteString(SERIAL_X_POS, SERIAL_Y_POS, serialStr, &Font_7x10, COLOR_YELLOW, COLOR_BLACK);
+	LCD_DrawLine(0, STATUS_BAR_LINE_Y_POS, LCD_GetWidth(), STATUS_BAR_LINE_Y_POS, COLOR_GRAY);
+}
+
+//static char timeStr[26]={0};
+
+void UpdateDateTime()
+{
+	//LCD_FillRectangle(TIME_X_POS, TIME_Y_POS, 235, TIME_HEIGHT, COLOR_BLACK);
+	return;
+
+//	uint16_t year = time_rtc.year;
+//	if (time_rtc.year > 9999)
+//	{
+//		year = 9999;
+//	}
+//
+//	snprintf(timeStr, sizeof(timeStr), "%02d/%02d/%04d %02d:%02d:%02d",
+//										time_rtc.date, time_rtc.month, year,
+//										time_rtc.hour,time_rtc.minute, time_rtc.second);
+//
+//	LCD_WriteString(TIME_X_POS, TIME_Y_POS, timeStr, Font_7x10, COLOR_WHITE, COLOR_BLACK);
+}
+
+void SetIdleMenu(void)
+{
+	return;
+
+	if (!isIdle || isBacklightOn)
+	{
+		uint32_t now = osKernelGetTickCount();
+
+		if (!isIdle && (now - lastInteractionTick >= INACTIVITY_TIMEOUT_MS)) {
+			isIdle = true;
+
+
+			DrawMenuScreen(true);
+			lastInteractionTick = now;
+		}
+		else if (isIdle && isBacklightOn && (now - lastInteractionTick >= BACKLIGHT_TIMEOUT_MS)) {
+			HAL_GPIO_WritePin(LCD_LED_GPIO_Port, LCD_LED_Pin, GPIO_PIN_RESET);
+			isBacklightOn = false;
+		}
+	}
+}
+
+
+void ShowUartCommand(void)
+{
+	//LCD_FillRectangle(0, 0, LCD_GetWidth(), STATUS_BAR_LINE_Y_POS -1, COLOR_BLACK);
+	LCD_WriteString(LOGO_X_POS, LOGO_Y_POS, "EES-3000", &Font_7x10, COLOR_WHITE, COLOR_BLACK);
+
+}
