@@ -122,7 +122,7 @@ osThreadId_t AudioPlaybackTaHandle;
 const osThreadAttr_t AudioPlaybackTa_attributes = {
   .name = "AudioPlaybackTa",
   .stack_size = 512 * 4,
-  .priority = (osPriority_t) osPriorityLow,
+  .priority = (osPriority_t) osPriorityBelowNormal,
 };
 /* Definitions for xButtonQueue */
 osMessageQueueId_t xButtonQueueHandle;
@@ -872,9 +872,33 @@ void LED3_Task(void *argument)
 void UART_Receive_Task(void *argument)
 {
   /* USER CODE BEGIN UART_Receive_Task */
+	rs232_init(&huart2);
+
+	// === Register all handlers from  command_dispatcher ===
+	rs232_register_arm(handle_arm);
+	rs232_register_all_clear_1(handle_all_clear_1);
+	rs232_register_all_clear_2(handle_all_clear_2);
+	rs232_register_alarm(handle_alarm);
+	rs232_register_chemical(handle_chemical);
+	rs232_register_disarm(handle_disarm);
+	rs232_register_cancel(handle_cancel);
+	rs232_register_quiet_test(handle_quiet_test);
+	rs232_register_reserve_1(handle_reserve_1);
+	rs232_register_reserve_2(handle_reserve_2);
+	rs232_register_reserve_3(handle_reserve_3);
+	rs232_register_remote_pa(handle_remote_pa);
+	rs232_register_reset(handle_reset);
+	rs232_register_volume_up(volume_up_handler);
+	rs232_register_volume_down(volume_down_handler);
+	rs232_register_report(system_fill_report);
+	rs232_register_unknown(handle_unknown_command);
+
+	system_status_init();
+
   /* Infinite loop */
   for(;;)
   {
+	rs232_process();
     osDelay(1);
   }
   /* USER CODE END UART_Receive_Task */
@@ -945,10 +969,11 @@ void AudioPlaybackTask(void *argument)
 {
   /* USER CODE BEGIN AudioPlaybackTask */
 	AIC3204_Init_Audio();
-
+	AIC3204_Start_Playback("2.wav");
   /* Infinite loop */
   for(;;)
   {
+	AIC3204_Process();
     osDelay(1);
   }
   /* USER CODE END AudioPlaybackTask */

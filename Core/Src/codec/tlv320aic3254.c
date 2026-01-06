@@ -8,37 +8,37 @@
 
 extern I2S_HandleTypeDef hi2s2;
 
-#define SAMPLE_RATE         48000
-#define TONE_FREQ           826
-#define SAMPLES_PER_PERIOD  (SAMPLE_RATE / TONE_FREQ)
-#define PERIODS_IN_BUFFER   1
-#define BUFFER_SIZE         (SAMPLES_PER_PERIOD * PERIODS_IN_BUFFER)
-#define STEREO_WORDS 		(BUFFER_SIZE * 2)
-
-int16_t sine_buffer[STEREO_WORDS];
-uint32_t audio_repeat = 1;
-
-static void Generate_Sine_800Hz(void);
+//#define SAMPLE_RATE         48000
+//#define TONE_FREQ           826
+//#define SAMPLES_PER_PERIOD  (SAMPLE_RATE / TONE_FREQ)
+//#define PERIODS_IN_BUFFER   1
+//#define BUFFER_SIZE         (SAMPLES_PER_PERIOD * PERIODS_IN_BUFFER)
+//#define STEREO_WORDS 		(BUFFER_SIZE * 2)
+//
+//int16_t sine_buffer[STEREO_WORDS];
+//uint32_t audio_repeat = 1;
+//
+//static void Generate_Sine_800Hz(void);
 static void AIC3204_Reset(void);
 static void AIC3204_Init_Playback(void);
 static void AIC3204_Init_Record(void);
 
-static void Generate_Sine_800Hz(void)
-{
-	const char *msg = "Generate_Sine_800Hz\r\n";
-	Print_Msg(msg);
-
-    for (int sample_idx = 0; sample_idx < BUFFER_SIZE; sample_idx++)
-    {
-        double t = (double)sample_idx / SAMPLE_RATE;
-        double sample = sin(2.0 * M_PI * TONE_FREQ * t);
-        int16_t value = (int16_t)(sample * 32767.0);
-
-        int buffer_idx = sample_idx * 2;
-        sine_buffer[buffer_idx]   = value;   // Left
-        sine_buffer[buffer_idx+1] = value;   // Right
-    }
-}
+//static void Generate_Sine_800Hz(void)
+//{
+//	const char *msg = "Generate_Sine_800Hz\r\n";
+//	Print_Msg(msg);
+//
+//    for (int sample_idx = 0; sample_idx < BUFFER_SIZE; sample_idx++)
+//    {
+//        double t = (double)sample_idx / SAMPLE_RATE;
+//        double sample = sin(2.0 * M_PI * TONE_FREQ * t);
+//        int16_t value = (int16_t)(sample * 32767.0);
+//
+//        int buffer_idx = sample_idx * 2;
+//        sine_buffer[buffer_idx]   = value;   // Left
+//        sine_buffer[buffer_idx+1] = value;   // Right
+//    }
+//}
 
 static void AIC3204_Reset(void)
 {
@@ -87,6 +87,8 @@ static void AIC3204_Init_Playback(void)
     HAL_Delay(2500);								// Wait for soft stepping (2.5 sec in TI example)
 
     AIC3204_WriteReg(AIC32X4_PSEL, 0x00);			// Page 0
+    AIC3204_WriteReg(AIC32X4_LDACVOL, 0x00); 		// Left DAC Channel Digital Volume 0.0dB
+    AIC3204_WriteReg(AIC32X4_RDACVOL, 0x00); 		// Right DAC Channel Digital Volume 0.0dB
     AIC3204_WriteReg(AIC32X4_DACSETUP, 0xD6); 		// LDAC + RDAC powered, soft step 1/fs
     AIC3204_WriteReg(AIC32X4_DACMUTE, 0x00); 		// Unmute both DACs, gain 0 dB
 }
@@ -128,102 +130,116 @@ void AIC3204_Init_Audio(void)
 	hi2s2.Init.MCLKOutput = I2S_MCLKOUTPUT_DISABLE;
 	HAL_I2S_Init(&hi2s2);
 
-	Generate_Sine_800Hz();
+	//Generate_Sine_800Hz();
 
 	/*HAL_Delay(10);
 	AIC3204_Reset();
+
 	HAL_Delay(50);*/
 
 	AIC3204_Init_Playback();
 	//AIC3204_Init_Record();
 
-	FS_Read();
+	//FS_ReadDisk();
+
+//	HAL_GPIO_WritePin(GPIOD, GPIO_PIN_10, GPIO_PIN_SET);
+//	HAL_Delay(1000);
+//	HAL_GPIO_WritePin(GPIOD, GPIO_PIN_10, GPIO_PIN_RESET);
+//	HAL_Delay(1000);
+//
+//	Print_Msg("AIC3204_Init_Audio\r\n");
+
+	FS_MountDrive();
 }
 
-void AIC3204_Start_Playback(void)
+void AIC3204_Start_Playback(const char *filename)
 {
-	const char *msg = "Start_Playback\r\n";
-	Print_Msg(msg);
+	Print_Msg("AIC3204_Play\r\n");
 
-	//HAL_I2S_Transmit(&hi2s2, (uint16_t*)sine_buffer, BUFFER_SIZE*2, 1000);
-	//__HAL_I2S_ENABLE(&hi2s2);
+    if (!FS_LoadFile(filename))
+	{
+    	char msg[64];
+    	sprintf(msg, "Failure load %s\r\n", filename);
+    	Print_Msg(msg);
+    	return;
+	}
+    player.is_playing = true;
+
 	hi2s2.Init.MCLKOutput = I2S_MCLKOUTPUT_ENABLE;
 	HAL_I2S_Init(&hi2s2);
-
-	//HAL_I2S_Transmit_IT(&hi2s2, (uint16_t*)sine_buffer, STEREO_WORDS);
-	HAL_I2S_Transmit_DMA(&hi2s2, (uint16_t*)sine_buffer, STEREO_WORDS);
+    HAL_I2S_Transmit_DMA(&hi2s2, (uint16_t*)player.dma_buffer, AUDIO_HALF_BUFFER_SIZE);
 }
 
 void AIC3204_Stop_Playback(void)
 {
-	const char *msg = "Stop_Playback\r\n";
+	char msg[64];
+	sprintf(msg, "All read %ld bytes\r\n", player.bytes_read);
 	Print_Msg(msg);
 
-	HAL_I2S_DMAStop(&hi2s2);
+	player.is_playing = false;
+	player.buff_state = BUFFER_IDLE;
+	player.bytes_read = 0;
 
-	//__HAL_I2S_DISABLE(&hi2s2);
-	hi2s2.Init.MCLKOutput = I2S_MCLKOUTPUT_DISABLE;
-	HAL_I2S_Init(&hi2s2);
+    HAL_I2S_DMAStop(&hi2s2);
+    hi2s2.Init.MCLKOutput = I2S_MCLKOUTPUT_DISABLE;
+    HAL_I2S_Init(&hi2s2);
+
+    FS_CloseFile();
 }
 
+void AIC3204_Process(void)
+{
+	if (!player.is_playing || !player.file_opened || player.buff_state == BUFFER_IDLE) return;
+
+	UINT br = FS_Read_Buffer_Part();
+	if (br < 0) return;
+
+	if (br == 0)
+	{
+		AIC3204_Stop_Playback();
+	}
+}
+
+void HAL_I2S_TxHalfCpltCallback(I2S_HandleTypeDef *hi2s)
+{
+	if (hi2s->Instance == SPI2)
+	{
+		if (player.is_playing)
+		{
+			player.buff_state = BUFFER_HALF;
+		}
+	}
+}
+
+void HAL_I2S_TxCpltCallback(I2S_HandleTypeDef *hi2s)
+{
+	if (hi2s->Instance == SPI2)
+	{
+		if (player.is_playing)
+		{
+			player.buff_state = BUFFER_FULL;
+		}
+	}
+}
+/*
 void AIC3204_Start_Record(void)
 {
 	const char *msg = "Start_Record\r\n";
 	Print_Msg(msg);
-
-    //HAL_I2S_Transmit_DMA(&hi2s2, (uint16_t*)sine_buffer, BUFFER_SIZE*2);
-	//HAL_I2S_Transmit(&hi2s2, (uint16_t*)sine_buffer, BUFFER_SIZE*2, 1000);
-	//__HAL_I2S_ENABLE(&hi2s2);
-	//HAL_I2S_Receive_IT(&hi2s2, (uint16_t*)record_buffer, STEREO_WORDS);
 }
 
 void AIC3204_Stop_Record(void)
 {
 	const char *msg = "Stop_Record\r\n";
 	Print_Msg(msg);
-
-//    __HAL_I2S_DISABLE(&hi2s2);
-//    hi2s2.Init.MCLKOutput = I2S_MCLKOUTPUT_DISABLE;
-//    HAL_I2S_Init(&hi2s2);
-}
-
-void HAL_I2S_TxCpltCallback(I2S_HandleTypeDef *hi2s)
-{
-    if (hi2s->Instance == SPI2)
-    {
-    	//AIC3204_Stop_Playback();
-    	/*if (audio_repeat-- > 1)
-    	{
-    		HAL_I2S_Transmit_IT(&hi2s2, (uint16_t*)sine_buffer, STEREO_WORDS);
-    	}
-    	else
-		{
-    		AIC3204_Stop_Playback();
-		}*/
-    }
 }
 
 void HAL_I2S_RxCpltCallback(I2S_HandleTypeDef *hi2s)
 {
     if (hi2s->Instance == SPI2)
     {
-//    	if (audio_repeat-- > 1)
-//    	{
-//    		HAL_I2S_Receive_IT(&hi2s2, (uint16_t*)record_buffer, STEREO_WORDS);
-//    	}
-//    	else
-//		{
-//    		AIC3204_Stop_Record();
-//		}
-    }
-}
 
-void HAL_I2S_ErrorCallback(I2S_HandleTypeDef *hi2s)
-{
-    if (hi2s->Instance == SPI2)
-    {
-        HAL_I2S_DeInit(&hi2s2);
-        HAL_I2S_Init(&hi2s2);
-    	HAL_I2S_Transmit_DMA(&hi2s2, (uint16_t*)sine_buffer, STEREO_WORDS);
     }
 }
+*/
+

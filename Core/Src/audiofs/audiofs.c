@@ -1,31 +1,14 @@
 #include "audiofs.h"
-#include "fatfs.h"
 
-typedef struct
-{
-  uint32_t   ChunkID;       /* 0 */
-  uint32_t   ChunkSize;     /* 4 */
-  uint32_t   Format;    	/* 8 */
-  uint32_t   SubChunk1ID;   /* 12 */
-  uint32_t   SubChunk1Size; /* 16 */
-  uint16_t   AudioFormat;   /* 20 */
-  uint16_t   NumChannels;   /* 22 */
-  uint32_t   SampleRate;    /* 24 */
-  uint32_t   ByteRate;      /* 28 */
-  uint16_t   BlockAlign;    /* 32 */
-  uint16_t   BitPerSample;  /* 34 */
-  uint32_t   SubChunk2ID;   /* 36 */
-  uint32_t   SubChunk2Size; /* 40 */
-}WAV_FormatTypeDef;
+static void FS_ListRootDirectory(void);
+static void FS_ReadWavHeader(WAV_BaseHeader_t *header);
 
 FATFS fs;
 DIR dir;
 FILINFO fno;
-FIL file;
+Audio_Player_t player;
 
-void USB_ReadWavHeader(const char *filename);
-
-FRESULT USB_MountDrive(void)
+FRESULT FS_MountDrive(void)
 {
     FRESULT res = f_mount(&USBHFatFS, "", 1);
     if (res == FR_OK)
@@ -41,13 +24,13 @@ FRESULT USB_MountDrive(void)
     return res;
 }
 
-void USB_UnmountDrive(void)
+void FS_UnmountDrive(void)
 {
     f_mount(NULL, "", 0);
     Print_Msg("USB Drive unmounted\r\n");
 }
 
-void USB_ListRootDirectory(void)
+static void FS_ListRootDirectory(void)
 {
     FRESULT res;
     char msg[80];
@@ -72,85 +55,167 @@ void USB_ListRootDirectory(void)
         if (fno.fattrib & AM_DIR)
         {
             sprintf(msg, "  <DIR>  %s\r\n", fno.fname);
-            Print_Msg(msg);
         }
         else
         {
-            USB_ReadWavHeader(fno.fname);
+        	sprintf(msg, "%s\r\n", fno.fname);
+            //FS_ReadWavHeader(fno.fname);
         }
+        Print_Msg(msg);
     }
 
     f_closedir(&dir);
 }
 
-void USB_ReadWavHeader(const char *filename)
+void FS_CloseFile(void)
+{
+	f_close(&player.file);
+	player.file_opened = false;
+}
+
+static void FS_ReadWavHeader(WAV_BaseHeader_t *header)
 {
     FRESULT res;
     UINT br;
-    char msg[100];
+    char msg[200];
 
-    res = f_open(&file, filename, FA_READ);
-    if (res != FR_OK)
-    {
-        sprintf(msg, "Failed to open %s: %d\r\n", filename, res);
-        Print_Msg(msg);
-        return;
-    }
-
-    uint8_t header[44];
-    res = f_read(&file, header, 44, &br);
+    res = f_read(&player.file, header, AUDIO_HEADER_SIZE, &br);
     if (res != FR_OK || br != 44)
     {
-        sprintf(msg, "Failed to read header of %s (read %u bytes)\r\n", filename, br);
+        sprintf(msg, "Failed to read header of %s (read %u bytes)\r\n", (char *)player.current_filename, br);
         Print_Msg(msg);
-        f_close(&file);
+        f_close(&player.file);
         return;
     }
 
-    WAV_FormatTypeDef *wav = (WAV_FormatTypeDef *)header;
-
-    sprintf(msg, "\r\n=== %s Header ===\r\n", filename);
+    sprintf(msg, "\r\n=== %s Header ===\r\n", (char *)player.current_filename);
     Print_Msg(msg);
-    sprintf(msg, " File size     : %lu bytes\r\n", (unsigned long)wav->ChunkSize);
+    sprintf(msg, " File size     : %lu bytes\r\n", (unsigned long)header->ChunkSize);
 	Print_Msg(msg);
-	sprintf(msg, " Format        : %c%c%c%c\r\n", (char)wav->Format, (char)(wav->Format>>8), (char)(wav->Format>>16), (char)(wav->Format>>24));
+	sprintf(msg, " Format        : %c%c%c%c\r\n", (char)header->Format, (char)(header->Format>>8), (char)(header->Format>>16), (char)(header->Format>>24));
 	Print_Msg(msg);
-	sprintf(msg, " Sample Rate   : %lu Hz\r\n", (unsigned long)wav->SampleRate);
+	sprintf(msg, " Sample Rate   : %lu Hz\r\n", (unsigned long)header->SampleRate);
 	Print_Msg(msg);
-	sprintf(msg, " Channels      : %u\r\n", (unsigned)wav->NumChannels);
+	sprintf(msg, " Channels      : %u\r\n", (unsigned)header->NumChannels);
 	Print_Msg(msg);
-	sprintf(msg, " Bits/Sample   : %u\r\n", (unsigned)wav->BitPerSample);
+	sprintf(msg, " Bits/Sample   : %u\r\n", (unsigned)header->BitPerSample);
 	Print_Msg(msg);
-	sprintf(msg, " ByteRate      : %lu\r\n", (unsigned long)wav->ByteRate);
+	sprintf(msg, " ByteRate      : %lu\r\n", (unsigned long)header->ByteRate);
 	Print_Msg(msg);
-	sprintf(msg, " Data ID       : %c%c%c%c\r\n", (char)wav->SubChunk2ID, (char)(wav->SubChunk2ID>>8), (char)(wav->SubChunk2ID>>16), (char)(wav->SubChunk2ID>>24));
+	sprintf(msg, " Data ID       : %c%c%c%c\r\n", (char)header->SubChunk2ID, (char)(header->SubChunk2ID>>8), (char)(header->SubChunk2ID>>16), (char)(header->SubChunk2ID>>24));
 	Print_Msg(msg);
-	sprintf(msg, " Data size     : %lu bytes\r\n", (unsigned long)wav->SubChunk2Size);
+	sprintf(msg, " Data size     : %lu bytes\r\n", (unsigned long)header->SubChunk2Size);
 	Print_Msg(msg);
-	sprintf(msg, " Data size hex : 0x%04lx bytes\r\n", wav->SubChunk2Size);
+	sprintf(msg, " Data size hex : 0x%04lx bytes\r\n", header->SubChunk2Size);
 	Print_Msg(msg);
 	uint32_t duration = 0;
-	if (wav->ByteRate > 0)
+	if (header->ByteRate > 0)
 	{
-		duration = wav->ChunkSize / wav->ByteRate;
+		duration = header->ChunkSize / header->ByteRate;
 		sprintf(msg, " Duration      : %02lu:%02lu\r\n", duration / 60, duration % 60);
 		Print_Msg(msg);
 	}
-
-    f_close(&file);
 }
 
-void FS_Read(void)
-{
-    char msg[64];
-    sprintf(msg, "FS_Read started\r\n");
-    Print_Msg(msg);
+//void FS_ReadDisk(void)
+//{
+//    char msg[64];
+//    sprintf(msg, "FS_Read started\r\n");
+//    Print_Msg(msg);
+//
+//    if (f_mount(&fs, "", 0) != FR_OK)
+//    {
+//        if (USB_MountDrive() != FR_OK)
+//            return;
+//    }
+//
+//    FS_ListRootDirectory();
+//    FS_ReadWavHeader("1.wav");
+//}
 
-    if (f_mount(&fs, "", 0) != FR_OK)
+bool FS_LoadFile(const char* filename)
+{
+    FRESULT res;
+    UINT br;
+
+	FS_ListRootDirectory();
+
+    if (player.file_opened)
     {
-        if (USB_MountDrive() != FR_OK)
-            return;
+        f_close(&player.file);
     }
 
-    USB_ListRootDirectory();
+    memset(&player, 0, sizeof(player));
+
+    res = f_open(&player.file, filename, FA_READ);
+    if (res != FR_OK) return false;
+
+    player.file_opened = true;
+    player.file_size = f_size(&player.file);
+    strncpy(player.current_filename, filename, sizeof(player.current_filename)-1);
+
+    WAV_BaseHeader_t base_hdr;
+	FS_ReadWavHeader(&base_hdr);
+    player.bytes_read += AUDIO_HEADER_SIZE;
+    res = f_read(&player.file, player.dma_buffer, AUDIO_BUFFER_SIZE, &br);
+	if (res != FR_OK)
+	{
+		f_close(&player.file);
+		player.file_opened = false;
+		return false;
+	}
+	player.bytes_read += br;
+
+	if (br < AUDIO_HALF_BUFFER_SIZE) {
+		memset(player.dma_buffer + br, 0, AUDIO_HALF_BUFFER_SIZE - br);
+	}
+
+    player.wav_info.sample_rate     = base_hdr.SampleRate;
+    player.wav_info.num_channels    = base_hdr.NumChannels;
+    player.wav_info.bits_per_sample = base_hdr.BitPerSample;
+    player.wav_info.byte_rate       = base_hdr.ByteRate;
+    player.wav_info.block_align     = base_hdr.BlockAlign;
+    player.wav_info.data_chunk_offset = AUDIO_HEADER_SIZE;
+    player.wav_info.data_size       = base_hdr.SubChunk2Size;
+    player.buff_state = BUFFER_IDLE;
+
+    return true;
+}
+
+UINT FS_Read_Buffer_Part()
+{
+	UINT br;
+	uint32_t offset;
+	uint8_t* buf_ptr;
+	char msg[100];
+
+	switch(player.buff_state)
+	{
+		case BUFFER_HALF: offset = 0; break;
+		case BUFFER_FULL: offset = AUDIO_HALF_BUFFER_SIZE; break;
+		case BUFFER_IDLE:
+		default: return -1;
+	}
+	buf_ptr = player.dma_buffer + offset;
+///////////
+		uint32_t start = HAL_GetTick();
+	FRESULT res = f_read(&player.file, buf_ptr, AUDIO_HALF_BUFFER_SIZE, &br);
+		uint32_t duration = HAL_GetTick() - start;
+		sprintf(msg, "f_read %lu ms\r\n", duration);
+		Print_Msg(msg);
+////////////////
+	if (res != FR_OK)
+	{
+		sprintf(msg, "f_read ERROR: %d\r\n", res);
+		Print_Msg(msg);
+		return -1;
+	}
+
+	if (br < AUDIO_HALF_BUFFER_SIZE)
+	{
+		memset(buf_ptr + br, 0, AUDIO_HALF_BUFFER_SIZE - br);
+	}
+	player.buff_state = BUFFER_IDLE;
+	player.bytes_read += br;
+	return br;
 }
