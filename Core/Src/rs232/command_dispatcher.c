@@ -11,8 +11,6 @@
 #include <string.h>
 #include <stdio.h>
 
-#include "tlv320aic3254.h"
-
 // Extern UART handler for debug output (optional)
 extern UART_HandleTypeDef huart2;
 
@@ -36,7 +34,6 @@ extern UART_HandleTypeDef huart2;
 void handle_arm(void)
 {
     set_system_mode(SYSTEM_MODE_ARMING);
-    //Start_Sine_Playback();
 
 #if defined(USE_DEBUG_COMMAND_DISPATCHER)
     //sprintf(debug_msg, "CMD: ARM\r\n");
@@ -53,7 +50,6 @@ void handle_arm(void)
 void handle_all_clear_1(void)
 {
     set_system_mode(SYSTEM_MODE_ALL_CLEAR_1);
-    //Stop_Sine_Playback();
 
 #if defined(USE_DEBUG_COMMAND_DISPATCHER)
     //sprintf(debug_msg, "CMD: ALL CLEAR 1\r\n");

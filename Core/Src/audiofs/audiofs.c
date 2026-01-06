@@ -1,14 +1,15 @@
 #include "audiofs.h"
+#include "audio_types.h"
 
-static void FS_ListRootDirectory(void);
-static void FS_ReadWavHeader(WAV_BaseHeader_t *header);
+static void audiofs_list_root_directory(void);
+static void audiofs_read_wav_header(WAV_BaseHeader_t *header);
 
 FATFS fs;
 DIR dir;
 FILINFO fno;
-Audio_Player_t player;
+extern Audio_Player_t player;
 
-FRESULT FS_MountDrive(void)
+FRESULT audiofs_mount_drive(void)
 {
     FRESULT res = f_mount(&USBHFatFS, "", 1);
     if (res == FR_OK)
@@ -24,13 +25,13 @@ FRESULT FS_MountDrive(void)
     return res;
 }
 
-void FS_UnmountDrive(void)
+void audiofs_unmount_drive(void)
 {
     f_mount(NULL, "", 0);
     Print_Msg("USB Drive unmounted\r\n");
 }
 
-static void FS_ListRootDirectory(void)
+static void audiofs_list_root_directory(void)
 {
     FRESULT res;
     char msg[80];
@@ -59,7 +60,7 @@ static void FS_ListRootDirectory(void)
         else
         {
         	sprintf(msg, "%s\r\n", fno.fname);
-            //FS_ReadWavHeader(fno.fname);
+            //audiofs_ReadWavHeader(fno.fname);
         }
         Print_Msg(msg);
     }
@@ -67,13 +68,13 @@ static void FS_ListRootDirectory(void)
     f_closedir(&dir);
 }
 
-void FS_CloseFile(void)
+void audiofs_close_file(void)
 {
 	f_close(&player.file);
 	player.file_opened = false;
 }
 
-static void FS_ReadWavHeader(WAV_BaseHeader_t *header)
+static void audiofs_read_wav_header(WAV_BaseHeader_t *header)
 {
     FRESULT res;
     UINT br;
@@ -117,28 +118,12 @@ static void FS_ReadWavHeader(WAV_BaseHeader_t *header)
 	}
 }
 
-//void FS_ReadDisk(void)
-//{
-//    char msg[64];
-//    sprintf(msg, "FS_Read started\r\n");
-//    Print_Msg(msg);
-//
-//    if (f_mount(&fs, "", 0) != FR_OK)
-//    {
-//        if (USB_MountDrive() != FR_OK)
-//            return;
-//    }
-//
-//    FS_ListRootDirectory();
-//    FS_ReadWavHeader("1.wav");
-//}
-
-bool FS_LoadFile(const char* filename)
+bool audiofs_load_file(const char* filename)
 {
     FRESULT res;
     UINT br;
 
-	FS_ListRootDirectory();
+    audiofs_list_root_directory();
 
     if (player.file_opened)
     {
@@ -155,7 +140,7 @@ bool FS_LoadFile(const char* filename)
     strncpy(player.current_filename, filename, sizeof(player.current_filename)-1);
 
     WAV_BaseHeader_t base_hdr;
-	FS_ReadWavHeader(&base_hdr);
+    audiofs_read_wav_header(&base_hdr);
     player.bytes_read += AUDIO_HEADER_SIZE;
     res = f_read(&player.file, player.dma_buffer, AUDIO_BUFFER_SIZE, &br);
 	if (res != FR_OK)
@@ -182,7 +167,7 @@ bool FS_LoadFile(const char* filename)
     return true;
 }
 
-UINT FS_Read_Buffer_Part()
+UINT audiofs_read_buffer_part()
 {
 	UINT br;
 	uint32_t offset;

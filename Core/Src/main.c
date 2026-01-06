@@ -17,6 +17,7 @@
   */
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
+#include <audio.h>
 #include "main.h"
 #include "cmsis_os.h"
 #include "fatfs.h"
@@ -27,7 +28,6 @@
 #include <string.h>
 #include "rs232.h"
 #include "command_dispatcher.h"
-#include "tlv320aic3254.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -968,12 +968,12 @@ void ActionTask(void *argument)
 void AudioPlaybackTask(void *argument)
 {
   /* USER CODE BEGIN AudioPlaybackTask */
-	AIC3204_Init_Audio();
-	AIC3204_Start_Playback("2.wav");
+	audio_init();
+	audio_start_playback("2.wav");
   /* Infinite loop */
   for(;;)
   {
-	AIC3204_Process();
+	audio_process();
     osDelay(1);
   }
   /* USER CODE END AudioPlaybackTask */

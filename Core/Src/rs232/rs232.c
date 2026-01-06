@@ -84,7 +84,10 @@ void rs232_uart_rx_callback(void)
     HAL_UART_Receive_IT(&huart2, &rx_byte, 1);
 }
 
-void rs232_process(void) { }
+void rs232_process(void)
+{
+
+}
 
 static void process_command(char *cmd)
 {
