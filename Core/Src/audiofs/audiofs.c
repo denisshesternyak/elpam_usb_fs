@@ -1,6 +1,8 @@
 #include "audiofs.h"
 #include "audio_types.h"
 
+static FRESULT audiofs_mount_drive(void);
+static void audiofs_unmount_drive(void);
 static void audiofs_list_root_directory(void);
 static void audiofs_read_wav_header(WAV_BaseHeader_t *header);
 
@@ -9,7 +11,7 @@ DIR dir;
 FILINFO fno;
 extern Audio_Player_t player;
 
-FRESULT audiofs_mount_drive(void)
+static FRESULT audiofs_mount_drive(void)
 {
     FRESULT res = f_mount(&USBHFatFS, "", 1);
     if (res == FR_OK)
@@ -25,7 +27,7 @@ FRESULT audiofs_mount_drive(void)
     return res;
 }
 
-void audiofs_unmount_drive(void)
+static void audiofs_unmount_drive(void)
 {
     f_mount(NULL, "", 0);
     Print_Msg("USB Drive unmounted\r\n");
@@ -60,7 +62,7 @@ static void audiofs_list_root_directory(void)
         else
         {
         	sprintf(msg, "%s\r\n", fno.fname);
-            //audiofs_ReadWavHeader(fno.fname);
+            //audiofs_read_wav_header(fno.fname);
         }
         Print_Msg(msg);
     }
@@ -68,10 +70,19 @@ static void audiofs_list_root_directory(void)
     f_closedir(&dir);
 }
 
+void audiofs_init(void)
+{
+	audiofs_mount_drive();
+	audiofs_list_root_directory();
+}
+
 void audiofs_close_file(void)
 {
-	f_close(&player.file);
-	player.file_opened = false;
+	if(player.file_opened)
+	{
+		f_close(&player.file);
+		player.file_opened = false;
+	}
 }
 
 static void audiofs_read_wav_header(WAV_BaseHeader_t *header)
@@ -123,15 +134,6 @@ bool audiofs_load_file(const char* filename)
     FRESULT res;
     UINT br;
 
-    audiofs_list_root_directory();
-
-    if (player.file_opened)
-    {
-        f_close(&player.file);
-    }
-
-    memset(&player, 0, sizeof(player));
-
     res = f_open(&player.file, filename, FA_READ);
     if (res != FR_OK) return false;
 
@@ -170,18 +172,10 @@ bool audiofs_load_file(const char* filename)
 UINT audiofs_read_buffer_part()
 {
 	UINT br;
-	uint32_t offset;
 	uint8_t* buf_ptr;
 	char msg[100];
 
-	switch(player.buff_state)
-	{
-		case BUFFER_HALF: offset = 0; break;
-		case BUFFER_FULL: offset = AUDIO_HALF_BUFFER_SIZE; break;
-		case BUFFER_IDLE:
-		default: return -1;
-	}
-	buf_ptr = player.dma_buffer + offset;
+	buf_ptr = player.dma_buffer + (player.buff_state == BUFFER_HALF) ? 0 : AUDIO_HALF_BUFFER_SIZE;
 ///////////
 		uint32_t start = HAL_GetTick();
 	FRESULT res = f_read(&player.file, buf_ptr, AUDIO_HALF_BUFFER_SIZE, &br);

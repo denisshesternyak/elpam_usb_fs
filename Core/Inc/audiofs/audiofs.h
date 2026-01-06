@@ -5,9 +5,7 @@
 #include "main.h"
 #include "stdbool.h"
 
-//void FS_ReadDisk(void);
-FRESULT audiofs_mount_drive(void);
-void audiofs_unmount_drive(void);
+void audiofs_init(void);
 bool audiofs_load_file(const char* filename);
 void audiofs_close_file(void);
 UINT audiofs_read_buffer_part();

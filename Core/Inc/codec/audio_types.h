@@ -6,6 +6,8 @@
 
 #define AUDIO_BUFFER_SIZE  				16384
 #define AUDIO_HALF_BUFFER_SIZE  		8192
+#define AUDIO_STEREO_PAIRS_FULL 		4096
+#define AUDIO_STEREO_PAIRS_HALF 		2048
 #define AUDIO_HEADER_SIZE  				44
 
 typedef enum {
@@ -20,6 +22,14 @@ typedef enum {
 	TRACK_3,
 	TRACK_4
 }AudioTrack;
+
+typedef enum {
+	GENERATE_SIGNAL,
+	AUDIO_FILE,
+	AUDIO_IN1,
+	AUDIO_IN2,
+	AUDIO_IN3,
+}AudioTypeOutput;
 
 typedef struct
 {
@@ -52,10 +62,12 @@ typedef struct
 typedef struct
 {
     FIL	file;
-    uint8_t  dma_buffer[AUDIO_BUFFER_SIZE] __attribute__((aligned(32)));
+    uint8_t dma_buffer[AUDIO_BUFFER_SIZE] __attribute__((aligned(32)));
 
     WAV_Info_t wav_info;
     BufferState buff_state;
+    AudioTrack track;
+    AudioTypeOutput type_output;
 
     uint32_t file_size;
     uint32_t bytes_read;
@@ -65,6 +77,7 @@ typedef struct
     volatile bool is_paused;
     volatile bool end_of_file;
     volatile bool file_opened;
+    volatile bool is_arming;
 
     char current_filename[128];
 } Audio_Player_t;

@@ -1,45 +1,17 @@
 #include <audio.h>
-#include <audio_cmd.h>
-#include <audio_regs.h>
 #include "math.h"
-//#include "test_audio.h"
 #include "string.h"
+#include "audio_cmd.h"
+#include "audio_regs.h"
+#include "audio_generate_sin.h"
 #include "audiofs.h"
 
 extern I2S_HandleTypeDef hi2s2;
 Audio_Player_t player;
 
-//#define SAMPLE_RATE         48000
-//#define TONE_FREQ           826
-//#define SAMPLES_PER_PERIOD  (SAMPLE_RATE / TONE_FREQ)
-//#define PERIODS_IN_BUFFER   1
-//#define BUFFER_SIZE         (SAMPLES_PER_PERIOD * PERIODS_IN_BUFFER)
-//#define STEREO_WORDS 		(BUFFER_SIZE * 2)
-//
-//int16_t sine_buffer[STEREO_WORDS];
-//uint32_t audio_repeat = 1;
-//
-//static void audio_generate_sine_800Hz(void);
 static void audio_reset(void);
 static void audio_init_playback(void);
 static void audio_init_record(void);
-
-//static void audio_generate_sine_800Hz(void)
-//{
-//	const char *msg = "audio_generate_sine_800Hz\r\n";
-//	Print_Msg(msg);
-//
-//    for (int sample_idx = 0; sample_idx < BUFFER_SIZE; sample_idx++)
-//    {
-//        double t = (double)sample_idx / SAMPLE_RATE;
-//        double sample = sin(2.0 * M_PI * TONE_FREQ * t);
-//        int16_t value = (int16_t)(sample * 32767.0);
-//
-//        int buffer_idx = sample_idx * 2;
-//        sine_buffer[buffer_idx]   = value;   // Left
-//        sine_buffer[buffer_idx+1] = value;   // Right
-//    }
-//}
 
 bool audio_get_track_name(AudioTrack track, char* buffer, size_t buffer_size)
 {
@@ -152,7 +124,9 @@ void audio_init(void)
 	hi2s2.Init.MCLKOutput = I2S_MCLKOUTPUT_DISABLE;
 	HAL_I2S_Init(&hi2s2);
 
-	//audio_generate_sine_800Hz();
+    memset(&player, 0, sizeof(player));
+
+	audio_init_wave_table();
 
 	/*HAL_Delay(10);
 	audio_Reset();
@@ -162,29 +136,38 @@ void audio_init(void)
 	audio_init_playback();
 	//audio_init_record();
 
-	//FS_ReadDisk();
-
-//	HAL_GPIO_WritePin(GPIOD, GPIO_PIN_10, GPIO_PIN_SET);
-//	HAL_Delay(1000);
-//	HAL_GPIO_WritePin(GPIOD, GPIO_PIN_10, GPIO_PIN_RESET);
-//	HAL_Delay(1000);
-//
-//	Print_Msg("audio_Init_Audio\r\n");
-
-	audiofs_mount_drive();
+	audiofs_init();
 }
 
 void audio_start_playback(const char *filename)
 {
 	Print_Msg("audio_start_playback\r\n");
+	bool res;
 
-    if (!audiofs_load_file(filename))
+	switch(player.type_output)
 	{
-    	char msg[64];
-    	sprintf(msg, "Failure load %s\r\n", filename);
-    	Print_Msg(msg);
-    	return;
+	case GENERATE_SIGNAL:
+		audio_generate_sine_fast(player.dma_buffer, AUDIO_STEREO_PAIRS_FULL);
+		res = true;
+		break;
+	case AUDIO_FILE:
+		res = audiofs_load_file(filename);
+		break;
+	case AUDIO_IN1:
+	case AUDIO_IN2:
+	case AUDIO_IN3:
+	default:
+		break;
 	}
+
+	if (!res)
+	{
+		char msg[64];
+		sprintf(msg, "Failure load %s\r\n", filename);
+		Print_Msg(msg);
+		return;
+	}
+
     player.is_playing = true;
 
 	hi2s2.Init.MCLKOutput = I2S_MCLKOUTPUT_ENABLE;
@@ -211,14 +194,27 @@ void audio_stop_playback(void)
 
 void audio_process(void)
 {
-	if (!player.is_playing || !player.file_opened || player.buff_state == BUFFER_IDLE) return;
+	if (!player.is_playing || player.buff_state == BUFFER_IDLE) return;
 
-	UINT br = audiofs_read_buffer_part();
-	if (br < 0) return;
+	UINT br;
 
-	if (br == 0)
+	switch(player.type_output)
 	{
-		audio_stop_playback();
+	case GENERATE_SIGNAL:
+		uint8_t *buf_ptr = player.dma_buffer + (player.buff_state == BUFFER_HALF) ? 0 : AUDIO_HALF_BUFFER_SIZE;
+		audio_generate_sine_fast(buf_ptr, AUDIO_STEREO_PAIRS_HALF);
+		break;
+	case AUDIO_FILE:
+		if(!player.file_opened) return;
+		br = audiofs_read_buffer_part();
+		if (br < 0) return;
+		if (br == 0) audio_stop_playback();
+		break;
+	case AUDIO_IN1:
+	case AUDIO_IN2:
+	case AUDIO_IN3:
+	default:
+		break;
 	}
 }
 
@@ -228,7 +224,8 @@ void HAL_I2S_TxHalfCpltCallback(I2S_HandleTypeDef *hi2s)
 	{
 		if (player.is_playing)
 		{
-			player.buff_state = BUFFER_HALF;
+			audio_stop_playback();
+			//player.buff_state = BUFFER_HALF;
 		}
 	}
 }
