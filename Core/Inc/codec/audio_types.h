@@ -8,28 +8,37 @@
 #define AUDIO_HALF_BUFFER_SIZE  		8192
 #define AUDIO_STEREO_PAIRS_FULL 		4096
 #define AUDIO_STEREO_PAIRS_HALF 		2048
+
 #define AUDIO_HEADER_SIZE  				44
+
+typedef enum {
+	AUDIO_IDLE,
+	AUDIO_START,
+	AUDIO_PLAY,
+	AUDIO_STOP,
+	AUDIO_PAUSE
+}AudioState_t;
 
 typedef enum {
 	BUFFER_IDLE,
 	BUFFER_HALF,
 	BUFFER_FULL
-}BufferState;
+}BufferState_t;
 
 typedef enum {
 	TRACK_1,
 	TRACK_2,
 	TRACK_3,
 	TRACK_4
-}AudioTrack;
+}AudioTrack_t;
 
 typedef enum {
-	GENERATE_SIGNAL,
-	AUDIO_FILE,
+	AUDIO_SIN,
+	AUDIO_SD,
 	AUDIO_IN1,
 	AUDIO_IN2,
 	AUDIO_IN3,
-}AudioTypeOutput;
+}AudioTypeOutput_t;
 
 typedef struct
 {
@@ -65,13 +74,16 @@ typedef struct
     uint8_t dma_buffer[AUDIO_BUFFER_SIZE] __attribute__((aligned(32)));
 
     WAV_Info_t wav_info;
-    BufferState buff_state;
-    AudioTrack track;
-    AudioTypeOutput type_output;
+    BufferState_t buff_state;
+    AudioState_t audio_state;
+    AudioTrack_t current_track;
+    AudioTypeOutput_t type_output;
 
     uint32_t file_size;
     uint32_t bytes_read;
     uint32_t current_file_pos;
+
+    uint32_t start_time_arming;
 
     volatile bool is_playing;
     volatile bool is_paused;

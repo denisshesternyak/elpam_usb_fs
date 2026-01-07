@@ -203,25 +203,25 @@ void HAL_I2C_MspInit(I2C_HandleTypeDef* hi2c)
       Error_Handler();
     }
 
-    __HAL_RCC_GPIOC_CLK_ENABLE();
     __HAL_RCC_GPIOA_CLK_ENABLE();
+    __HAL_RCC_GPIOC_CLK_ENABLE();
     /**I2C5 GPIO Configuration
-    PC9     ------> I2C5_SDA
     PA8     ------> I2C5_SCL
+    PC10     ------> I2C5_SDA
     */
-    GPIO_InitStruct.Pin = GPIO_PIN_9;
-    GPIO_InitStruct.Mode = GPIO_MODE_AF_OD;
-    GPIO_InitStruct.Pull = GPIO_NOPULL;
-    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-    GPIO_InitStruct.Alternate = GPIO_AF6_I2C5;
-    HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
-
     GPIO_InitStruct.Pin = GPIO_PIN_8;
     GPIO_InitStruct.Mode = GPIO_MODE_AF_OD;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
     GPIO_InitStruct.Alternate = GPIO_AF6_I2C5;
     HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+    GPIO_InitStruct.Pin = GPIO_PIN_10;
+    GPIO_InitStruct.Mode = GPIO_MODE_AF_OD;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+    GPIO_InitStruct.Alternate = GPIO_AF4_I2C5;
+    HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
     /* Peripheral clock enable */
     __HAL_RCC_I2C5_CLK_ENABLE();
@@ -309,12 +309,12 @@ void HAL_I2C_MspDeInit(I2C_HandleTypeDef* hi2c)
     __HAL_RCC_I2C5_CLK_DISABLE();
 
     /**I2C5 GPIO Configuration
-    PC9     ------> I2C5_SDA
     PA8     ------> I2C5_SCL
+    PC10     ------> I2C5_SDA
     */
-    HAL_GPIO_DeInit(GPIOC, GPIO_PIN_9);
-
     HAL_GPIO_DeInit(GPIOA, GPIO_PIN_8);
+
+    HAL_GPIO_DeInit(GPIOC, GPIO_PIN_10);
 
     /* USER CODE BEGIN I2C5_MspDeInit 1 */
 

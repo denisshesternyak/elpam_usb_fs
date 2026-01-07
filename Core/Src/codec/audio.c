@@ -12,26 +12,31 @@ Audio_Player_t player;
 static void audio_reset(void);
 static void audio_init_playback(void);
 static void audio_init_record(void);
+static bool audio_get_track_name();
 
-bool audio_get_track_name(AudioTrack track, char* buffer, size_t buffer_size)
+static bool audio_get_track_name(void)
 {
     const char* name = NULL;
 
-    switch (track) {
+    switch (player.current_track) {
         case TRACK_1: name = "1.wav"; break;
         case TRACK_2: name = "2.wav"; break;
         case TRACK_3: name = "3.wav"; break;
         case TRACK_4: name = "4.wav"; break;
-        default:      name = "unknown.wav"; break;
+        default:
+            return false;
     }
 
-    if (buffer && buffer_size > 0) {
-        strncpy(buffer, name, buffer_size - 1);
-        buffer[buffer_size - 1] = '\0';
-        return true;
+    if (!name) {
+        player.current_filename[0] = '\0';
+        return false;
     }
 
-    return false;
+    size_t len = sizeof(player.current_filename);
+    strncpy(player.current_filename, name, len - 1);
+    player.current_filename[len - 1] = '\0';
+
+    return true;
 }
 
 static void audio_reset(void)
@@ -81,6 +86,7 @@ static void audio_init_playback(void)
     HAL_Delay(2500);								// Wait for soft stepping (2.5 sec in TI example)
 
     audio_write_cmd(AIC32X4_PSEL, 0x00);			// Page 0
+    // 0xC8 -28dB,
     audio_write_cmd(AIC32X4_LDACVOL, 0x00); 		// Left DAC Channel Digital Volume 0.0dB
     audio_write_cmd(AIC32X4_RDACVOL, 0x00); 		// Right DAC Channel Digital Volume 0.0dB
     audio_write_cmd(AIC32X4_DACSETUP, 0xD6); 		// LDAC + RDAC powered, soft step 1/fs
@@ -139,19 +145,41 @@ void audio_init(void)
 	audiofs_init();
 }
 
-void audio_start_playback(const char *filename)
+void audio_process(void)
+{
+	switch(player.audio_state)
+	{
+	case AUDIO_IDLE:
+		break;
+	case AUDIO_START:
+		audio_start_playback();
+		break;
+	case AUDIO_PLAY:
+		audio_play_playback();
+		break;
+	case AUDIO_STOP:
+		audio_stop_playback();
+		break;
+	case AUDIO_PAUSE:
+		audio_pause_playback();
+		break;
+	}
+}
+
+void audio_start_playback(void)
 {
 	Print_Msg("audio_start_playback\r\n");
 	bool res;
 
 	switch(player.type_output)
 	{
-	case GENERATE_SIGNAL:
-		audio_generate_sine_fast(player.dma_buffer, AUDIO_STEREO_PAIRS_FULL);
+	case AUDIO_SIN:
+		audio_generate_sine(player.dma_buffer, AUDIO_STEREO_PAIRS_FULL);
 		res = true;
 		break;
-	case AUDIO_FILE:
-		res = audiofs_load_file(filename);
+	case AUDIO_SD:
+		if(!audio_get_track_name()) return;
+		res = audiofs_load_file();
 		break;
 	case AUDIO_IN1:
 	case AUDIO_IN2:
@@ -162,17 +190,43 @@ void audio_start_playback(const char *filename)
 
 	if (!res)
 	{
-		char msg[64];
-		sprintf(msg, "Failure load %s\r\n", filename);
+		char msg[128];
+		sprintf(msg, "Failure load %s\r\n", player.current_filename);
 		Print_Msg(msg);
 		return;
 	}
 
     player.is_playing = true;
+    player.audio_state = AUDIO_PLAY;
 
 	hi2s2.Init.MCLKOutput = I2S_MCLKOUTPUT_ENABLE;
 	HAL_I2S_Init(&hi2s2);
     HAL_I2S_Transmit_DMA(&hi2s2, (uint16_t*)player.dma_buffer, AUDIO_HALF_BUFFER_SIZE);
+}
+
+void audio_play_playback()
+{
+	if (!player.is_playing || player.buff_state == BUFFER_IDLE) return;
+
+	UINT br;
+	uint32_t offset = (player.buff_state == BUFFER_HALF) ? 0 : AUDIO_HALF_BUFFER_SIZE;
+	uint8_t *buf_ptr = player.dma_buffer + offset;
+
+	switch(player.type_output)
+	{
+	case AUDIO_SIN:
+		audio_generate_sine(buf_ptr, AUDIO_STEREO_PAIRS_HALF);
+		break;
+	case AUDIO_SD:
+		br = audiofs_read_buffer_part(buf_ptr, AUDIO_STEREO_PAIRS_HALF);
+		if (br <= 0) audio_stop_playback();
+		break;
+	case AUDIO_IN1:
+	case AUDIO_IN2:
+	case AUDIO_IN3:
+	default:
+		break;
+	}
 }
 
 void audio_stop_playback(void)
@@ -182,6 +236,7 @@ void audio_stop_playback(void)
 	Print_Msg(msg);
 
 	player.is_playing = false;
+    player.audio_state = AUDIO_IDLE;
 	player.buff_state = BUFFER_IDLE;
 	player.bytes_read = 0;
 
@@ -192,30 +247,9 @@ void audio_stop_playback(void)
     audiofs_close_file();
 }
 
-void audio_process(void)
+void audio_pause_playback(void)
 {
-	if (!player.is_playing || player.buff_state == BUFFER_IDLE) return;
 
-	UINT br;
-
-	switch(player.type_output)
-	{
-	case GENERATE_SIGNAL:
-		uint8_t *buf_ptr = player.dma_buffer + (player.buff_state == BUFFER_HALF) ? 0 : AUDIO_HALF_BUFFER_SIZE;
-		audio_generate_sine_fast(buf_ptr, AUDIO_STEREO_PAIRS_HALF);
-		break;
-	case AUDIO_FILE:
-		if(!player.file_opened) return;
-		br = audiofs_read_buffer_part();
-		if (br < 0) return;
-		if (br == 0) audio_stop_playback();
-		break;
-	case AUDIO_IN1:
-	case AUDIO_IN2:
-	case AUDIO_IN3:
-	default:
-		break;
-	}
 }
 
 void HAL_I2S_TxHalfCpltCallback(I2S_HandleTypeDef *hi2s)
@@ -224,8 +258,7 @@ void HAL_I2S_TxHalfCpltCallback(I2S_HandleTypeDef *hi2s)
 	{
 		if (player.is_playing)
 		{
-			audio_stop_playback();
-			//player.buff_state = BUFFER_HALF;
+			player.buff_state = BUFFER_HALF;
 		}
 	}
 }

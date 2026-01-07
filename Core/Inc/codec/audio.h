@@ -6,11 +6,14 @@
 #include "audio_types.h"
 
 void audio_init(void);
-void audio_start_playback(const char *filename);
+void audio_process(void);
+
+void audio_start_playback(void);
+void audio_play_playback();
 void audio_stop_playback(void);
+void audio_pause_playback(void);
 
 void audio_start_record(void);
 void audio_stop_record(void);
-void audio_process(void);
 
 #endif /* INC_CODEC_AUDIO_H_ */

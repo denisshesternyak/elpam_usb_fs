@@ -129,17 +129,16 @@ static void audiofs_read_wav_header(WAV_BaseHeader_t *header)
 	}
 }
 
-bool audiofs_load_file(const char* filename)
+bool audiofs_load_file(void)
 {
     FRESULT res;
     UINT br;
 
-    res = f_open(&player.file, filename, FA_READ);
+    res = f_open(&player.file, player.current_filename, FA_READ);
     if (res != FR_OK) return false;
 
     player.file_opened = true;
     player.file_size = f_size(&player.file);
-    strncpy(player.current_filename, filename, sizeof(player.current_filename)-1);
 
     WAV_BaseHeader_t base_hdr;
     audiofs_read_wav_header(&base_hdr);
@@ -169,16 +168,16 @@ bool audiofs_load_file(const char* filename)
     return true;
 }
 
-UINT audiofs_read_buffer_part()
+UINT audiofs_read_buffer_part(uint8_t *buffer, uint32_t buffer_len)
 {
+	if(!player.file_opened) return -1;
+
 	UINT br;
-	uint8_t* buf_ptr;
 	char msg[100];
 
-	buf_ptr = player.dma_buffer + (player.buff_state == BUFFER_HALF) ? 0 : AUDIO_HALF_BUFFER_SIZE;
 ///////////
 		uint32_t start = HAL_GetTick();
-	FRESULT res = f_read(&player.file, buf_ptr, AUDIO_HALF_BUFFER_SIZE, &br);
+	FRESULT res = f_read(&player.file, buffer, buffer_len, &br);
 		uint32_t duration = HAL_GetTick() - start;
 		sprintf(msg, "f_read %lu ms\r\n", duration);
 		Print_Msg(msg);
@@ -190,9 +189,9 @@ UINT audiofs_read_buffer_part()
 		return -1;
 	}
 
-	if (br < AUDIO_HALF_BUFFER_SIZE)
+	if (br < buffer_len)
 	{
-		memset(buf_ptr + br, 0, AUDIO_HALF_BUFFER_SIZE - br);
+		memset(buffer + br, 0, buffer_len - br);
 	}
 	player.buff_state = BUFFER_IDLE;
 	player.bytes_read += br;

@@ -17,7 +17,6 @@
   */
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
-#include <audio.h>
 #include "main.h"
 #include "cmsis_os.h"
 #include "fatfs.h"
@@ -122,7 +121,7 @@ osThreadId_t AudioPlaybackTaHandle;
 const osThreadAttr_t AudioPlaybackTa_attributes = {
   .name = "AudioPlaybackTa",
   .stack_size = 512 * 4,
-  .priority = (osPriority_t) osPriorityBelowNormal,
+  .priority = (osPriority_t) osPriorityNormal,
 };
 /* Definitions for xButtonQueue */
 osMessageQueueId_t xButtonQueueHandle;
@@ -969,7 +968,6 @@ void AudioPlaybackTask(void *argument)
 {
   /* USER CODE BEGIN AudioPlaybackTask */
 	audio_init();
-	audio_start_playback("2.wav");
   /* Infinite loop */
   for(;;)
   {
