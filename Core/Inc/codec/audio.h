@@ -4,9 +4,13 @@
 #include "main.h"
 #include "stdbool.h"
 #include "audio_types.h"
+#include "defines.h"
+
+#define CNVR_VOL(vol) 	((MIN_VOLUME_CODEC + ((vol) - MIN_VOLUME) * 55 / 42))
 
 void audio_init(void);
 void audio_process(void);
+void audio_set_volume(uint8_t level);
 
 void audio_start_playback(void);
 void audio_play_playback();

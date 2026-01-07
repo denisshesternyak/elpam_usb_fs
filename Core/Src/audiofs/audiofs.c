@@ -175,13 +175,11 @@ UINT audiofs_read_buffer_part(uint8_t *buffer, uint32_t buffer_len)
 	UINT br;
 	char msg[100];
 
-///////////
-		uint32_t start = HAL_GetTick();
+//		uint32_t start = HAL_GetTick();
 	FRESULT res = f_read(&player.file, buffer, buffer_len, &br);
-		uint32_t duration = HAL_GetTick() - start;
-		sprintf(msg, "f_read %lu ms\r\n", duration);
-		Print_Msg(msg);
-////////////////
+//		uint32_t duration = HAL_GetTick() - start;
+//		sprintf(msg, "f_read %lu ms\r\n", duration);
+//		Print_Msg(msg);
 	if (res != FR_OK)
 	{
 		sprintf(msg, "f_read ERROR: %d\r\n", res);

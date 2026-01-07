@@ -91,7 +91,9 @@ typedef struct
     volatile bool file_opened;
     volatile bool is_arming;
 
-    char current_filename[128];
+    char current_filename[32];
+    uint8_t current_volume;
+    uint8_t new_volume;
 } Audio_Player_t;
 
 #endif /* INC_CODEC_AUDIO_TYPES_H_ */

@@ -2,6 +2,7 @@
 #include "rs232.h"
 #include <string.h>
 #include "defines.h"  // For USE_DEBUG_COMMAND_DISPATCHER
+#include "audio_types.h"
 
 #if defined(USE_DEBUG_COMMAND_DISPATCHER)
    // static char debug_msg[32];
@@ -44,9 +45,12 @@ static rs232_volume_handler_t handler_volume_up = NULL;
 static rs232_volume_handler_t handler_volume_down = NULL;
 static rs232_cmd_handler_t handler_unknown = NULL;
 
+static void rs232_uart_rx_callback(void);
 static void call_or_default(rs232_cmd_handler_t h);
 static void call_or_default_unknown(void);
 static void process_command(char *cmd);
+
+extern Audio_Player_t player;
 
 void rs232_init(UART_HandleTypeDef *huart)
 {
@@ -57,7 +61,24 @@ void rs232_init(UART_HandleTypeDef *huart)
     reception_active = 1;
 }
 
-void rs232_uart_rx_callback(void)
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+{
+	if (huart->Instance == USART2)
+	{
+		static uint32_t last_rx_time = 0;
+		uint32_t now = HAL_GetTick();
+
+		if (rx_count > 0 && (now - last_rx_time > ACTIVATION_CMD_TIMEOUT)) {
+			rx_count = 0;
+		}
+
+		last_rx_time = now;
+
+		rs232_uart_rx_callback();
+	}
+}
+
+static void rs232_uart_rx_callback(void)
 {
     if (reception_active && (rx_byte >= 32 && rx_byte <= 126) && rx_count < 7)
     {
@@ -86,7 +107,12 @@ void rs232_uart_rx_callback(void)
 
 void rs232_process(void)
 {
-
+	if(player.is_arming)
+	{
+		uint32_t duration = HAL_GetTick() - player.start_time_arming;
+		player.is_arming = duration < ARMING_TIME;
+		if(!player.is_arming)Print_Msg("ARM time's up\r\n");
+	}
 }
 
 static void process_command(char *cmd)

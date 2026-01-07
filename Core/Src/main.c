@@ -170,14 +170,6 @@ void ActionTask(void *argument);
 void AudioPlaybackTask(void *argument);
 
 /* USER CODE BEGIN PFP */
-void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
-{
-	if (huart->Instance == USART2)
-	{
-		rs232_uart_rx_callback();
-	}
-}
-
 void Print_Msg(const char* msg)
 {
 	HAL_UART_Transmit(&huart2, (uint8_t *)msg, strlen(msg), 1000);

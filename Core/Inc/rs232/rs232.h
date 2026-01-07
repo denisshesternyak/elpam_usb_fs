@@ -5,7 +5,10 @@
 #include "main.h"
 #include <stdint.h>
 
-#define CMD_LENGTH 7	// Command length — 7 characters
+#define CMD_LENGTH 		7	// Command length — 7 characters
+#define ARMING_TIME  	5000
+#define ACTIVATION_CMD_TIMEOUT  	100
+
 
 typedef void (*rs232_cmd_handler_t)(void);
 typedef void (*rs232_volume_handler_t)(int step);
@@ -13,10 +16,6 @@ typedef void (*rs232_volume_handler_t)(int step);
 
 void rs232_init(UART_HandleTypeDef *huart);
 void rs232_process(void);
-
-// Callback function (called from main.c in interrupt)
-void rs232_uart_rx_callback(void);
-
 
 // Functions for registering handlers
 void rs232_register_arm(rs232_cmd_handler_t handler);

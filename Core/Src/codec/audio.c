@@ -5,13 +5,16 @@
 #include "audio_regs.h"
 #include "audio_generate_sin.h"
 #include "audiofs.h"
+#include "system_status.h"
 
 extern I2S_HandleTypeDef hi2s2;
 Audio_Player_t player;
 
-static void audio_reset(void);
-static void audio_init_playback(void);
-static void audio_init_record(void);
+// List of acceptable levels
+const uint8_t valid_volume_levels[] = {
+    80, 83, 86, 89, 92, 95, 98, 101, 104, 107, 110, 113, 116, 119, 122
+};
+
 static bool audio_get_track_name();
 
 static bool audio_get_track_name(void)
@@ -39,108 +42,24 @@ static bool audio_get_track_name(void)
     return true;
 }
 
-static void audio_reset(void)
-{
-	const char *msg = "audio_reset\r\n";
-	Print_Msg(msg);
-
-	audio_write_cmd(AIC32X4_PSEL, 0x00);			// Page 0
-	audio_write_cmd(AIC32X4_RESET, 0x01);			// Software reset
-}
-
-static void audio_init_playback(void)
-{
-	const char *msg = "audio_init_playback\r\n";
-	Print_Msg(msg);
-
-	HAL_Delay(10);
-	audio_write_cmd(AIC32X4_PSEL, 0x00);			// Page 0
-	audio_write_cmd(AIC32X4_RESET, 0x01);			// Software reset
-	HAL_Delay(50);
-
-    audio_write_cmd(AIC32X4_PSEL, 0x00);			// Page 0
-    audio_write_cmd(AIC32X4_CLKMUX, 0x00);			// CODEC_CLKIN = MCLK directly (no PLL)
-
-	audio_write_cmd(AIC32X4_NDAC, 0x81);			// NDAC = 1, powered up
-	audio_write_cmd(AIC32X4_MDAC, 0x82);			// MDAC = 2, powered up
-	audio_write_cmd(AIC32X4_DOSRMSB, 0x00);			// DOSR = 1024
-	audio_write_cmd(AIC32X4_DOSRLSB, 0x80);			// DOSR = 128
-
-	audio_write_cmd(AIC32X4_IFACE1, 0x01); 			// 0x00 = I2S, 16-bit, BCLK/WCLK as inputs (slave)
-	audio_write_cmd(AIC32X4_DACSPB, 0x08);   		// PRB_P8 for DAC (simple playback)
-
-    audio_write_cmd(AIC32X4_PSEL, 0x01);			// Page 1
-    audio_write_cmd(AIC32X4_PWRCFG, 0x08);  		// Disable weak AVDD connection
-    audio_write_cmd(AIC32X4_LDOCTL, 0x00);   		// Master analog power control (LDO off if external supply)
-    audio_write_cmd(AIC32X4_REFPOWERUP, 0x01);	 	// Reference power up with 40ms charge time
-    audio_write_cmd(AIC32X4_HEADSTART, 0x25);		// Headphone soft stepping (pop reduction)
-    audio_write_cmd(AIC32X4_CMMODE, 0x00);   		// Input common mode 0.9 V
-    audio_write_cmd(AIC32X4_HPLROUTE, 0x08); 		// LDAC → HPL
-	audio_write_cmd(AIC32X4_HPRROUTE, 0x08);   		// RDAC → HPR
-	audio_write_cmd(AIC32X4_LPLAYBACK, 0x00);		// Playback Configuration Register 1
-	audio_write_cmd(AIC32X4_RPLAYBACK, 0x00);		// Playback Configuration Register 2
-	audio_write_cmd(AIC32X4_HPLGAIN, 0x00);   		// HPL gain 0 dB
-	audio_write_cmd(AIC32X4_HPRGAIN, 0x00);			// HPR gain 0 dB
-	audio_write_cmd(AIC32X4_OUTPWRCTL, 0x30); 		// Power up HPL and HPR drivers
-
-    HAL_Delay(2500);								// Wait for soft stepping (2.5 sec in TI example)
-
-    audio_write_cmd(AIC32X4_PSEL, 0x00);			// Page 0
-    // 0xC8 -28dB,
-    audio_write_cmd(AIC32X4_LDACVOL, 0x00); 		// Left DAC Channel Digital Volume 0.0dB
-    audio_write_cmd(AIC32X4_RDACVOL, 0x00); 		// Right DAC Channel Digital Volume 0.0dB
-    audio_write_cmd(AIC32X4_DACSETUP, 0xD6); 		// LDAC + RDAC powered, soft step 1/fs
-    audio_write_cmd(AIC32X4_DACMUTE, 0x00); 		// Unmute both DACs, gain 0 dB
-}
-
-static void audio_init_record(void)
-{
-	const char *msg = "Init_Record\r\n";
-	Print_Msg(msg);
-
-    audio_write_cmd(AIC32X4_PSEL, 0x00);			// Page 0
-    audio_write_cmd(AIC32X4_NADC, 0x81);   			// NADC = 1, powered up
-    audio_write_cmd(AIC32X4_MADC, 0x82);     		// MADC = 2, powered up
-    audio_write_cmd(AIC32X4_AOSR, 0x80);     		// AOSR = 128
-    audio_write_cmd(AIC32X4_ADCSPB, 0x01);  		// PRB_R1 for ADC (default recording)
-
-    audio_write_cmd(AIC32X4_PSEL, 0x01);			// Page 0
-    audio_write_cmd(AIC32X4_PWRCFG, 0x08);    		// Disable weak AVDD connection
-    audio_write_cmd(AIC32X4_LDOCTL, 0x00);   		// Master analog power control (LDO off if external supply)
-    audio_write_cmd(AIC32X4_CMMODE, 0x00);			// Input common mode 0.9 V
-    audio_write_cmd(AIC32X4_ADCPWTUNE, 0x00);		// Select ADC PTM_R4
-    audio_write_cmd(AIC32X4_INPWRCTRL, 0x32);  		// MicPGA startup delay ~3.1 ms
-    audio_write_cmd(AIC32X4_REFPOWERUP, 0x01); 		// REF charging time 40 ms
-
-    audio_write_cmd(AIC32X4_LMICPGAPIN, 0x80);  	// IN1L to LEFT_P, 20 kΩ
-    audio_write_cmd(AIC32X4_LMICPGANIN, 0x80); 		// CM to LEFT_M, 20 kΩ
-    audio_write_cmd(AIC32X4_RMICPGAPIN, 0x80);  	// IN1R to RIGHT_P, 20 kΩ
-    audio_write_cmd(AIC32X4_RMICPGANIN, 0x80); 		// CM to RIGHT_M, 20 kΩ
-
-    audio_write_cmd(AIC32X4_LMICPGAVOL, 0x0C);  	// Left MicPGA unmute, +6 dB
-    audio_write_cmd(AIC32X4_RMICPGAVOL, 0x0C);		// Right MicPGA unmute, +6 dB
-
-    audio_write_cmd(AIC32X4_PSEL, 0x00);			// Page 0
-    audio_write_cmd(AIC32X4_ADCSETUP, 0xC0); 		// Left + Right ADC powered up
-    audio_write_cmd(AIC32X4_ADCMUTE, 0x00);     	// Unmute both ADCs, gain 0 dB
-}
-
 void audio_init(void)
 {
 	hi2s2.Init.MCLKOutput = I2S_MCLKOUTPUT_DISABLE;
 	HAL_I2S_Init(&hi2s2);
 
     memset(&player, 0, sizeof(player));
+    player.audio_state = AUDIO_IDLE;
+    player.new_volume = DEF_VALUE_VOLUME;
 
 	audio_init_wave_table();
 
 	/*HAL_Delay(10);
-	audio_Reset();
+	audio_reset();
 
 	HAL_Delay(50);*/
 
 	audio_init_playback();
-	//audio_init_record();
+	//audiofs_init_record();
 
 	audiofs_init();
 }
@@ -195,6 +114,8 @@ void audio_start_playback(void)
 		Print_Msg(msg);
 		return;
 	}
+
+	if(player.new_volume != player.current_volume) audio_set_volume(player.new_volume);
 
     player.is_playing = true;
     player.audio_state = AUDIO_PLAY;
@@ -294,4 +215,72 @@ void HAL_I2S_RxCpltCallback(I2S_HandleTypeDef *hi2s)
     }
 }
 */
+
+
+//uint8_t volume_db_to_bars(int db)
+//{
+//	if (db <= MIN_VOLUME) return 0;
+//	if (db >= MAX_VOLUME) return NUM_VOLUME_BARS - 1;
+//	return (uint8_t)((db - MIN_VOLUME) / VOLUME_STEP);
+//}
+//
+//int volume_bars_to_db(uint8_t bar_index)
+//{
+//	if (bar_index >= NUM_VOLUME_BARS) return MAX_VOLUME;
+//	return MIN_VOLUME + bar_index * VOLUME_STEP;
+//}
+//
+//uint8_t find_volume_index(int requested_db)
+//{
+//    if (requested_db <= MIN_VOLUME) {
+//        return 0;
+//    }
+//    if (requested_db >= MAX_VOLUME) {
+//        return NUM_VOLUME_BARS - 1;
+//    }
+//
+//    for (int i = 0; i < NUM_VOLUME_BARS; i++) {
+//        if (valid_volume_levels[i] >= requested_db) {
+//            return (uint8_t)i;
+//        }
+//    }
+//
+//    return NUM_VOLUME_BARS - 1;
+//}
+
+static int audio_find_closest_valid_volume(uint8_t target)
+{
+    if (target <= MIN_VOLUME) return MIN_VOLUME;
+    if (target >= MAX_VOLUME) return MAX_VOLUME;
+
+    for (int i = 0; i < NUM_VOLUME_BARS; i++) {
+        if (valid_volume_levels[i] >= target) {
+            return valid_volume_levels[i];
+        }
+    }
+    return MAX_VOLUME;
+}
+
+void audio_set_volume(uint8_t level)
+{
+	uint8_t corrected_vol = audio_find_closest_valid_volume(level);
+
+    player.current_volume = corrected_vol;
+
+    uint8_t vol;
+    if(corrected_vol == MAX_VOLUME) vol = MAX_VOLUME_CODEC;
+    else if(corrected_vol == MAX_VOLUME) vol = MIN_VOLUME_CODEC;
+    else vol = CNVR_VOL(corrected_vol);
+
+    char msg[64];
+    sprintf(msg, "Vol %d, vol codec %d\r\n", corrected_vol, vol);
+    Print_Msg(msg);
+
+    audio_send_volume(vol);
+
+    system_status.max_volume = (corrected_vol == MAX_VOLUME);
+
+    //uint8_t bar_index = find_volume_index(corrected) + 1;
+    //VolumeIndicator_SetLevelSilent(&volumeIndicator, bar_index);
+}
 

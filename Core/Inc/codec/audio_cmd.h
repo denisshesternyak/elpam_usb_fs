@@ -3,7 +3,9 @@
 
 #include "main.h"
 
-void audio_write_cmd(uint8_t reg, uint8_t value);
-uint8_t audio_read_cmd(uint8_t reg);
+void audio_reset(void);
+void audio_init_playback(void);
+void audio_init_record(void);
+void audio_send_volume(uint8_t lvl);
 
 #endif /* INC_CODEC_AUDIO_CMD_H_ */

@@ -10,9 +10,12 @@
 #include "defines.h"  // For USE_DEBUG_COMMAND_DISPATCHER
 #include <string.h>
 #include <stdio.h>
+#include "audio_types.h"
 
 // Extern UART handler for debug output (optional)
 extern UART_HandleTypeDef huart2;
+
+extern Audio_Player_t player;
 
 // Buffer for debug messages
 #if defined(USE_DEBUG_COMMAND_DISPATCHER)
@@ -34,6 +37,9 @@ extern UART_HandleTypeDef huart2;
 void handle_arm(void)
 {
     set_system_mode(SYSTEM_MODE_ARMING);
+    player.start_time_arming = HAL_GetTick();
+    player.is_arming = true;
+	Print_Msg("ARM is started\r\n");
 
 #if defined(USE_DEBUG_COMMAND_DISPATCHER)
     //sprintf(debug_msg, "CMD: ARM\r\n");
@@ -50,6 +56,12 @@ void handle_arm(void)
 void handle_all_clear_1(void)
 {
     set_system_mode(SYSTEM_MODE_ALL_CLEAR_1);
+    if(player.is_arming && !player.is_playing)
+    {
+		player.type_output = AUDIO_SD;
+		player.current_track = TRACK_1;
+		player.audio_state = AUDIO_START;
+    }
 
 #if defined(USE_DEBUG_COMMAND_DISPATCHER)
     //sprintf(debug_msg, "CMD: ALL CLEAR 1\r\n");
@@ -66,6 +78,12 @@ void handle_all_clear_1(void)
 void handle_all_clear_2(void)
 {
     set_system_mode(SYSTEM_MODE_ALL_CLEAR_2);
+    if(player.is_arming && !player.is_playing)
+    {
+		player.type_output = AUDIO_SD;
+		player.current_track = TRACK_2;
+		player.audio_state = AUDIO_START;
+    }
 
 #if defined(USE_DEBUG_COMMAND_DISPATCHER)
     //sprintf(debug_msg, "CMD: ALL CLEAR 2\r\n");
@@ -82,7 +100,12 @@ void handle_all_clear_2(void)
 void handle_alarm(void)
 {
      set_system_mode(SYSTEM_MODE_ALARM_WAIL);
-
+     if(player.is_arming && !player.is_playing)
+     {
+		player.type_output = AUDIO_SIN;
+		player.audio_state = AUDIO_START;
+		Print_Msg("WAIL is start\r\n");
+     }
 
 #if defined(USE_DEBUG_COMMAND_DISPATCHER)
     //sprintf(debug_msg, "CMD: ALARM (WAIL)\r\n");
@@ -116,7 +139,7 @@ void handle_chemical(void)
 void handle_disarm(void)
 {
     set_system_mode(SYSTEM_MODE_CANCEL_IMMEDIATE);
-
+    player.audio_state = AUDIO_STOP;
 
 #if defined(USE_DEBUG_COMMAND_DISPATCHER)
     //sprintf(debug_msg, "CMD: DISARM\r\n");
@@ -133,7 +156,7 @@ void handle_disarm(void)
 void handle_cancel(void)
 {
     set_system_mode(SYSTEM_MODE_CANCEL_DELAYED);
-
+    player.audio_state = AUDIO_STOP;
 
 #if defined(USE_DEBUG_COMMAND_DISPATCHER)
     //sprintf(debug_msg, "CMD: CANCEL\r\n");
@@ -253,8 +276,8 @@ void handle_reset(void)
 void volume_up_handler(int value)
 {
 
-    system_set_volume(value);
-
+    //system_set_volume(value);
+	player.new_volume = value;
 
 #if defined(USE_DEBUG_COMMAND_DISPATCHER)
     //sprintf(debug_msg, "VOL UP: %d (now: %d)\r\n", value, system_get_volume());
@@ -271,8 +294,8 @@ void volume_up_handler(int value)
  */
 void volume_down_handler(int value)
 {
-    system_set_volume(value);
-
+    //system_set_volume(value);
+	player.new_volume = value;
 
 #if defined(USE_DEBUG_COMMAND_DISPATCHER)
     //sprintf(debug_msg, "VOL DOWN: %d (now: %d)\r\n", value, system_get_volume());

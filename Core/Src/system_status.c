@@ -6,33 +6,6 @@
 // Global status
 system_status_t system_status;
 
-// List of acceptable levels
-const int valid_volume_levels[] = {
-    80, 83, 86, 89, 92, 95, 98, 101, 104, 107, 110, 113, 116, 119, 122
-};
-
-
-// value in dB
-static int current_volume = DEF_VALUE_VOLUME;   // Initial volume level
-
-int find_closest_valid_volume(int target)
-{
-    if (target <= MIN_VOLUME) return MIN_VOLUME;
-    if (target >= MAX_VOLUME) return MAX_VOLUME;
-
-    for (int i = 0; i < NUM_VOLUME_BARS; i++) {
-        if (valid_volume_levels[i] >= target) {
-            return valid_volume_levels[i];
-        }
-    }
-    return MAX_VOLUME;
-}
-
-int system_get_volume(void)
-{
-    return current_volume;
-}
-
 // Comparison of enum → symbol for protocol
 static char mode_to_char(system_mode_t mode)
 {
@@ -87,54 +60,6 @@ void set_system_mode(system_mode_t mode)
     system_status.mode = mode;
 }
 
-uint8_t volume_db_to_bars(int db)
-{
-	if (db <= MIN_VOLUME) return 0;
-	if (db >= MAX_VOLUME) return NUM_VOLUME_BARS - 1;
-	return (uint8_t)((db - MIN_VOLUME) / VOLUME_STEP);
-}
-
-int volume_bars_to_db(uint8_t bar_index)
-{
-	if (bar_index >= NUM_VOLUME_BARS) return MAX_VOLUME;
-	return MIN_VOLUME + bar_index * VOLUME_STEP;
-}
-
-uint8_t find_volume_index(int requested_db)
-{
-    // Ограничиваем диапазон
-    if (requested_db <= MIN_VOLUME) {
-        return 0;  // 80 dB → индекс 0
-    }
-    if (requested_db >= MAX_VOLUME) {
-        return NUM_VOLUME_BARS - 1;  // 122 dB → индекс 14
-    }
-
-    // Ищем первый уровень >= requested_db
-    for (int i = 0; i < NUM_VOLUME_BARS; i++) {
-        if (valid_volume_levels[i] >= requested_db) {
-            return (uint8_t)i;
-        }
-    }
-
-    // На всякий случай (не должно быть)
-    return NUM_VOLUME_BARS - 1;
-}
-
-void system_set_volume(int level)
-{
-    int corrected = find_closest_valid_volume(level);
-    current_volume = corrected;
-
-    system_status.max_volume = (corrected == MAX_VOLUME);
-
-
-    uint8_t bar_index = find_volume_index(corrected) + 1;
-
-    VolumeIndicator_SetLevelSilent(&volumeIndicator, bar_index);
-}
-
-
 void system_status_reset(void)
 {
     // Шаг 1: Сохраняем значения БАЙТА 1 и БАЙТА 14 из ТЕКУЩЕГО состояния
@@ -177,5 +102,5 @@ void system_status_reset(void)
     system_status.door_sensor = true;
 
     // Сброс громкости
-    system_set_volume(DEF_VALUE_VOLUME);
+    //system_set_volume(DEF_VALUE_VOLUME);
 }

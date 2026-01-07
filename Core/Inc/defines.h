@@ -19,6 +19,8 @@
 //#define LCD_USART_TEXT_FONT    &Font_7x10
 
 
+#define MAX_VOLUME_CODEC    0
+#define MIN_VOLUME_CODEC    200
 #define MAX_VOLUME          122     // dB
 #define MIN_VOLUME          80      // dB
 #define VOLUME_STEP         3      // dB — increment/decrement step
