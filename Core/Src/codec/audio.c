@@ -10,6 +10,8 @@
 extern I2S_HandleTypeDef hi2s2;
 Audio_Player_t player;
 
+static volatile uint32_t start_play;
+
 // List of acceptable levels
 const uint8_t valid_volume_levels[] = {
     80, 83, 86, 89, 92, 95, 98, 101, 104, 107, 110, 113, 116, 119, 122
@@ -22,7 +24,7 @@ static bool audio_get_track_name(void)
     const char* name = NULL;
 
     switch (player.current_track) {
-        case TRACK_1: name = "1.wav"; break;
+        case TRACK_1: name = "sine_4~1.wav"; break;
         case TRACK_2: name = "2.wav"; break;
         case TRACK_3: name = "3.wav"; break;
         case TRACK_4: name = "4.wav"; break;
@@ -87,7 +89,7 @@ void audio_process(void)
 
 void audio_start_playback(void)
 {
-	Print_Msg("audio_start_playback\r\n");
+	Print_Msg("AUDIO_START\r\n");
 	bool res;
 
 	switch(player.type_output)
@@ -120,6 +122,9 @@ void audio_start_playback(void)
     player.is_playing = true;
     player.audio_state = AUDIO_PLAY;
 
+    Print_Msg("Playing...");
+    start_play = HAL_GetTick();
+
 	hi2s2.Init.MCLKOutput = I2S_MCLKOUTPUT_ENABLE;
 	HAL_I2S_Init(&hi2s2);
     HAL_I2S_Transmit_DMA(&hi2s2, (uint16_t*)player.dma_buffer, AUDIO_HALF_BUFFER_SIZE);
@@ -139,7 +144,7 @@ void audio_play_playback()
 		audio_generate_sine(buf_ptr, AUDIO_STEREO_PAIRS_HALF);
 		break;
 	case AUDIO_SD:
-		br = audiofs_read_buffer_part(buf_ptr, AUDIO_STEREO_PAIRS_HALF);
+		br = audiofs_read_buffer_part(buf_ptr, AUDIO_HALF_BUFFER_SIZE);
 		if (br <= 0) audio_stop_playback();
 		break;
 	case AUDIO_IN1:
@@ -153,7 +158,11 @@ void audio_play_playback()
 void audio_stop_playback(void)
 {
 	char msg[64];
-	sprintf(msg, "All read %ld bytes\r\n", player.bytes_read);
+	uint32_t duration = HAL_GetTick() - start_play;
+	sprintf(msg, "Playback time %lus %lums\r\n", duration/1000, duration%1000);
+	Print_Msg(msg);
+
+	sprintf(msg, "AUDIO_STOP\r\n");
 	Print_Msg(msg);
 
 	player.is_playing = false;
@@ -273,7 +282,7 @@ void audio_set_volume(uint8_t level)
     else vol = CNVR_VOL(corrected_vol);
 
     char msg[64];
-    sprintf(msg, "Vol %d, vol codec %d\r\n", corrected_vol, vol);
+    sprintf(msg, "Volume set %d\r\n", corrected_vol);
     Print_Msg(msg);
 
     audio_send_volume(vol);

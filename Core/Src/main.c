@@ -67,52 +67,10 @@ const osThreadAttr_t defaultTask_attributes = {
   .stack_size = 128 * 4,
   .priority = (osPriority_t) osPriorityNormal,
 };
-/* Definitions for LED1_Task_Name */
-osThreadId_t LED1_Task_NameHandle;
-const osThreadAttr_t LED1_Task_Name_attributes = {
-  .name = "LED1_Task_Name",
-  .stack_size = 128 * 4,
-  .priority = (osPriority_t) osPriorityNormal,
-};
-/* Definitions for LED2_Task_Name */
-osThreadId_t LED2_Task_NameHandle;
-const osThreadAttr_t LED2_Task_Name_attributes = {
-  .name = "LED2_Task_Name",
-  .stack_size = 128 * 4,
-  .priority = (osPriority_t) osPriorityNormal,
-};
-/* Definitions for LED3_Task_Name */
-osThreadId_t LED3_Task_NameHandle;
-const osThreadAttr_t LED3_Task_Name_attributes = {
-  .name = "LED3_Task_Name",
-  .stack_size = 128 * 4,
-  .priority = (osPriority_t) osPriorityNormal,
-};
 /* Definitions for UART_Receive_Ta */
 osThreadId_t UART_Receive_TaHandle;
 const osThreadAttr_t UART_Receive_Ta_attributes = {
   .name = "UART_Receive_Ta",
-  .stack_size = 128 * 4,
-  .priority = (osPriority_t) osPriorityNormal,
-};
-/* Definitions for LCD_Task_Name */
-osThreadId_t LCD_Task_NameHandle;
-const osThreadAttr_t LCD_Task_Name_attributes = {
-  .name = "LCD_Task_Name",
-  .stack_size = 128 * 4,
-  .priority = (osPriority_t) osPriorityNormal,
-};
-/* Definitions for InputTask_Name */
-osThreadId_t InputTask_NameHandle;
-const osThreadAttr_t InputTask_Name_attributes = {
-  .name = "InputTask_Name",
-  .stack_size = 128 * 4,
-  .priority = (osPriority_t) osPriorityNormal,
-};
-/* Definitions for ActionTask_Name */
-osThreadId_t ActionTask_NameHandle;
-const osThreadAttr_t ActionTask_Name_attributes = {
-  .name = "ActionTask_Name",
   .stack_size = 128 * 4,
   .priority = (osPriority_t) osPriorityNormal,
 };
@@ -160,13 +118,7 @@ static void MX_I2C2_Init(void);
 static void MX_I2C4_Init(void);
 static void MX_SPI1_Init(void);
 void StartDefaultTask(void *argument);
-void LED1_Task(void *argument);
-void LED2_Task(void *argument);
-void LED3_Task(void *argument);
 void UART_Receive_Task(void *argument);
-void LCD_Task(void *argument);
-void InputTask(void *argument);
-void ActionTask(void *argument);
 void AudioPlaybackTask(void *argument);
 
 /* USER CODE BEGIN PFP */
@@ -263,26 +215,8 @@ int main(void)
   /* creation of defaultTask */
   defaultTaskHandle = osThreadNew(StartDefaultTask, NULL, &defaultTask_attributes);
 
-  /* creation of LED1_Task_Name */
-  LED1_Task_NameHandle = osThreadNew(LED1_Task, NULL, &LED1_Task_Name_attributes);
-
-  /* creation of LED2_Task_Name */
-  LED2_Task_NameHandle = osThreadNew(LED2_Task, NULL, &LED2_Task_Name_attributes);
-
-  /* creation of LED3_Task_Name */
-  LED3_Task_NameHandle = osThreadNew(LED3_Task, NULL, &LED3_Task_Name_attributes);
-
   /* creation of UART_Receive_Ta */
   UART_Receive_TaHandle = osThreadNew(UART_Receive_Task, NULL, &UART_Receive_Ta_attributes);
-
-  /* creation of LCD_Task_Name */
-  LCD_Task_NameHandle = osThreadNew(LCD_Task, NULL, &LCD_Task_Name_attributes);
-
-  /* creation of InputTask_Name */
-  InputTask_NameHandle = osThreadNew(InputTask, NULL, &InputTask_Name_attributes);
-
-  /* creation of ActionTask_Name */
-  ActionTask_NameHandle = osThreadNew(ActionTask, NULL, &ActionTask_Name_attributes);
 
   /* creation of AudioPlaybackTa */
   AudioPlaybackTaHandle = osThreadNew(AudioPlaybackTask, NULL, &AudioPlaybackTa_attributes);
@@ -603,7 +537,7 @@ static void MX_I2S2_Init(void)
   hi2s2.Init.Standard = I2S_STANDARD_PHILIPS;
   hi2s2.Init.DataFormat = I2S_DATAFORMAT_16B;
   hi2s2.Init.MCLKOutput = I2S_MCLKOUTPUT_ENABLE;
-  hi2s2.Init.AudioFreq = I2S_AUDIOFREQ_48K;
+  hi2s2.Init.AudioFreq = I2S_AUDIOFREQ_16K;
   hi2s2.Init.CPOL = I2S_CPOL_LOW;
   hi2s2.Init.FirstBit = I2S_FIRSTBIT_MSB;
   hi2s2.Init.WSInversion = I2S_WS_INVERSION_DISABLE;
@@ -799,60 +733,6 @@ void StartDefaultTask(void *argument)
   /* USER CODE END 5 */
 }
 
-/* USER CODE BEGIN Header_LED1_Task */
-/**
-* @brief Function implementing the LED1_Task_Name thread.
-* @param argument: Not used
-* @retval None
-*/
-/* USER CODE END Header_LED1_Task */
-void LED1_Task(void *argument)
-{
-  /* USER CODE BEGIN LED1_Task */
-  /* Infinite loop */
-  for(;;)
-  {
-    osDelay(1);
-  }
-  /* USER CODE END LED1_Task */
-}
-
-/* USER CODE BEGIN Header_LED2_Task */
-/**
-* @brief Function implementing the LED2_Task_Name thread.
-* @param argument: Not used
-* @retval None
-*/
-/* USER CODE END Header_LED2_Task */
-void LED2_Task(void *argument)
-{
-  /* USER CODE BEGIN LED2_Task */
-  /* Infinite loop */
-  for(;;)
-  {
-    osDelay(1);
-  }
-  /* USER CODE END LED2_Task */
-}
-
-/* USER CODE BEGIN Header_LED3_Task */
-/**
-* @brief Function implementing the LED3_Task_Name thread.
-* @param argument: Not used
-* @retval None
-*/
-/* USER CODE END Header_LED3_Task */
-void LED3_Task(void *argument)
-{
-  /* USER CODE BEGIN LED3_Task */
-  /* Infinite loop */
-  for(;;)
-  {
-    osDelay(1);
-  }
-  /* USER CODE END LED3_Task */
-}
-
 /* USER CODE BEGIN Header_UART_Receive_Task */
 /**
 * @brief Function implementing the UART_Receive_Ta thread.
@@ -893,60 +773,6 @@ void UART_Receive_Task(void *argument)
     osDelay(1);
   }
   /* USER CODE END UART_Receive_Task */
-}
-
-/* USER CODE BEGIN Header_LCD_Task */
-/**
-* @brief Function implementing the LCD_Task_Name thread.
-* @param argument: Not used
-* @retval None
-*/
-/* USER CODE END Header_LCD_Task */
-void LCD_Task(void *argument)
-{
-  /* USER CODE BEGIN LCD_Task */
-  /* Infinite loop */
-  for(;;)
-  {
-    osDelay(1);
-  }
-  /* USER CODE END LCD_Task */
-}
-
-/* USER CODE BEGIN Header_InputTask */
-/**
-* @brief Function implementing the InputTask_Name thread.
-* @param argument: Not used
-* @retval None
-*/
-/* USER CODE END Header_InputTask */
-void InputTask(void *argument)
-{
-  /* USER CODE BEGIN InputTask */
-  /* Infinite loop */
-  for(;;)
-  {
-    osDelay(1);
-  }
-  /* USER CODE END InputTask */
-}
-
-/* USER CODE BEGIN Header_ActionTask */
-/**
-* @brief Function implementing the ActionTask_Name thread.
-* @param argument: Not used
-* @retval None
-*/
-/* USER CODE END Header_ActionTask */
-void ActionTask(void *argument)
-{
-  /* USER CODE BEGIN ActionTask */
-  /* Infinite loop */
-  for(;;)
-  {
-    osDelay(1);
-  }
-  /* USER CODE END ActionTask */
 }
 
 /* USER CODE BEGIN Header_AudioPlaybackTask */
@@ -1034,8 +860,7 @@ void Error_Handler(void)
   }
   /* USER CODE END Error_Handler_Debug */
 }
-
-#ifdef  USE_FULL_ASSERT
+#ifdef USE_FULL_ASSERT
 /**
   * @brief  Reports the name of the source file and the source line number
   *         where the assert_param error has occurred.
