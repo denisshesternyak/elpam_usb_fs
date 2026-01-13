@@ -1,7 +1,7 @@
 // system_status.c
 #include "system_status.h"
 #include <string.h>
-#include "lcd/lcd_widget_volume_indicator.h"
+//#include "lcd/lcd_widget_volume_indicator.h"
 
 // Global status
 system_status_t system_status;

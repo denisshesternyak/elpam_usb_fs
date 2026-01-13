@@ -73,7 +73,7 @@ static void audiofs_list_root_directory(void)
 void audiofs_init(void)
 {
 	audiofs_mount_drive();
-	audiofs_list_root_directory();
+//	audiofs_list_root_directory();
 }
 
 void audiofs_close_file(void)

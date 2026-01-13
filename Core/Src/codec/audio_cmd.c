@@ -28,8 +28,8 @@ void audio_reset(void)
 
 void audio_init_playback(void)
 {
-	const char *msg = "audio_init_playback\r\n";
-	Print_Msg(msg);
+//	const char *msg = "audio_init_playback\r\n";
+//	Print_Msg(msg);
 
 	HAL_Delay(10);
 	audio_write_cmd(AIC32X4_PSEL, 0x00);			// Page 0

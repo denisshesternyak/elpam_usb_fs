@@ -64,10 +64,16 @@ void Error_Handler(void);
 #define USB_PWR_EN_GPIO_Port GPIOD
 #define LCD_LED_Pin GPIO_PIN_8
 #define LCD_LED_GPIO_Port GPIOC
+#define LCD_DC_Pin GPIO_PIN_9
+#define LCD_DC_GPIO_Port GPIOC
 #define SWDIO_Pin GPIO_PIN_13
 #define SWDIO_GPIO_Port GPIOA
 #define SWCLK_Pin GPIO_PIN_14
 #define SWCLK_GPIO_Port GPIOA
+#define LCD_CS_Pin GPIO_PIN_8
+#define LCD_CS_GPIO_Port GPIOB
+#define LCD_RESET_Pin GPIO_PIN_9
+#define LCD_RESET_GPIO_Port GPIOB
 
 /* USER CODE BEGIN Private defines */
 void Print_Msg(const char* msg);

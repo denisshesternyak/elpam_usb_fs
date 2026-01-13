@@ -27,6 +27,8 @@
 #include <string.h>
 #include "rs232.h"
 #include "command_dispatcher.h"
+#include "audio.h"
+#include "hx8357d.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -81,6 +83,13 @@ const osThreadAttr_t AudioPlaybackTa_attributes = {
   .stack_size = 512 * 4,
   .priority = (osPriority_t) osPriorityNormal,
 };
+/* Definitions for LCDTask */
+osThreadId_t LCDTaskHandle;
+const osThreadAttr_t LCDTask_attributes = {
+  .name = "LCDTask",
+  .stack_size = 512 * 4,
+  .priority = (osPriority_t) osPriorityLow,
+};
 /* Definitions for xButtonQueue */
 osMessageQueueId_t xButtonQueueHandle;
 const osMessageQueueAttr_t xButtonQueue_attributes = {
@@ -120,6 +129,7 @@ static void MX_SPI1_Init(void);
 void StartDefaultTask(void *argument);
 void UART_Receive_Task(void *argument);
 void AudioPlaybackTask(void *argument);
+void LCDStartTask(void *argument);
 
 /* USER CODE BEGIN PFP */
 void Print_Msg(const char* msg)
@@ -221,6 +231,9 @@ int main(void)
   /* creation of AudioPlaybackTa */
   AudioPlaybackTaHandle = osThreadNew(AudioPlaybackTask, NULL, &AudioPlaybackTa_attributes);
 
+  /* creation of LCDTask */
+  LCDTaskHandle = osThreadNew(LCDStartTask, NULL, &LCDTask_attributes);
+
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
   /* USER CODE END RTOS_THREADS */
@@ -295,8 +308,8 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI;
   RCC_OscInitStruct.PLL.PLLM = 4;
   RCC_OscInitStruct.PLL.PLLN = 12;
-  RCC_OscInitStruct.PLL.PLLP = 1;
-  RCC_OscInitStruct.PLL.PLLQ = 4;
+  RCC_OscInitStruct.PLL.PLLP = 3;
+  RCC_OscInitStruct.PLL.PLLQ = 3;
   RCC_OscInitStruct.PLL.PLLR = 2;
   RCC_OscInitStruct.PLL.PLLRGE = RCC_PLL1VCIRANGE_3;
   RCC_OscInitStruct.PLL.PLLVCOSEL = RCC_PLL1VCOWIDE;
@@ -311,15 +324,15 @@ void SystemClock_Config(void)
   RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
                               |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2
                               |RCC_CLOCKTYPE_D3PCLK1|RCC_CLOCKTYPE_D1PCLK1;
-  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_HSI;
+  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
   RCC_ClkInitStruct.SYSCLKDivider = RCC_SYSCLK_DIV1;
-  RCC_ClkInitStruct.AHBCLKDivider = RCC_HCLK_DIV2;
+  RCC_ClkInitStruct.AHBCLKDivider = RCC_HCLK_DIV1;
   RCC_ClkInitStruct.APB3CLKDivider = RCC_APB3_DIV2;
   RCC_ClkInitStruct.APB1CLKDivider = RCC_APB1_DIV2;
   RCC_ClkInitStruct.APB2CLKDivider = RCC_APB2_DIV2;
   RCC_ClkInitStruct.APB4CLKDivider = RCC_APB4_DIV2;
 
-  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_0) != HAL_OK)
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_1) != HAL_OK)
   {
     Error_Handler();
   }
@@ -341,7 +354,7 @@ static void MX_I2C1_Init(void)
 
   /* USER CODE END I2C1_Init 1 */
   hi2c1.Instance = I2C1;
-  hi2c1.Init.Timing = 0x00303D5B;
+  hi2c1.Init.Timing = 0x00707CBB;
   hi2c1.Init.OwnAddress1 = 0;
   hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
   hi2c1.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
@@ -389,7 +402,7 @@ static void MX_I2C2_Init(void)
 
   /* USER CODE END I2C2_Init 1 */
   hi2c2.Instance = I2C2;
-  hi2c2.Init.Timing = 0x00303D5B;
+  hi2c2.Init.Timing = 0x00707CBB;
   hi2c2.Init.OwnAddress1 = 0;
   hi2c2.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
   hi2c2.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
@@ -437,7 +450,7 @@ static void MX_I2C4_Init(void)
 
   /* USER CODE END I2C4_Init 1 */
   hi2c4.Instance = I2C4;
-  hi2c4.Init.Timing = 0x00303D5B;
+  hi2c4.Init.Timing = 0x00707CBB;
   hi2c4.Init.OwnAddress1 = 0;
   hi2c4.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
   hi2c4.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
@@ -485,7 +498,7 @@ static void MX_I2C5_Init(void)
 
   /* USER CODE END I2C5_Init 1 */
   hi2c5.Instance = I2C5;
-  hi2c5.Init.Timing = 0x00303D5B;
+  hi2c5.Init.Timing = 0x00707CBB;
   hi2c5.Init.OwnAddress1 = 0;
   hi2c5.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
   hi2c5.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
@@ -576,7 +589,7 @@ static void MX_SPI1_Init(void)
   hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
   hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;
   hspi1.Init.NSS = SPI_NSS_SOFT;
-  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_4;
+  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_2;
   hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
   hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
   hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
@@ -688,7 +701,10 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(USB_PWR_EN_GPIO_Port, USB_PWR_EN_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(LCD_LED_GPIO_Port, LCD_LED_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOC, LCD_LED_Pin|LCD_DC_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOB, LCD_CS_Pin|LCD_RESET_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin : USB_PWR_EN_Pin */
   GPIO_InitStruct.Pin = USB_PWR_EN_Pin;
@@ -697,12 +713,19 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(USB_PWR_EN_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : LCD_LED_Pin */
-  GPIO_InitStruct.Pin = LCD_LED_Pin;
+  /*Configure GPIO pins : LCD_LED_Pin LCD_DC_Pin */
+  GPIO_InitStruct.Pin = LCD_LED_Pin|LCD_DC_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(LCD_LED_GPIO_Port, &GPIO_InitStruct);
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : LCD_CS_Pin LCD_RESET_Pin */
+  GPIO_InitStruct.Pin = LCD_CS_Pin|LCD_RESET_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /* USER CODE BEGIN MX_GPIO_Init_2 */
 
@@ -793,6 +816,57 @@ void AudioPlaybackTask(void *argument)
     osDelay(1);
   }
   /* USER CODE END AudioPlaybackTask */
+}
+
+/* USER CODE BEGIN Header_LCDStartTask */
+/**
+* @brief Function implementing the LCDTask thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_LCDStartTask */
+void LCDStartTask(void *argument)
+{
+  /* USER CODE BEGIN LCDStartTask */
+	hx8357_init();
+	hx8357_fill_screen(HX8357_BLACK);
+	hx8357_draw_rect(0, 0, 50, 50, HX8357_RED);
+//	hx8357_draw_rect(0, HX8357_TFTHEIGHT-50, 50, 50, HX8357_BLUE);
+//	hx8357_draw_rect((HX8357_TFTWIDTH/2)-25, 0, 50, 50, HX8357_GREEN);
+//	hx8357_draw_rect((HX8357_TFTWIDTH/2)-25, (HX8357_TFTHEIGHT/2)-25, 50, 50, HX8357_WHITE);
+//	hx8357_draw_rect((HX8357_TFTWIDTH/2)-25, HX8357_TFTHEIGHT-50, 50, 50, HX8357_YELLOW);
+//	hx8357_draw_rect(HX8357_TFTWIDTH-50, 0, 50, 50, HX8357_CYAN);
+	hx8357_draw_rect(HX8357_TFTWIDTH-50, HX8357_TFTHEIGHT-50, 50, 50, HX8357_MAGENTA);
+//	const char *msg = "Hello STM32!";
+//	hx8357_write_string(0, 0, msg, &Font_7x10, HX8357_WHITE, HX8357_BLACK);
+//	hx8357_write_string(0, 10, "Next msg", &Font_7x10, HX8357_RED, HX8357_BLACK);
+//	hx8357_write_string(0, 155, "Test blue font, black words", &Font_7x10, HX8357_BLACK, HX8357_BLUE);
+
+	hx8357_write_string(100, 147, "Hello    STM32!", &Font_16x26, HX8357_WHITE, HX8357_BLUE);
+	hx8357_write_string(100, 200, "NEXT MSG", &Font_11x18, HX8357_BLACK, HX8357_RED);
+
+
+	hx8357_draw_rect(0, HX8357_TFTHEIGHT-50, 50, 50, HX8357_BLUE);
+
+
+  /* Infinite loop */
+  for(;;)
+  {
+//	hx8357_fill_screen(HX8357_RED);
+//	osDelay(1000);
+//	hx8357_fill_screen(HX8357_BLUE);
+//	osDelay(1000);
+//	hx8357_fill_screen(HX8357_GREEN);
+//	osDelay(1000);
+//	hx8357_fill_screen(HX8357_YELLOW);
+//	osDelay(1000);
+//	hx8357_fill_screen(HX8357_CYAN);
+//	osDelay(1000);
+//	hx8357_fill_screen(HX8357_MAGENTA);
+//	osDelay(1000);
+	  osDelay(1);
+  }
+  /* USER CODE END LCDStartTask */
 }
 
  /* MPU Configuration */
