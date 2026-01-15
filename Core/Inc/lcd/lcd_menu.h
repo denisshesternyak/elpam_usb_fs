@@ -96,9 +96,9 @@ void DisplayMenuItem(uint8_t index, const MenuItem* item, bool selected, bool du
 //
 //
 ////---------------------------------------------
-//void PlayMessageStart(void);
-//bool PlayMessageProgress(const uint8_t value);
-//void PlayMessageEnd(void);
+void PlayMessageStart(void);
+bool PlayMessageProgress(const uint8_t value);
+void PlayMessageEnd(void);
 ////---------------------------------------------
 //
 ////void GoToRootMenu(void) ;

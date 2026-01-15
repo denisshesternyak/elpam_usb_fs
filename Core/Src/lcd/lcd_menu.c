@@ -15,7 +15,6 @@
 //#include "lcd_widget_report_indicator.h"
 //#include "lcd_widget_siren_info_indicator.h"
 //#include "lcd_widget_password.h"
-//#include "lcd_widget_progress_bar.h"
 //#include "system_status.h"
 
 //#include "ff.h"
@@ -25,6 +24,7 @@
 #include "lcd_color_rgb565.h"
 #include "Speaker-1_80x74.h"
 #include "m2_80x74.h"
+#include "lcd_widget_progress_bar.h"
 
 //bool isResetPasswordAfterIdle = false;
 //
@@ -35,7 +35,7 @@
 //
 //#define BACKLIGHT_TIMEOUT_MS 10000 // 10 sec
 //
-//bool isPlayAudioFile = false;
+bool isPlayAudioFile = false;
 //bool isIdle = false;
 //bool isBacklightOn = true;
 
@@ -59,7 +59,7 @@ Menu* sirenMenu = NULL;
 //Menu* testMenu = NULL;
 //Menu* reportMenu = NULL;
 //Menu* maintenanceMenu = NULL;
-//Menu* messagePlayMenu = NULL;
+Menu* messagePlayMenu = NULL;
 //Menu* batteriesTestMenu = NULL;
 //Menu* apmplifiresTestMunu = NULL;
 //Menu* driversTestMenu = NULL;
@@ -242,21 +242,21 @@ void Menu_Init(void)
 //	messagesMenu->screenText[LANG_HE] = NULL;
 //	messagesMenu->itemCount = 0;
 //	messagesMenu->buttonHandler = HandleButtonPress;
-//
-//
-//	// paly message
-//	messagePlayMenu = &menuPool[menuPoolIndex++];
-//	messagePlayMenu->parent = messagesMenu;
-//	messagePlayMenu->currentSelection = 0;
-//	messagePlayMenu->scrollOffset = 0;
-//	messagePlayMenu->itemCount = 0;
-//	messagePlayMenu->type = MENU_TYPE_MESSAGE_PLAY;
-//	messagePlayMenu->screenText[LANG_EN] = "Play message";
-//	messagePlayMenu->screenText[LANG_HE] = "---";
-//	messagePlayMenu->textFilename = "filename #1.wav";
-//	messagePlayMenu->imageData = &menu_speaker_img;
+
+
+	// play message
+	messagePlayMenu = &menuPool[menuPoolIndex++];
+	messagePlayMenu->parent = messagesMenu;
+	messagePlayMenu->currentSelection = 0;
+	messagePlayMenu->scrollOffset = 0;
+	messagePlayMenu->itemCount = 0;
+	messagePlayMenu->type = MENU_TYPE_MESSAGE_PLAY;
+	messagePlayMenu->screenText[LANG_EN] = "Play message";
+	messagePlayMenu->screenText[LANG_HE] = "---";
+	messagePlayMenu->textFilename = "filename #1.wav";
+	messagePlayMenu->imageData = &menu_speaker_img;
 //	messagePlayMenu->buttonHandler = HandleButtonPress;
-//
+
 //    //-----------------------------------------------------------------------------------------------------------
 //	announcementMenu = &menuPool[menuPoolIndex++];
 //	announcementMenu->parent = rootMenu;
@@ -367,15 +367,15 @@ void Menu_Init(void)
 //	rootMenu->items[3].submenu = testMenu;
 //	rootMenu->items[4].submenu = reportMenu;
 //
-    currentMenu = rootMenu;
+    //currentMenu = rootMenu;
 
     // testing
-    currentMenu = sirenMenu;
-    MenuLoadSDCardSirens();
-    //currentMenu = alarmInfoMenu;
+    //currentMenu = sirenMenu;
+    //MenuLoadSDCardSirens();
+//    currentMenu = alarmInfoMenu;
    // currentMenu = messagesMenu; //???
     //currentMenu->action();
-     // currentMenu = messagePlayMenu;
+      currentMenu = messagePlayMenu;
     //currentMenu = announcementMenu; // work ok
     //currentMenu = reportMenu; //ok
     //currentMenu = sirenMenu; // ok
@@ -424,33 +424,34 @@ void MenuDrawImage(Menu *m)
 //	messagePlayMenu->textFilename = filepath;
 //	currentMenu = messagePlayMenu;
 //}
-//
+
 //void PlayMessageStartPost(void)
 //{
 //	isPlayAudioFile = true;
 //	xQueueSend(audioQueue, &messagePlayMenu->textFilename, 0);
 //}
-//
-//bool PlayMessageProgress(const uint8_t value)
-//{
-//	lastInteractionTick = osKernelGetTickCount();
-//
-//	if (isPlayAudioFile == false) return false;
-//
-//	MenuDrawProgress(value);
-//	//MenuDrawProgress((LCD_GetWidth() - PROGRESS_BAR_W) / 2, PROGRESS_BAR_Y, PROGRESS_BAR_W, PROGRESS_BAR_HEIGHT, value);
-//
-//	//MenuDrawProgress2(&bar, value);
-//	return true;
-//}
-//
-//
-//void PlayMessageEnd(void)
-//{
-//	isPlayAudioFile = false;
-//	currentMenu = currentMenu->parent;
-//	DrawMenuScreen(true);
-//}
+
+bool PlayMessageProgress(const uint8_t value)
+{
+	//lastInteractionTick = osKernelGetTickCount();
+
+
+	if (isPlayAudioFile == false) return false;
+
+	MenuDrawProgress(value);
+	//MenuDrawProgress((LCD_GetWidth() - PROGRESS_BAR_W) / 2, PROGRESS_BAR_Y, PROGRESS_BAR_W, PROGRESS_BAR_HEIGHT, value);
+
+	//MenuDrawProgress2(&bar, value);
+	return true;
+}
+
+
+void PlayMessageEnd(void)
+{
+	isPlayAudioFile = false;
+	currentMenu = currentMenu->parent;
+	DrawMenuScreen(true);
+}
 
 void ClearMenu(Menu* menu)
 {
@@ -1150,13 +1151,11 @@ void Draw_MENU_TYPE_SIREN_INFO(void)
 	{
 		hx8357_write_alignedX_string(STATUS_BAR_LINE_Y_POS + 55, currentMenu->textFilename, &Font_11x18, COLOR_MAGENTA, bg_color, ALIGN_CENTER);
 	}
-	//MenuDrawImage(currentMenu);
+	MenuDrawImage(currentMenu);
 
-	//isPlayAudioFile = true;
+	isPlayAudioFile = true;
 
-	//MenuDrawProgress(0);//
-	//MenuDrawProgress((LCD_GetWidth() - PROGRESS_BAR_W) / 2, PROGRESS_BAR_Y, PROGRESS_BAR_W, PROGRESS_BAR_HEIGHT, 10);
-	//MenuDrawProgress2(&bar, 1);
+	MenuDrawProgress(0);
 
 	osDelay(3);
 }
@@ -1207,27 +1206,27 @@ void Draw_MENU_TYPE_SIREN_INFO(void)
 //
 //	TestAmplDisplay_DrawAll(18, STATUS_BAR_LINE_Y_POS + 200 );
 //}
-//
-//void Draw_MENU_TYPE_MESSAGE_PLAY(void)
-//{
-//	uint16_t bg_color = COLOR_BLACK;
-//
-//	const char* text = currentMenu->screenText[GetLanguage()];
-//	if (text) {
-//		hx8357_write_alignedX_string(STATUS_BAR_LINE_Y_POS + 10, text, &Font_11x18, COLOR_WHITE, bg_color, ALIGN_CENTER);
-//	}
-//
-//	if (currentMenu->textFilename) {
-//		hx8357_write_alignedX_string(STATUS_BAR_LINE_Y_POS + 45, currentMenu->textFilename, &Font_11x18, COLOR_MAGENTA, bg_color, ALIGN_CENTER);
-//	}
-//
-//	MenuDrawImage(currentMenu);
-//
-//	isPlayAudioFile = true;
-//	MenuDrawProgress(0);
-//
-//	osDelay(3);
-//}
+
+void Draw_MENU_TYPE_MESSAGE_PLAY(void)
+{
+	uint16_t bg_color = COLOR_BLACK;
+
+	const char* text = currentMenu->screenText[GetLanguage()];
+	if (text) {
+		hx8357_write_alignedX_string(STATUS_BAR_LINE_Y_POS + 10, text, &Font_11x18, COLOR_WHITE, bg_color, ALIGN_CENTER);
+	}
+
+	if (currentMenu->textFilename) {
+		hx8357_write_alignedX_string(STATUS_BAR_LINE_Y_POS + 45, currentMenu->textFilename, &Font_11x18, COLOR_MAGENTA, bg_color, ALIGN_CENTER);
+	}
+
+	MenuDrawImage(currentMenu);
+
+	isPlayAudioFile = true;
+	MenuDrawProgress(0);
+
+	osDelay(3);
+}
 
 void Draw_MENU_TYPE_LIST()
 {
@@ -1291,22 +1290,16 @@ void DrawMenuScreen(bool forceFullRedraw)
     {
         uint16_t bg_color = COLOR_BLACK;
 
-//        hx8357_draw_rect(0,
-//						 STATUS_BAR_LINE_Y_POS+1,
-//						 hx8357_get_width(),
-//						 hx8357_get_height() - (STATUS_BAR_LINE_Y_POS+1),
-//						 bg_color);
-
     	const char* text = currentMenu->screenText[GetLanguage()];
     	if (text) {
     		hx8357_write_alignedX_string(STATUS_BAR_LINE_Y_POS + 5, text, &Font_11x18, COLOR_WHITE, bg_color, ALIGN_CENTER);
     	}
 
-//        hx8357_draw_rect(MENU_BASE_X,
-//        				 MENU_BASE_Y+1,
-//						 hx8357_get_width()-(MENU_BASE_X*2),
-//						 hx8357_get_height() - (MENU_BASE_Y+1),
-//						 bg_color);
+        hx8357_draw_rect(MENU_BASE_X,
+        				 MENU_BASE_Y+1,
+						 hx8357_get_width()-(MENU_BASE_X*2),
+						 hx8357_get_height() - (MENU_BASE_Y+1),
+						 bg_color);
         osDelay(1);
 
         if (currentMenu->type == MENU_TYPE_IDLE)
@@ -1354,12 +1347,11 @@ void DrawMenuScreen(bool forceFullRedraw)
 
         //     MenuDrawImage(currentMenu);
         // }
-//		else if (currentMenu->type == MENU_TYPE_MESSAGE_PLAY)
-//		{
-//			Draw_MENU_TYPE_MESSAGE_PLAY();
-//		}
-        //esleif (currentMenu->type == MENU_TYPE_LIST)
-		if (currentMenu->type == MENU_TYPE_LIST)
+		else if (currentMenu->type == MENU_TYPE_MESSAGE_PLAY)
+		{
+			Draw_MENU_TYPE_MESSAGE_PLAY();
+		}
+        else if (currentMenu->type == MENU_TYPE_LIST)
 		{
 			Draw_MENU_TYPE_LIST();
 //			uint8_t start = currentMenu->scrollOffset;

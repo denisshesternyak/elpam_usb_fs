@@ -141,7 +141,16 @@ void Print_Msg(const char* msg)
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+void SirenPlayFile(const char *filename)
+{
+	for (int i = 0; i < 100; ++i)
+	{
+		PlayMessageProgress(i);
+		osDelay(100);
+	}
 
+	PlayMessageEnd();
+}
 /* USER CODE END 0 */
 
 /**
@@ -835,12 +844,17 @@ void LCDStartTask(void *argument)
 	DrawMenuScreen(true);
 	//hx8357_test_draw_rect();
 
+	SirenPlayFile("TestSirena_1.wav");
+
   /* Infinite loop */
   for(;;)
   {
-	  test_count_up_menu();
-	  DrawMenuScreen(true);
-	  osDelay(2000);
+//	  test_count_up_menu();
+//	  DrawMenuScreen(true);
+//	  osDelay(2000);
+
+
+	  osDelay(1);
   }
   /* USER CODE END LCDStartTask */
 }
