@@ -28,8 +28,8 @@ void MenuDrawProgress(uint8_t progressPercent)
 	const uint16_t bar_w = (innerW * progressPercent) / 100;
 
     if (!borderDrawn) {
-        hx8357_draw_rect(x, y, width, height, PROGRESS_BORDER_COLOR);
-		hx8357_draw_rect(innerX, innerY, innerW, innerH, PROGRESS_BACKGROUND_COLOR);
+        hx8357_fill_rect(x, y, width, height, PROGRESS_BORDER_COLOR);
+		hx8357_fill_rect(innerX, innerY, innerW, innerH, PROGRESS_BACKGROUND_COLOR);
         borderDrawn = true;
     }
 
@@ -42,7 +42,7 @@ void MenuDrawProgress(uint8_t progressPercent)
     uint16_t textX = x + (width - textW) / 2;
     uint16_t textY = y + (height - textH) / 2;
 
-    hx8357_draw_rect(innerX, innerY, bar_w, innerH, PROGRESS_FILL_COLOR);
+    hx8357_fill_rect(innerX, innerY, bar_w, innerH, PROGRESS_FILL_COLOR);
 
     hx8357_write_string(textX, textY, text, font, PROGRESS_BORDER_COLOR, PROGRESS_BACKGROUND_COLOR);
 }

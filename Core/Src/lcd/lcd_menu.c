@@ -7,9 +7,7 @@
 #include "cmsis_os.h"
 //#include "queue.h"
 //#include "lcd_display.h"
-//#include "lcd_widget_status_indicator.h"
 //#include "lcd_widget_batteries_indicator.h"
-//#include "lcd_widget_volume_indicator.h"
 //#include "lcd_widget_test_drivers_indicator.h"
 //#include "lcd_widget_test_ampl_indicator.h"
 //#include "lcd_widget_report_indicator.h"
@@ -25,6 +23,8 @@
 #include "Speaker-1_80x74.h"
 #include "m2_80x74.h"
 #include "lcd_widget_progress_bar.h"
+//#include "lcd_widget_volume_indicator.h"
+#include "lcd_widget_status_indicator.h"
 
 //bool isResetPasswordAfterIdle = false;
 //
@@ -220,29 +220,26 @@ void Menu_Init(void)
     sirenMenu->screenText[LANG_HE] = "### -Siren- ###";;
     //sirenMenu->buttonHandler = HandleButtonPress;
 
-
     alarmInfoMenu = &menuPool[menuPoolIndex++];
     alarmInfoMenu->parent = sirenMenu;
     alarmInfoMenu->type = MENU_TYPE_SIREN_INFO;
-    alarmInfoMenu->screenText[LANG_EN] = "Alarm info";
-    alarmInfoMenu->screenText[LANG_HE] = "-Alarm info-";
+    alarmInfoMenu->screenText[LANG_EN] = "### Alarm info ###";
+    alarmInfoMenu->screenText[LANG_HE] = "### -Alarm info- ###";
     alarmInfoMenu->currentSelection = 0;
     alarmInfoMenu->scrollOffset = 0;
     alarmInfoMenu->itemCount = 0;
 //    alarmInfoMenu->buttonHandler = alarmInfoMenu_HandleButtonPress;
 
-
 //    //-----------------------------------------------------------------------------------------------------------
-//	messagesMenu = &menuPool[menuPoolIndex++];
-//	messagesMenu->parent = rootMenu;
-//	messagesMenu->type = MENU_TYPE_LIST;
-//	messagesMenu->currentSelection = 0;
-//	messagesMenu->scrollOffset = 0;
-//	messagesMenu->screenText[LANG_EN] = NULL;
-//	messagesMenu->screenText[LANG_HE] = NULL;
-//	messagesMenu->itemCount = 0;
-//	messagesMenu->buttonHandler = HandleButtonPress;
-
+	messagesMenu = &menuPool[menuPoolIndex++];
+	messagesMenu->parent = rootMenu;
+	messagesMenu->type = MENU_TYPE_LIST;
+	messagesMenu->currentSelection = 0;
+	messagesMenu->scrollOffset = 0;
+	messagesMenu->screenText[LANG_EN] = NULL;
+	messagesMenu->screenText[LANG_HE] = NULL;
+	messagesMenu->itemCount = 0;
+	//messagesMenu->buttonHandler = HandleButtonPress;
 
 	// play message
 	messagePlayMenu = &menuPool[menuPoolIndex++];
@@ -269,7 +266,7 @@ void Menu_Init(void)
 //	announcementMenu->textFilename = NULL;
 //	announcementMenu->imageData = &menu_microfon_img;
 //	announcementMenu->buttonHandler = VolumeControlButtonHandler;
-//
+
 //	// VolumeIndicator_Init(&volumeIndicator, 30, 250, 420, 30,
 //	// 		             //30,
 //	// 					 system_get_volume(),
@@ -370,12 +367,13 @@ void Menu_Init(void)
     //currentMenu = rootMenu;
 
     // testing
+	currentMenu = idleMenu;
+
     //currentMenu = sirenMenu;
-    //MenuLoadSDCardSirens();
-//    currentMenu = alarmInfoMenu;
+    //currentMenu = alarmInfoMenu;
    // currentMenu = messagesMenu; //???
     //currentMenu->action();
-      currentMenu = messagePlayMenu;
+//      currentMenu = messagePlayMenu;
     //currentMenu = announcementMenu; // work ok
     //currentMenu = reportMenu; //ok
     //currentMenu = sirenMenu; // ok
@@ -386,7 +384,6 @@ void Menu_Init(void)
 //   // currentMenu = apmplifiresTestMunu; //ok
 //    //currentMenu = batteriesTestMenu; // ok
 //
-//    //currentMenu = idleMenu;
 //    //currentMenu = reportMenu;
 //    //currentLevel = 0;
 //
@@ -476,42 +473,42 @@ void ClearMenu(Menu* menu)
     }
 }
 
-//void MenuShowMessages(void)
-//{
-//    if (!messagesMenu || !messagePlayMenu) return;
+void MenuShowMessages(void)
+{
+    if (!messagesMenu || !messagePlayMenu) return;
+
+    ClearMenu(messagesMenu);
+
+//    DIR dir;
+//    FILINFO fno;
+//    FRESULT res;
+//    uint8_t count = 0;
 //
-//    ClearMenu(messagesMenu);
+//    res = f_opendir(&dir, "0:/message");
+//    if (res != FR_OK) return;
 //
-////    DIR dir;
-////    FILINFO fno;
-////    FRESULT res;
-////    uint8_t count = 0;
-////
-////    res = f_opendir(&dir, "0:/message");
-////    if (res != FR_OK) return;
-////
-////    while ((f_readdir(&dir, &fno) == FR_OK) && fno.fname[0] && count < MAX_MESSAGES) {
-////        if (strncmp(fno.fname, "msg_", 4) == 0) {
-////            strncpy(messageFilenames[count], fno.fname, MAX_FILENAME_LEN);
-////
-////            messagesMenu->items[count].name[LANG_EN] = messageFilenames[count];
-////            messagesMenu->items[count].name[LANG_HE] = messageFilenames[count];
-////            messagesMenu->items[count].prepareAction = &PlaySelectedMessageWrapper;
-////            messagesMenu->items[count].submenu = messagePlayMenu;
-////            messagesMenu->items[count].filepath = messageFilenames[count];
-////
-////            count++;
-////        }
-////    }
-////    f_closedir(&dir);
-////
-////    messagesMenu->itemCount = count;
-////    messagesMenu->currentSelection = 0;
-////    currentMenu = messagesMenu;
+//    while ((f_readdir(&dir, &fno) == FR_OK) && fno.fname[0] && count < MAX_MESSAGES) {
+//        if (strncmp(fno.fname, "msg_", 4) == 0) {
+//            strncpy(messageFilenames[count], fno.fname, MAX_FILENAME_LEN);
 //
-//}
+//            messagesMenu->items[count].name[LANG_EN] = messageFilenames[count];
+//            messagesMenu->items[count].name[LANG_HE] = messageFilenames[count];
+//            messagesMenu->items[count].prepareAction = &PlaySelectedMessageWrapper;
+//            messagesMenu->items[count].submenu = messagePlayMenu;
+//            messagesMenu->items[count].filepath = messageFilenames[count];
 //
+//            count++;
+//        }
+//    }
+//    f_closedir(&dir);
 //
+//    messagesMenu->itemCount = count;
+//    messagesMenu->currentSelection = 0;
+//    currentMenu = messagesMenu;
+
+}
+
+
 //void RunSilentTest(void)
 //{
 //	currentMenu = batteriesTestMenu;
@@ -619,7 +616,7 @@ void MenuLoadSDCardSirens(void)
 	sirenMenu->itemCount = count;
 	sirenMenu->currentSelection = 0;
 	sirenMenu->scrollOffset = 0;
-	currentMenu = sirenMenu;
+	currentMenu = alarmInfoMenu;
 }
 
 void test_count_up_menu()
@@ -676,53 +673,52 @@ void test_count_up_menu()
 //	isPlayAudioFile = true;
 //	xQueueSend(audioQueue, &alarmInfoMenu->textFilename, 0);
 //}
-//
-//void MenuLoadSDCardMessages(void)
-//{
-//    if (!messagesMenu || !messagePlayMenu) return;
-//
-//   ClearMenu(messagesMenu);
-//
-//    static const char* dummyFilenames[] = {
-//        "msg1_hello.wav",
-//        "msg2_alert.wav",
-//        "msg3_night.wav",
-//        "msg4_test.wav",
-//		"msg5_test-00.wav",
-//		"msg6_test-11.wav",
-//		"msg7_test-22.wav",
-//		"msg8_test-33.wav",
-//		"msg9_test-44.wav",
-//		"msg10_test-55.wav",
-//		"msg11_test-66.wav",
-//		"msg12_test-77.wav",
-//		"msg13_test-77.wav",
-//		"msg14_test-77.wav",
-//		"msg15_test-77.wav",
-//		"msg16_test-77.wav"
-//
-//    };
-//
-//    const uint8_t count = sizeof(dummyFilenames) / sizeof(dummyFilenames[0]);
-//
-//    for (uint8_t i = 0; i < count && i < MAX_MENU_ITEMS; ++i)
-//    {
-//        strncpy(messageFilenames[i], dummyFilenames[i], MAX_FILENAME_LEN);
-//
-//        messagesMenu->items[i].name[LANG_EN] = messageFilenames[i];
-//        messagesMenu->items[i].name[LANG_HE] = messageFilenames[i];
+
+void MenuLoadSDCardMessages(void)
+{
+    if (!messagesMenu || !messagePlayMenu) return;
+
+   ClearMenu(messagesMenu);
+
+    static const char* dummyFilenames[] = {
+        "msg1_hello.wav",
+        "msg2_alert.wav",
+        "msg3_night.wav",
+        "msg4_test.wav",
+		"msg5_test-00.wav",
+		"msg6_test-11.wav",
+		"msg7_test-22.wav",
+		"msg8_test-33.wav",
+		"msg9_test-44.wav",
+		"msg10_test-55.wav",
+		"msg11_test-66.wav",
+		"msg12_test-77.wav",
+		"msg13_test-77.wav",
+		"msg14_test-77.wav",
+		"msg15_test-77.wav",
+		"msg16_test-77.wav"
+    };
+
+    const uint8_t count = sizeof(dummyFilenames) / sizeof(dummyFilenames[0]);
+
+    for (uint8_t i = 0; i < count && i < MAX_MENU_ITEMS; ++i)
+    {
+        strncpy(messageFilenames[i], dummyFilenames[i], MAX_FILENAME_LEN);
+
+        messagesMenu->items[i].name[LANG_EN] = messageFilenames[i];
+        messagesMenu->items[i].name[LANG_HE] = messageFilenames[i];
 //        messagesMenu->items[i].prepareAction = &PlayMessageStart;
 //        messagesMenu->items[i].postAction = &PlayMessageStartPost;
 //        messagesMenu->items[i].submenu = messagePlayMenu;
-//        messagesMenu->items[i].filepath = messageFilenames[i];
-//    }
-//
-//    messagesMenu->itemCount = count;
-//    messagesMenu->currentSelection = 0;
-//    currentMenu = messagesMenu;
-//}
-//
-//
+        messagesMenu->items[i].filepath = messageFilenames[i];
+    }
+
+    messagesMenu->itemCount = count;
+    messagesMenu->currentSelection = 0;
+    currentMenu = messagePlayMenu;
+}
+
+
 //void menu_handle_button(ButtonEvent_t event)
 //{
 //
@@ -1100,7 +1096,7 @@ void DisplayMenuItem(uint8_t visualIndex, const MenuItem* item, bool selected, b
     uint16_t text_color = selected ? COLOR_WHITE : COLOR_GREEN;
     uint16_t bg_color   = selected ? COLOR_BLUE  : COLOR_BLACK;
 
-    hx8357_draw_rect(MENU_BASE_X , y_pos,  hx8357_get_width() - (MENU_BASE_X*2), MENU_ITEM_HEIGHT, bg_color);
+    hx8357_fill_rect(MENU_BASE_X , y_pos,  hx8357_get_width() - (MENU_BASE_X*2), MENU_ITEM_HEIGHT, bg_color);
 
     const char* text = (dummy) ? "..." : item->name[GetLanguage()];
     hx8357_write_string(MENU_BASE_X, y_pos, text, &Font_11x18, text_color, bg_color);
@@ -1110,24 +1106,24 @@ void DisplayMenuItem(uint8_t visualIndex, const MenuItem* item, bool selected, b
 
 void Draw_MENU_TYPE_IDLE()
 {
-	uint16_t bg_color = COLOR_BLACK;
+	//uint16_t bg_color = COLOR_BLACK;
 
-	const char* text = currentMenu->screenText[GetLanguage()];
-	if (text) {
-		hx8357_write_alignedX_string(STATUS_BAR_LINE_Y_POS + 20, text, &Font_11x18, COLOR_WHITE, bg_color, ALIGN_CENTER);
-	}
+//	const char* text = currentMenu->screenText[GetLanguage()];
+//	if (text) {
+//		hx8357_write_alignedX_string(STATUS_BAR_LINE_Y_POS + 20, text, &Font_11x18, COLOR_WHITE, bg_color, ALIGN_CENTER);
+//	}
 
-	//StatusDisplay_DrawAll(15, STATUS_BAR_LINE_Y_POS + 50 );
+	StatusDisplay_DrawAll(25, STATUS_BAR_LINE_Y_POS + 50 );
 }
 
 //void Draw_MENU_TYPE_ANNOUNCEMENT(void)
 //{
 //	uint16_t bg_color = COLOR_BLACK;
 //
-//	const char* text = currentMenu->screenText[GetLanguage()];
-//	if (text) {
-//		hx8357_write_alignedX_string(STATUS_BAR_LINE_Y_POS + 20, text, &Font_16x26, COLOR_WHITE, bg_color, ALIGN_CENTER);
-//	}
+////	const char* text = currentMenu->screenText[GetLanguage()];
+////	if (text) {
+////		hx8357_write_alignedX_string(STATUS_BAR_LINE_Y_POS + 20, text, &Font_16x26, COLOR_WHITE, bg_color, ALIGN_CENTER);
+////	}
 //
 //	MenuDrawImage(currentMenu);
 //
@@ -1143,13 +1139,10 @@ void Draw_MENU_TYPE_IDLE()
 void Draw_MENU_TYPE_SIREN_INFO(void)
 {
 	uint16_t bg_color = COLOR_BLACK;
-	const char* text = currentMenu->screenText[GetLanguage()];
-	if (text) {
-		hx8357_write_alignedX_string(STATUS_BAR_LINE_Y_POS + 20, text, &Font_16x26, COLOR_WHITE, bg_color, ALIGN_CENTER);
-	}
+
 	if (currentMenu->textFilename)
 	{
-		hx8357_write_alignedX_string(STATUS_BAR_LINE_Y_POS + 55, currentMenu->textFilename, &Font_11x18, COLOR_MAGENTA, bg_color, ALIGN_CENTER);
+		hx8357_write_alignedX_string(STATUS_BAR_LINE_Y_POS + 45, currentMenu->textFilename, &Font_11x18, COLOR_MAGENTA, bg_color, ALIGN_CENTER);
 	}
 	MenuDrawImage(currentMenu);
 
@@ -1210,11 +1203,6 @@ void Draw_MENU_TYPE_SIREN_INFO(void)
 void Draw_MENU_TYPE_MESSAGE_PLAY(void)
 {
 	uint16_t bg_color = COLOR_BLACK;
-
-	const char* text = currentMenu->screenText[GetLanguage()];
-	if (text) {
-		hx8357_write_alignedX_string(STATUS_BAR_LINE_Y_POS + 10, text, &Font_11x18, COLOR_WHITE, bg_color, ALIGN_CENTER);
-	}
 
 	if (currentMenu->textFilename) {
 		hx8357_write_alignedX_string(STATUS_BAR_LINE_Y_POS + 45, currentMenu->textFilename, &Font_11x18, COLOR_MAGENTA, bg_color, ALIGN_CENTER);
@@ -1295,7 +1283,7 @@ void DrawMenuScreen(bool forceFullRedraw)
     		hx8357_write_alignedX_string(STATUS_BAR_LINE_Y_POS + 5, text, &Font_11x18, COLOR_WHITE, bg_color, ALIGN_CENTER);
     	}
 
-        hx8357_draw_rect(MENU_BASE_X,
+        hx8357_fill_rect(MENU_BASE_X,
         				 MENU_BASE_Y+1,
 						 hx8357_get_width()-(MENU_BASE_X*2),
 						 hx8357_get_height() - (MENU_BASE_Y+1),
@@ -1432,7 +1420,7 @@ void DrawMenuScreen(bool forceFullRedraw)
 void DrawStatusBar()
 {
 	char serialStr[20];
-	hx8357_draw_rect(0, 0, hx8357_get_width(), STATUS_BAR_LINE_Y_POS, COLOR_BLACK);
+	hx8357_fill_rect(0, 0, hx8357_get_width(), STATUS_BAR_LINE_Y_POS, COLOR_BLACK);
 	hx8357_write_alignedX_string(LOGO_Y_POS, "EES-3000", &Font_11x18, COLOR_WHITE, COLOR_BLACK, ALIGN_LEFT);
 	//hx8357_write_string(LOGO_X_POS, LOGO_Y_POS, "EES-3000", &Font_11x18, COLOR_WHITE, COLOR_BLACK);
 
@@ -1442,7 +1430,7 @@ void DrawStatusBar()
 	hx8357_write_alignedX_string(SERIAL_Y_POS, serialStr, &Font_7x10, COLOR_YELLOW, COLOR_BLACK, ALIGN_RIGHT);
 	//hx8357_write_string(SERIAL_X_POS, SERIAL_Y_POS, serialStr, &Font_7x10, COLOR_YELLOW, COLOR_BLACK);
 
-	hx8357_draw_rect(0, STATUS_BAR_LINE_Y_POS, hx8357_get_width(), 1, COLOR_GRAY);
+	hx8357_fill_rect(0, STATUS_BAR_LINE_Y_POS, hx8357_get_width(), 1, COLOR_GRAY);
 }
 
 void UpdateDateTime()

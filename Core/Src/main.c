@@ -844,7 +844,15 @@ void LCDStartTask(void *argument)
 	DrawMenuScreen(true);
 	//hx8357_test_draw_rect();
 
-	SirenPlayFile("TestSirena_1.wav");
+//	MenuLoadSDCardSirens();
+//	DrawMenuScreen(true);
+//	SirenPlayFile("TestSirena_1.wav");
+//	osDelay(3000);
+//
+//	MenuLoadSDCardMessages();
+//	DrawMenuScreen(true);
+//	SirenPlayFile("TestSirena_1.wav");
+
 
   /* Infinite loop */
   for(;;)

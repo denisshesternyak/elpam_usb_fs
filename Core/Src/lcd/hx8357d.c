@@ -234,7 +234,7 @@ void hx8357_fill_screen(uint16_t color)
     hx8357_push_color(color, (uint32_t)HX8357_TFTWIDTH * HX8357_TFTHEIGHT);
 }
 
-void hx8357_draw_rect(uint16_t x, uint16_t y, uint16_t w, uint16_t h, uint16_t color)
+void hx8357_fill_rect(uint16_t x, uint16_t y, uint16_t w, uint16_t h, uint16_t color)
 {
     hx8357_set_window(x, y, w, h);
     hx8357_push_color(color, (uint32_t)w * h);
@@ -343,6 +343,21 @@ void hx8357_draw_image(uint16_t x, uint16_t y, uint16_t w, uint16_t h, const uin
 		HAL_SPI_Transmit(&hspi1, pixel, 2, HAL_MAX_DELAY);
 	}
 	CS_HIGH();
+}
+
+void hx8357_draw_rect(uint16_t x, uint16_t y, uint16_t width, uint16_t height, uint16_t size, uint16_t color)
+{
+	//osMutexAcquire(lcdMutexHandle, osWaitForever);
+
+	uint16_t p_wx = x + width;
+	uint16_t p_wy = y + height;
+
+	hx8357_fill_rect(x, y, width, size, color);
+	hx8357_fill_rect(x, y, size, height, color);
+	hx8357_fill_rect(p_wx, y, size, height, color);
+	hx8357_fill_rect(x, p_wy, width, size, color);
+
+    //osMutexRelease(lcdMutexHandle);
 }
 
 //void hx8357_test_draw_rect(void)
