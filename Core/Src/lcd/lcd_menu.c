@@ -634,7 +634,7 @@ void test_count_up_menu()
     else
     {
         currentMenu->currentSelection--;
-        if (currentMenu->currentSelection < 3 && currentMenu->currentSelection > 0)
+        if (currentMenu->currentSelection < currentMenu->itemCount-MAX_VISIBLE_ITEMS+1 && currentMenu->scrollOffset > 0)
         	currentMenu->scrollOffset--;
     }
 
@@ -646,6 +646,10 @@ void test_count_up_menu()
     {
         direction_up = true;
     }
+
+//    char msg[64];
+//    sprintf(msg, "sel %d, off %d, count %d\r\n", currentMenu->currentSelection, currentMenu->scrollOffset, currentMenu->itemCount);
+//    Print_Msg(msg);
 }
 
 //void sirenPrepareAction(void)
@@ -1095,7 +1099,7 @@ void DisplayMenuItem(uint8_t visualIndex, const MenuItem* item, bool selected, b
     uint16_t text_color = selected ? COLOR_WHITE : COLOR_GREEN;
     uint16_t bg_color   = selected ? COLOR_BLUE  : COLOR_BLACK;
 
-    hx8357_draw_rect(MENU_BASE_X , y_pos,  100 - (MENU_BASE_X*2), MENU_ITEM_HEIGHT, bg_color);
+    hx8357_draw_rect(MENU_BASE_X , y_pos,  hx8357_get_width() - (MENU_BASE_X*2), MENU_ITEM_HEIGHT, bg_color);
 
     const char* text = (dummy) ? "..." : item->name[GetLanguage()];
     hx8357_write_string(MENU_BASE_X, y_pos, text, &Font_11x18, text_color, bg_color);
@@ -1227,32 +1231,55 @@ void Draw_MENU_TYPE_SIREN_INFO(void)
 
 void Draw_MENU_TYPE_LIST()
 {
-    uint16_t bg_color = COLOR_BLACK;
+	static uint8_t old_selection = 255;
+	static uint8_t old_offset = 255;
 
-	bool invisible_up = false;
-	bool invisible_down = false;
-	uint8_t count = currentMenu->itemCount;
-	uint8_t start = currentMenu->scrollOffset;
-	uint8_t end = currentMenu->itemCount;
-	if (end > MAX_VISIBLE_ITEMS)
-	{
-		end = start + MAX_VISIBLE_ITEMS;
-		invisible_down = start < (count - MAX_VISIBLE_ITEMS);
-		invisible_up = start > 0;
-	}
+	uint8_t selection = currentMenu->currentSelection;
+	uint8_t item_count = currentMenu->itemCount;
+	uint8_t offset = currentMenu->scrollOffset;
 
-	const char* text = currentMenu->screenText[GetLanguage()];
-	if (text) {
-		hx8357_write_alignedX_string(STATUS_BAR_LINE_Y_POS + 5, text, &Font_11x18, COLOR_WHITE, bg_color, ALIGN_CENTER);
-	}
+	uint8_t visible_count = (item_count > MAX_VISIBLE_ITEMS) ? MAX_VISIBLE_ITEMS : item_count;
+	uint8_t end_index = offset + visible_count;
 
-	for (uint8_t i = start; i < end; ++i)
-	{
-		uint8_t visualIndex = i - start;
-		bool dummy = (invisible_up && visualIndex == 0) || (invisible_down && visualIndex == MAX_VISIBLE_ITEMS-1);
-		DisplayMenuItem(visualIndex, &currentMenu->items[i], (i == currentMenu->currentSelection), dummy);
-		osDelay(3);
-	}
+	bool show_scroll_up = offset > 0;
+	bool show_scroll_down = (offset + MAX_VISIBLE_ITEMS) < item_count;
+
+	bool selection_changed = old_selection != selection;
+	bool offset_changed = old_offset != offset;
+
+/*
+    if (!selection_changed && !offset_changed)
+    {
+        return;
+    }
+*/
+    if (selection_changed && !offset_changed)
+    {
+        if (old_selection >= offset && old_selection < end_index)
+        {
+            uint8_t visual_index = old_selection - offset;
+            DisplayMenuItem(visual_index, &currentMenu->items[old_selection], false, false);
+        }
+
+        if (selection >= offset && selection < end_index)
+        {
+            uint8_t visual_index = selection - offset;
+            DisplayMenuItem(visual_index, &currentMenu->items[selection], true, false);
+        }
+    }
+    else
+    {
+        for (uint8_t i = offset; i < end_index; ++i)
+        {
+            uint8_t visual_index = i - offset;
+			bool dummy = (show_scroll_up && visual_index == 0) || (show_scroll_down && visual_index == visible_count-1);
+            DisplayMenuItem(visual_index, &currentMenu->items[i], (i == selection), dummy);
+            osDelay(3);
+        }
+    }
+
+	old_selection = selection;
+	old_offset = offset;
 }
 
 void DrawMenuScreen(bool forceFullRedraw)
@@ -1270,11 +1297,16 @@ void DrawMenuScreen(bool forceFullRedraw)
 //						 hx8357_get_height() - (STATUS_BAR_LINE_Y_POS+1),
 //						 bg_color);
 
-        hx8357_draw_rect(0,
-						 STATUS_BAR_LINE_Y_POS+1,
-						 150,
-						 hx8357_get_height() - (STATUS_BAR_LINE_Y_POS+1),
-						 bg_color);
+    	const char* text = currentMenu->screenText[GetLanguage()];
+    	if (text) {
+    		hx8357_write_alignedX_string(STATUS_BAR_LINE_Y_POS + 5, text, &Font_11x18, COLOR_WHITE, bg_color, ALIGN_CENTER);
+    	}
+
+//        hx8357_draw_rect(MENU_BASE_X,
+//        				 MENU_BASE_Y+1,
+//						 hx8357_get_width()-(MENU_BASE_X*2),
+//						 hx8357_get_height() - (MENU_BASE_Y+1),
+//						 bg_color);
         osDelay(1);
 
         if (currentMenu->type == MENU_TYPE_IDLE)
