@@ -83,15 +83,6 @@
 #define MADCTL_BGR 0x08 ///< Blue-Green-Red pixel order
 #define MADCTL_MH 0x04  ///< LCD refresh right to left
 
-#define HX8357_BLACK 		0x0000
-#define HX8357_BLUE 		0x001F
-#define HX8357_RED 			0xF800
-#define HX8357_GREEN 		0x07E0
-#define HX8357_CYAN 		0x07FF
-#define HX8357_MAGENTA		0xF81F
-#define HX8357_YELLOW 		0xFFE0
-#define HX8357_WHITE 		0xFFFF
-
 #define HX8357_BUFFER_SIZE		128
 #define HX8357_BUFFER_HALF_SIZE	64
 
@@ -102,10 +93,21 @@ typedef enum {
     SCREEN_HORIZONTAL_2 = 3    // Orientation 270°
 } ScreenRotation_t;
 
+typedef enum {
+    ALIGN_LEFT,
+    ALIGN_CENTER,
+    ALIGN_RIGHT
+} Alignment;
+
 void hx8357_init(void);
+uint16_t hx8357_get_height(void);
+uint16_t hx8357_get_width(void);
 void hx8357_fill_screen(uint16_t color);
 void hx8357_draw_rect(uint16_t x, uint16_t y, uint16_t w, uint16_t h, uint16_t color);
 void hx8357_write_char(uint16_t x, uint16_t y, char ch, FontDef *font, uint16_t color, uint16_t bgcolor);
 void hx8357_write_string(uint16_t x, uint16_t y, const char* str, FontDef *font, uint16_t color, uint16_t bgcolor);
+void hx8357_write_alignedX_string(uint16_t y, const char* str, FontDef* font, uint16_t textColor, uint16_t bgColor, Alignment align);
+void hx8357_draw_image(uint16_t x, uint16_t y, uint16_t w, uint16_t h, const uint16_t* data);
+//void hx8357_test_draw_rect(void);
 
 #endif /* INC_LCD_HX8357D_H_ */

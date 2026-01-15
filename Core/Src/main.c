@@ -29,6 +29,7 @@
 #include "command_dispatcher.h"
 #include "audio.h"
 #include "hx8357d.h"
+#include "lcd_menu.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -829,42 +830,17 @@ void LCDStartTask(void *argument)
 {
   /* USER CODE BEGIN LCDStartTask */
 	hx8357_init();
-	hx8357_fill_screen(HX8357_BLACK);
-	hx8357_draw_rect(0, 0, 50, 50, HX8357_RED);
-//	hx8357_draw_rect(0, HX8357_TFTHEIGHT-50, 50, 50, HX8357_BLUE);
-//	hx8357_draw_rect((HX8357_TFTWIDTH/2)-25, 0, 50, 50, HX8357_GREEN);
-//	hx8357_draw_rect((HX8357_TFTWIDTH/2)-25, (HX8357_TFTHEIGHT/2)-25, 50, 50, HX8357_WHITE);
-//	hx8357_draw_rect((HX8357_TFTWIDTH/2)-25, HX8357_TFTHEIGHT-50, 50, 50, HX8357_YELLOW);
-//	hx8357_draw_rect(HX8357_TFTWIDTH-50, 0, 50, 50, HX8357_CYAN);
-	hx8357_draw_rect(HX8357_TFTWIDTH-50, HX8357_TFTHEIGHT-50, 50, 50, HX8357_MAGENTA);
-//	const char *msg = "Hello STM32!";
-//	hx8357_write_string(0, 0, msg, &Font_7x10, HX8357_WHITE, HX8357_BLACK);
-//	hx8357_write_string(0, 10, "Next msg", &Font_7x10, HX8357_RED, HX8357_BLACK);
-//	hx8357_write_string(0, 155, "Test blue font, black words", &Font_7x10, HX8357_BLACK, HX8357_BLUE);
-
-	hx8357_write_string(100, 147, "Hello    STM32!", &Font_16x26, HX8357_WHITE, HX8357_BLUE);
-	hx8357_write_string(100, 200, "NEXT MSG", &Font_11x18, HX8357_BLACK, HX8357_RED);
-
-
-	hx8357_draw_rect(0, HX8357_TFTHEIGHT-50, 50, 50, HX8357_BLUE);
-
+	Menu_Init();
+	DrawStatusBar();
+	DrawMenuScreen(true);
+	//hx8357_test_draw_rect();
 
   /* Infinite loop */
   for(;;)
   {
-//	hx8357_fill_screen(HX8357_RED);
-//	osDelay(1000);
-//	hx8357_fill_screen(HX8357_BLUE);
-//	osDelay(1000);
-//	hx8357_fill_screen(HX8357_GREEN);
-//	osDelay(1000);
-//	hx8357_fill_screen(HX8357_YELLOW);
-//	osDelay(1000);
-//	hx8357_fill_screen(HX8357_CYAN);
-//	osDelay(1000);
-//	hx8357_fill_screen(HX8357_MAGENTA);
-//	osDelay(1000);
-	  osDelay(1);
+	  test_count_up_menu();
+	  DrawMenuScreen(true);
+	  osDelay(2000);
   }
   /* USER CODE END LCDStartTask */
 }

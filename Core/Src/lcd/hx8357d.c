@@ -1,4 +1,6 @@
 #include "hx8357d.h"
+#include "lcd_color_rgb565.h"
+#include <string.h>
 
 extern SPI_HandleTypeDef hspi1;
 
@@ -113,6 +115,16 @@ static void hx8357_set_rotation(ScreenRotation_t rotation) {
 	hx8357_send_data(data);
 }
 
+uint16_t hx8357_get_height(void)
+{
+	return LCD_HEIGHT;
+}
+
+uint16_t hx8357_get_width(void)
+{
+	return LCD_WIDTH;
+}
+
 void hx8357_reset(void)
 {
     RST_LOW();
@@ -212,6 +224,8 @@ void hx8357_init(void)
 
     hx8357_send_cmd(HX8357_DISPON);
     HAL_Delay(50);
+
+	hx8357_fill_screen(COLOR_BLACK);
 }
 
 void hx8357_fill_screen(uint16_t color)
@@ -269,9 +283,9 @@ void hx8357_write_char(uint16_t x, uint16_t y, char ch, FontDef *font, uint16_t 
 
 void hx8357_write_string(uint16_t x, uint16_t y, const char* str, FontDef *font, uint16_t color, uint16_t bgcolor) {
     while(*str) {
-        if(x + font->width >= LCD_WIDTH) {
+        if(x + font->width > LCD_WIDTH) {
             x = 0;
-            if(y + font->height >= LCD_HEIGHT) {
+            if(y + font->height > LCD_HEIGHT) {
                 break;
             }
             y += font->height;
@@ -282,3 +296,61 @@ void hx8357_write_string(uint16_t x, uint16_t y, const char* str, FontDef *font,
         str++;
     }
 }
+
+void hx8357_write_alignedX_string(uint16_t y, const char* str, FontDef* font, uint16_t textColor, uint16_t bgColor, Alignment align)
+{
+	uint16_t textWidth = strlen(str) * font->width;
+	uint16_t x = 0;
+
+	switch (align) {
+		case ALIGN_LEFT:
+			x = 0;
+			break;
+		case ALIGN_CENTER:
+			x = (LCD_WIDTH - textWidth) / 2;
+			break;
+		case ALIGN_RIGHT:
+			x = LCD_WIDTH - textWidth;
+			break;
+		default:
+			x = 0;
+			break;
+	}
+
+	hx8357_write_string(x, y, str, font, textColor, bgColor);
+}
+
+void hx8357_draw_image(uint16_t x, uint16_t y, uint16_t w, uint16_t h, const uint16_t* data) {
+    if (w == 0 || h == 0 || x > LCD_WIDTH || y > LCD_HEIGHT) return;
+    if (x + w > LCD_WIDTH)  w = LCD_WIDTH - x;
+    if (y + h > LCD_HEIGHT) h = LCD_HEIGHT - y;
+
+    hx8357_set_window(x, y, w, y);
+
+	DC_DATA();
+	CS_LOW();
+
+    for (uint32_t i = 0; i < w * h; i++)
+    {
+		uint16_t color = data[i];
+		uint8_t r = (color >> 11) & 0x1F;
+		uint8_t g = (color >> 5)  & 0x3F;
+		uint8_t b = color & 0x1F;
+
+		uint8_t pixel[2];
+		pixel[0] = r << 3 | g >> 3;
+		pixel[0] = g << 3 | b;
+		HAL_SPI_Transmit(&hspi1, pixel, 2, HAL_MAX_DELAY);
+	}
+	CS_HIGH();
+}
+
+//void hx8357_test_draw_rect(void)
+//{
+//	hx8357_draw_rect(0, HX8357_TFTHEIGHT-50, 50, 50, HX8357_BLUE);
+//	hx8357_draw_rect((HX8357_TFTWIDTH/2)-25, 0, 50, 50, HX8357_GREEN);
+//	hx8357_draw_rect((HX8357_TFTWIDTH/2)-25, (HX8357_TFTHEIGHT/2)-25, 50, 50, HX8357_WHITE);
+//	hx8357_draw_rect((HX8357_TFTWIDTH/2)-25, HX8357_TFTHEIGHT-50, 50, 50, HX8357_YELLOW);
+//	hx8357_draw_rect(HX8357_TFTWIDTH-50, 0, 50, 50, HX8357_CYAN);
+//	hx8357_draw_rect(HX8357_TFTWIDTH-50, HX8357_TFTHEIGHT-50, 50, 50, HX8357_MAGENTA);
+//}
