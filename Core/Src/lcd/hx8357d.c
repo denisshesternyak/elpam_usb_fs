@@ -1,5 +1,4 @@
 #include "hx8357d.h"
-#include "lcd_color_rgb565.h"
 #include <string.h>
 
 extern SPI_HandleTypeDef hspi1;
@@ -345,17 +344,29 @@ void hx8357_draw_image(uint16_t x, uint16_t y, uint16_t w, uint16_t h, const uin
 	CS_HIGH();
 }
 
-void hx8357_draw_rect(uint16_t x, uint16_t y, uint16_t width, uint16_t height, uint16_t size, uint16_t color)
+void hx8357_outline_rect(uint16_t x, uint16_t y, uint16_t width, uint16_t height, uint16_t size, uint16_t color)
 {
 	//osMutexAcquire(lcdMutexHandle, osWaitForever);
 
-	uint16_t p_wx = x + width;
-	uint16_t p_wy = y + height;
+	uint16_t p_wx = x + width - size;
+	uint16_t p_wy = y + height - size;
 
 	hx8357_fill_rect(x, y, width, size, color);
 	hx8357_fill_rect(x, y, size, height, color);
 	hx8357_fill_rect(p_wx, y, size, height, color);
 	hx8357_fill_rect(x, p_wy, width, size, color);
+
+    //osMutexRelease(lcdMutexHandle);
+}
+
+void hx8357_draw_rect(uint16_t x, uint16_t y, uint16_t width, uint16_t height, uint16_t size, uint16_t outlineColor, uint16_t fillColor)
+{
+	//osMutexAcquire(lcdMutexHandle, osWaitForever);
+
+	uint16_t fill_size = 2*size;
+
+	hx8357_outline_rect(x, y, width, height, size, outlineColor);
+	hx8357_fill_rect(x + size, y + size, width - fill_size, height - fill_size, fillColor);
 
     //osMutexRelease(lcdMutexHandle);
 }

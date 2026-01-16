@@ -841,8 +841,9 @@ void LCDStartTask(void *argument)
 	hx8357_init();
 	Menu_Init();
 	DrawStatusBar();
-	DrawMenuScreen(true);
+	//DrawMenuScreen(true);
 	//hx8357_test_draw_rect();
+
 
 //	MenuLoadSDCardSirens();
 //	DrawMenuScreen(true);
@@ -861,6 +862,7 @@ void LCDStartTask(void *argument)
 //	  DrawMenuScreen(true);
 //	  osDelay(2000);
 
+	  test_menu();
 
 	  osDelay(1);
   }

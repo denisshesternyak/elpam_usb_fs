@@ -21,15 +21,15 @@ void MenuDrawProgress(uint8_t progressPercent)
     const uint16_t width = PROGRESS_BAR_W;
     const uint16_t height = PROGRESS_BAR_H;
 
-    const uint16_t innerX = x + 1;
-    const uint16_t innerY = y + 1;
-    const uint16_t innerW = width - 2;
-    const uint16_t innerH = height - 2;
+    const uint16_t outline = 1;
+    const uint16_t innerX = x + outline;
+    const uint16_t innerY = y + outline;
+    const uint16_t innerW = width - (outline*2);
+    const uint16_t innerH = height - (outline*2);
 	const uint16_t bar_w = (innerW * progressPercent) / 100;
 
     if (!borderDrawn) {
-        hx8357_fill_rect(x, y, width, height, PROGRESS_BORDER_COLOR);
-		hx8357_fill_rect(innerX, innerY, innerW, innerH, PROGRESS_BACKGROUND_COLOR);
+	    hx8357_draw_rect(x, y, width, height, outline, PROGRESS_BORDER_COLOR, PROGRESS_BACKGROUND_COLOR);
         borderDrawn = true;
     }
 
