@@ -17,8 +17,8 @@ static void hx8357_send_data(uint8_t data);
 static void hx8357_set_window(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1);
 static void hx8357_push_color(uint16_t color, uint32_t pixels);
 
-volatile uint16_t LCD_HEIGHT = HX8357_TFTHEIGHT;
-volatile uint16_t LCD_WIDTH	 = HX8357_TFTWIDTH;
+static volatile uint16_t LCD_HEIGHT = HX8357_TFTHEIGHT;
+static volatile uint16_t LCD_WIDTH	= HX8357_TFTWIDTH;
 
 static void hx8357_send_cmd(uint8_t cmd) {
     DC_CMD();

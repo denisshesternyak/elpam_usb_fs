@@ -2,7 +2,23 @@
 #include "lcd_widget_test_ampl_indicator.h"
 
 static const char* label = "Amplifires";
-StatusBasic statusAmpl;
+
+static BasicIndicatorStatus statusAmplifires = {
+	.baseX = 0,
+	.baseY = 0,
+	.items = {
+		{"1", true},
+		{"2", true},
+		{"3", false},
+		{"4", false},
+		{"5", true},
+		{"6", false},
+		{"7", false},
+		{"8", true},
+		{"9", false},
+		{"10", true}
+	}
+};
 
 //static void DrawCenteredLabelWithLines(uint16_t baseX, uint16_t baseY, const char* text, uint16_t width)
 //{
@@ -19,23 +35,19 @@ StatusBasic statusAmpl;
 
 void TestAmplDisplay_DrawAll(uint16_t baseX, uint16_t baseY)
 {
-	//test
-	statusAmpl.items[0] = true;
-	statusAmpl.items[1] = true;
+	statusAmplifires.baseX = baseX;
+	statusAmplifires.baseY = baseY;
+	strcpy(statusAmplifires.label, label);
 
-	statusAmpl.baseX = baseX;
-	statusAmpl.baseY = baseY;
-	strcpy(statusAmpl.label, label);
-
-	TestBasicDisplay_DrawAll(&statusAmpl);
+	TestBasicDisplay_DrawAll(&statusAmplifires);
 }
 
 void TestAmplDisplay_SetStatus(uint8_t index, bool status)
 {
     if (index >= STATUS_COUNT) return;
 
-    if (statusAmpl.items[index] != status) {
-    	statusAmpl.items[index] = status;
-        DrawStatusBox(index, &statusAmpl);
+    if (statusAmplifires.items[index].status != status) {
+    	statusAmplifires.items[index].status = status;
+        DrawStatusBox(index, &statusAmplifires);
     }
 }

@@ -1,16 +1,13 @@
 #include "lcd_widget_test_basic_indicator.h"
 
-void DrawStatusBox(uint8_t index, StatusBasic *status)
+void DrawStatusBox(uint8_t index, BasicIndicatorStatus *status)
 {
     if (index >= STATUS_COUNT || !status) return;
 
-    char text[3];
-    sprintf(text, "%d", index+1);
-    text[2] = 0;
-
+    char *text = status->items[index].label;
     uint16_t rectX = status->baseX + index * (STATUS_BOX_SIZE + STATUS_BOX_SPACING_X);
     uint16_t rectY = status->baseY + STATUS_BOX_SPACING_Y;
-    uint16_t fillColor = status->items[index] ? COLOR_GREEN : COLOR_RED;
+    uint16_t fillColor = status->items[index].status ? COLOR_GREEN : COLOR_RED;
 
 	FontDef *font = &Font_7x10;
 	uint16_t textLen = strlen(text) * font->width;
@@ -21,9 +18,11 @@ void DrawStatusBox(uint8_t index, StatusBasic *status)
     hx8357_draw_rect(rectX, rectY, STATUS_BOX_SIZE, STATUS_BOX_SIZE, 1, COLOR_WHITE, fillColor);
 }
 
-void TestBasicDisplay_DrawAll(StatusBasic *status)
+void TestBasicDisplay_DrawAll(BasicIndicatorStatus *status)
 {
 	if(!status) return;
+
+    char *text = status->label;
 	uint16_t baseX = status->baseX;
 	uint16_t baseY = status->baseY;
 	uint16_t lineWidth = (STATUS_BOX_SIZE * STATUS_COUNT) + (STATUS_BOX_SPACING_X * (STATUS_COUNT - 1));
@@ -31,11 +30,11 @@ void TestBasicDisplay_DrawAll(StatusBasic *status)
 	hx8357_fill_rect(baseX, baseY, lineWidth, 1, COLOR_WHITE);
 
 	FontDef *font = &Font_11x18;
-	uint16_t textWidth = font->width * strlen(status->label);
+	uint16_t textWidth = font->width * strlen(text);
 	uint16_t textX = baseX + (lineWidth - textWidth) / 2;
 	uint16_t textY = baseY - font->height / 2;
 
-	hx8357_write_string(textX, textY, status->label, font, COLOR_WHITE, COLOR_BLACK);
+	hx8357_write_string(textX, textY, text, font, COLOR_WHITE, COLOR_BLACK);
 
 	for (uint8_t i = 0; i < STATUS_COUNT; ++i)
 	{

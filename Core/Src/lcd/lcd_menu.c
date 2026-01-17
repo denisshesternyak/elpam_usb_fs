@@ -1,6 +1,5 @@
 
 
-//#include <lcd_widget_test_drivers_indicator.h>
 #include "main.h"
 #include "lcd_menu.h"
 #include <stdio.h>
@@ -21,7 +20,7 @@
 #include "m2_80x74.h"
 #include "lcd_widget_progress_bar.h"
 //#include "lcd_widget_volume_indicator.h"
-#include "lcd_widget_status_indicator.h"
+#include "lcd_widget_faults_indicator.h"
 #include "lcd_widget_batteries_indicator.h"
 #include "lcd_widget_test_drivers_indicator.h"
 #include "lcd_widget_test_ampl_indicator.h"
@@ -108,15 +107,15 @@ MenuImage menu_microfon_img = {
 #define SERIAL_Y_POS 20
 
 #define STATUS_BAR_LINE_Y_POS  35
-#define TITLE_MENU_Y_POS  STATUS_BAR_LINE_Y_POS + 10
+#define TITLE_MENU_Y_POS  (STATUS_BAR_LINE_Y_POS + 10)
 
-#define IDLE_Y_POS  TITLE_MENU_Y_POS + 25
-#define BAT_Y_POS  TITLE_MENU_Y_POS + 25
-#define AMP_Y_POS  TITLE_MENU_Y_POS + 50
-#define DRV_Y_POS  TITLE_MENU_Y_POS + 50
+#define IDLE_Y_POS  (TITLE_MENU_Y_POS + 25)
+#define BAT_Y_POS  (TITLE_MENU_Y_POS + 25)
+#define AMP_Y_POS  (TITLE_MENU_Y_POS + 50)
+#define DRV_Y_POS  (TITLE_MENU_Y_POS + 50)
 
 #define MENU_BASE_X 20
-#define MENU_BASE_Y TITLE_MENU_Y_POS + 25
+#define MENU_BASE_Y (TITLE_MENU_Y_POS + 25)
 
 #define SERIAL_NUMBER "123456"
 
@@ -656,54 +655,55 @@ void test_count_up_menu()
 
 void test_menu()
 {
-//	currentMenu = testMenu;
-//	DrawMenuScreen(true);
-//	osDelay(5000);
-//
-//	hx8357_fill_rect(20, 40, 440, 280, COLOR_BLACK);
-//
-//	MenuLoadSDCardSirens();
-//	currentMenu = sirenMenu;
-//	DrawMenuScreen(true);
-//	osDelay(5000);
-//
-//	hx8357_fill_rect(20, 40, 440, 280, COLOR_BLACK);
+	bool state = true;
+
+	currentMenu = testMenu;
+	DrawMenuScreen(true);
+	osDelay(5000);
+
+	MenuLoadSDCardSirens();
+	currentMenu = sirenMenu;
+	DrawMenuScreen(true);
+	osDelay(5000);
 
 	currentMenu = batteriesTestMenu;
 	DrawMenuScreen(true);
-	osDelay(5000);
 
-	hx8357_fill_rect(20, 40, 440, 280, COLOR_BLACK);
+	for(uint8_t i = 0; i<5; i++)
+	{
+		BatteriesDisplay_SetStatus(0, state);
+		state = !state;
+		osDelay(1000);
+	}
 
 	currentMenu = idleMenu;
 	DrawMenuScreen(true);
-	osDelay(5000);
 
-	hx8357_fill_rect(20, 40, 440, 280, COLOR_BLACK);
+	for(uint8_t i = 0; i<5; i++)
+	{
+		FaultsDisplay_SetStatus(0, state);
+		state = !state;
+		osDelay(1000);
+	}
 
-//	currentMenu = apmplifiresTestMunu;
-//	DrawMenuScreen(true);
-//
-//	bool state = true;
-//	for(uint8_t i = 0; i<10; i++)
-//	{
-//		TestAmplDisplay_SetStatus(5, state);
-//		state = !state;
-//		osDelay(1000);
-//	}
-//
-//	hx8357_fill_rect(20, 40, 440, 280, COLOR_BLACK);
-//
-//	currentMenu = driversTestMenu;
-//	DrawMenuScreen(true);
-//	for(uint8_t i = 0; i<10; i++)
-//	{
-//		TestDrvDisplay_SetStatus(8, state);
-//		state = !state;
-//		osDelay(1000);
-//	}
-//
-//	hx8357_fill_rect(20, 40, 440, 280, COLOR_BLACK);
+	currentMenu = apmplifiresTestMunu;
+	DrawMenuScreen(true);
+
+	for(uint8_t i = 0; i<5; i++)
+	{
+		TestAmplDisplay_SetStatus(5, state);
+		state = !state;
+		osDelay(1000);
+	}
+
+	currentMenu = driversTestMenu;
+	DrawMenuScreen(true);
+	for(uint8_t i = 0; i<5; i++)
+	{
+		TestDrvDisplay_SetStatus(8, state);
+		state = !state;
+		osDelay(1000);
+	}
 }
 
 //void sirenPrepareAction(void)
@@ -1169,7 +1169,7 @@ void Draw_MENU_TYPE_IDLE()
 //		hx8357_write_alignedX_string(STATUS_BAR_LINE_Y_POS + 20, text, &Font_11x18, COLOR_WHITE, bg_color, ALIGN_CENTER);
 //	}
 
-	StatusDisplay_DrawAll(MENU_BASE_X, IDLE_Y_POS);
+	FaultsDisplay_DrawAll(MENU_BASE_X, IDLE_Y_POS);
 }
 
 //void Draw_MENU_TYPE_ANNOUNCEMENT(void)
@@ -1332,10 +1332,10 @@ void DrawMenuScreen(bool forceFullRedraw)
     {
         uint16_t bg_color = COLOR_BLACK;
 
-//        hx8357_fill_rect(MENU_BASE_X, TITLE_MENU_Y_POS,
-//						 hx8357_get_width() - (MENU_BASE_X*2),
-//						 hx8357_get_height() - TITLE_MENU_Y_POS,
-//						 bg_color);
+        hx8357_fill_rect(MENU_BASE_X, TITLE_MENU_Y_POS,
+						 hx8357_get_width() - (MENU_BASE_X*2),
+						 hx8357_get_height() - TITLE_MENU_Y_POS,
+						 bg_color);
         osDelay(1);
 
     	const char* text = currentMenu->screenText[GetLanguage()];

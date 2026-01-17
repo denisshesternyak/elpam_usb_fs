@@ -14,13 +14,18 @@
 #define STATUS_LABEL_OFFSET_Y     15
 
 typedef struct {
+    const char* label;
+    bool status;
+} IndicatorList;
+
+typedef struct {
 	uint16_t baseX;
 	uint16_t baseY;
 	char label[STATUS_TEXT_SIZE];
-	bool items[STATUS_COUNT];
-}StatusBasic;
+	IndicatorList items[STATUS_COUNT];
+}BasicIndicatorStatus;
 
-void DrawStatusBox(uint8_t index, StatusBasic *status);
-void TestBasicDisplay_DrawAll(StatusBasic *status);
+void DrawStatusBox(uint8_t index, BasicIndicatorStatus *status);
+void TestBasicDisplay_DrawAll(BasicIndicatorStatus *status);
 
 #endif /* INC_LCD_LCD_WIDGET_TEST_BASIC_INDICATOR_H_ */

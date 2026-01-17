@@ -2,27 +2,39 @@
 #include "lcd_widget_test_drivers_indicator.h"
 
 static const char* label = "Drivers";
-StatusBasic statusDrv;
+
+static BasicIndicatorStatus statusDrivers = {
+	.baseX = 0,
+	.baseY = 0,
+	.items = {
+		{"1", true},
+		{"2", true},
+		{"3", false},
+		{"4", false},
+		{"5", true},
+		{"6", false},
+		{"7", false},
+		{"8", true},
+		{"9", false},
+		{"10", true}
+	}
+};
 
 void TestDrvDisplay_DrawAll(uint16_t baseX, uint16_t baseY)
 {
-	//test
-	statusDrv.items[8] = true;
-	statusDrv.items[9] = true;
+	statusDrivers.baseX = baseX;
+	statusDrivers.baseY = baseY;
+	strcpy(statusDrivers.label, label);
 
-	statusDrv.baseX = baseX;
-	statusDrv.baseY = baseY;
-	strcpy(statusDrv.label, label);
-
-	TestBasicDisplay_DrawAll(&statusDrv);
+	TestBasicDisplay_DrawAll(&statusDrivers);
 }
 
 void TestDrvDisplay_SetStatus(uint8_t index, bool status)
 {
     if (index >= STATUS_COUNT) return;
 
-    if (statusDrv.items[index] != status) {
-    	statusDrv.items[index] = status;
-        DrawStatusBox(index, &statusDrv);
+    if (statusDrivers.items[index].status != status) {
+    	statusDrivers.items[index].status = status;
+        DrawStatusBox(index, &statusDrivers);
     }
 }
