@@ -4,10 +4,14 @@ void DrawStatusBox(uint8_t index, BasicIndicatorStatus *status)
 {
     if (index >= STATUS_COUNT || !status) return;
 
-    char *text = status->items[index].label;
-    uint16_t rectX = status->baseX + index * (STATUS_BOX_SIZE + STATUS_BOX_SPACING_X);
-    uint16_t rectY = status->baseY + STATUS_BOX_SPACING_Y;
-    uint16_t fillColor = status->items[index].status ? COLOR_GREEN : COLOR_RED;
+    IndicatorList item = status->items[index];
+    uint16_t baseX = status->baseX;
+    uint16_t baseY = status->baseY;
+
+    const char *text = item.label;
+    uint16_t rectX = baseX + index * (STATUS_BOX_SIZE + STATUS_BOX_SPACING_X);
+    uint16_t rectY = baseY + STATUS_BOX_SPACING_Y;
+    uint16_t fillColor = item.status ? COLOR_GREEN : COLOR_RED;
 
 	FontDef *font = &Font_7x10;
 	uint16_t textLen = strlen(text) * font->width;

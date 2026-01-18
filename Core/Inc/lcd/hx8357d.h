@@ -109,6 +109,7 @@ void hx8357_outline_rect(uint16_t x, uint16_t y, uint16_t width, uint16_t height
 void hx8357_draw_rect(uint16_t x, uint16_t y, uint16_t width, uint16_t height, uint16_t size, uint16_t fillColor, uint16_t outlineColor);
 void hx8357_write_char(uint16_t x, uint16_t y, char ch, FontDef *font, uint16_t color, uint16_t bgcolor);
 void hx8357_write_string(uint16_t x, uint16_t y, const char* str, FontDef *font, uint16_t color, uint16_t bgcolor);
+void hx8357_writeN_string(uint16_t x, uint16_t y, const char* str, size_t len, FontDef* font, uint16_t color, uint16_t bgcolor);
 void hx8357_write_alignedX_string(uint16_t y, const char* str, FontDef* font, uint16_t textColor, uint16_t bgColor, Alignment align);
 void hx8357_draw_image(uint16_t x, uint16_t y, uint16_t w, uint16_t h, const uint16_t* data);
 //void hx8357_test_draw_rect(void);

@@ -6,7 +6,6 @@
 #include "cmsis_os.h"
 //#include "queue.h"
 //#include "lcd_display.h"
-//#include "lcd_widget_report_indicator.h"
 //#include "lcd_widget_siren_info_indicator.h"
 //#include "lcd_widget_password.h"
 //#include "system_status.h"
@@ -24,6 +23,7 @@
 #include "lcd_widget_batteries_indicator.h"
 #include "lcd_widget_test_drivers_indicator.h"
 #include "lcd_widget_test_ampl_indicator.h"
+#include "lcd_widget_report_indicator.h"
 
 //bool isResetPasswordAfterIdle = false;
 //
@@ -56,7 +56,7 @@ Menu* messagesMenu = NULL;
 Menu* sirenMenu = NULL;
 //Menu* announcementMenu = NULL;
 Menu* testMenu = NULL;
-//Menu* reportMenu = NULL;
+Menu* reportMenu = NULL;
 //Menu* maintenanceMenu = NULL;
 Menu* messagePlayMenu = NULL;
 Menu* batteriesTestMenu = NULL;
@@ -113,6 +113,7 @@ MenuImage menu_microfon_img = {
 #define BAT_Y_POS  (TITLE_MENU_Y_POS + 25)
 #define AMP_Y_POS  (TITLE_MENU_Y_POS + 50)
 #define DRV_Y_POS  (TITLE_MENU_Y_POS + 50)
+#define REPORT_Y_POS  (TITLE_MENU_Y_POS + 50)
 
 #define MENU_BASE_X 20
 #define MENU_BASE_Y (TITLE_MENU_Y_POS + 25)
@@ -343,15 +344,15 @@ void Menu_Init(void)
 //	testMenu->buttonHandler = HandleButtonPress;
 //
 //	////////////////////////////////////////////////////////
-//	reportMenu = &menuPool[menuPoolIndex++];
-//	reportMenu->parent = rootMenu;
-//	reportMenu->screenText[LANG_EN] = "Report";
-//	reportMenu->screenText[LANG_HE] = "---";
-//	reportMenu->type = MENU_TYPE_REPORT;
-//	reportMenu->itemCount = 0;
-//	reportMenu->scrollOffset = 0;
+	reportMenu = &menuPool[menuPoolIndex++];
+	reportMenu->parent = rootMenu;
+	reportMenu->screenText[LANG_EN] = "Report";
+	reportMenu->screenText[LANG_HE] = "---";
+	reportMenu->type = MENU_TYPE_REPORT;
+	reportMenu->itemCount = 0;
+	reportMenu->scrollOffset = 0;
 //	reportMenu->buttonHandler = HandleButtonPress;
-//
+
 ////	reportMenu = &menuPool[menuPoolIndex++];
 ////	reportMenu->screenText[LANG_EN] = "Repor";
 ////	reportMenu->screenText[LANG_HE] = "--";
@@ -656,6 +657,16 @@ void test_count_up_menu()
 void test_menu()
 {
 	bool state = true;
+
+	currentMenu = reportMenu;
+	DrawMenuScreen(true);
+
+	for(uint8_t i = 0; i<5; i++)
+	{
+		Report_setIndicator(2, state);
+		state = !state;
+		osDelay(1000);
+	}
 
 	currentMenu = testMenu;
 	DrawMenuScreen(true);
@@ -1208,17 +1219,10 @@ void Draw_MENU_TYPE_SIREN_INFO(void)
 	osDelay(3);
 }
 
-//void Draw_MENU_TYPE_REPORT(void)
-//{
-//	uint16_t bg_color = COLOR_BLACK;
-//	const char* text = currentMenu->screenText[GetLanguage()];
-//
-//	if (text) {
-//		hx8357_write_alignedX_string(STATUS_BAR_LINE_Y_POS + 20, text, &Font_16x26, COLOR_WHITE, bg_color, ALIGN_CENTER);
-//	}
-//
-//	ReportIndicator_DrawAll(10, STATUS_BAR_LINE_Y_POS + 80);
-//}
+void Draw_MENU_TYPE_REPORT(void)
+{
+	ReportIndicator_DrawAll(MENU_BASE_X, REPORT_Y_POS);
+}
 
 void Draw_MENU_TYPE_TEST_BAT(void)
 {
@@ -1359,10 +1363,10 @@ void DrawMenuScreen(bool forceFullRedraw)
         {
 			Draw_MENU_TYPE_SIREN_INFO();
         }
-//        else if (currentMenu->type == MENU_TYPE_REPORT)
-//        {
-//			Draw_MENU_TYPE_REPORT();
-//        }
+        else if (currentMenu->type == MENU_TYPE_REPORT)
+        {
+			Draw_MENU_TYPE_REPORT();
+        }
         else if (currentMenu->type == MENU_TYPE_TEST_BAT)
         {
 			Draw_MENU_TYPE_TEST_BAT();

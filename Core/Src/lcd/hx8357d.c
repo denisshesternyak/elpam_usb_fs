@@ -296,6 +296,17 @@ void hx8357_write_string(uint16_t x, uint16_t y, const char* str, FontDef *font,
     }
 }
 
+void hx8357_writeN_string(uint16_t x, uint16_t y, const char* str, size_t len, FontDef* font, uint16_t color, uint16_t bgcolor)
+{
+    for (size_t i = 0; i < len; ++i)
+    {
+        if (str[i] == '\0') break;
+
+        hx8357_write_char(x, y, str[i], font, color, bgcolor);
+        x += font->width;
+    }
+}
+
 void hx8357_write_alignedX_string(uint16_t y, const char* str, FontDef* font, uint16_t textColor, uint16_t bgColor, Alignment align)
 {
 	uint16_t textWidth = strlen(str) * font->width;
