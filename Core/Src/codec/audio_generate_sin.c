@@ -4,11 +4,11 @@
 #define WAVE_TABLE_SIZE 1024
 #define SAMPLE_RATE     48000
 
-#define FREQ_CH1        826
-#define FREQ_CH2        865
+#define FREQ_CH1        836
+#define FREQ_CH2        856
 
-#define PHASE_INC_CH1	73909228U	//(1U << 32) / (SAMPLE_RATE / FREQ_CH1)
-#define PHASE_INC_CH2	77398889U	//(1U << 32) / (SAMPLE_RATE / FREQ_CH1)
+#define PHASE_INC_CH1	74804013U	//(1U << 32) / (SAMPLE_RATE / FREQ_CH1)
+#define PHASE_INC_CH2	76593583U	//(1U << 32) / (SAMPLE_RATE / FREQ_CH1)
 
 static int16_t wave_table[WAVE_TABLE_SIZE];
 static uint32_t phase_acc_ch1 = 0;

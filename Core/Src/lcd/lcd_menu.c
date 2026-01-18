@@ -18,7 +18,7 @@
 #include "Speaker-1_80x74.h"
 #include "m2_80x74.h"
 #include "lcd_widget_progress_bar.h"
-//#include "lcd_widget_volume_indicator.h"
+#include "lcd_widget_volume_indicator.h"
 #include "lcd_widget_faults_indicator.h"
 #include "lcd_widget_batteries_indicator.h"
 #include "lcd_widget_test_drivers_indicator.h"
@@ -54,7 +54,7 @@ Menu* idleMenu = NULL;
 Menu* rootMenu = NULL;
 Menu* messagesMenu = NULL;
 Menu* sirenMenu = NULL;
-//Menu* announcementMenu = NULL;
+Menu* announcementMenu = NULL;
 Menu* testMenu = NULL;
 Menu* reportMenu = NULL;
 //Menu* maintenanceMenu = NULL;
@@ -259,33 +259,22 @@ void Menu_Init(void)
 //	messagePlayMenu->buttonHandler = HandleButtonPress;
 
 //    //-----------------------------------------------------------------------------------------------------------
-//	announcementMenu = &menuPool[menuPoolIndex++];
-//	announcementMenu->parent = rootMenu;
-//	announcementMenu->currentSelection = 0;
-//	announcementMenu->itemCount = 0;
-//	announcementMenu->scrollOffset = 0;
-//	announcementMenu->type = MENU_TYPE_ANNOUNCEMENT;
-//	announcementMenu->screenText[LANG_EN] = "Announcement";
-//	announcementMenu->screenText[LANG_HE] = "כרזה";
-//	announcementMenu->textFilename = NULL;
-//	announcementMenu->imageData = &menu_microfon_img;
+	announcementMenu = &menuPool[menuPoolIndex++];
+	announcementMenu->parent = rootMenu;
+	announcementMenu->currentSelection = 0;
+	announcementMenu->itemCount = 0;
+	announcementMenu->scrollOffset = 0;
+	announcementMenu->type = MENU_TYPE_ANNOUNCEMENT;
+	announcementMenu->screenText[LANG_EN] = "Announcement";
+	announcementMenu->screenText[LANG_HE] = "כרזה";
+	announcementMenu->textFilename = NULL;
+	announcementMenu->imageData = &menu_microfon_img;
 //	announcementMenu->buttonHandler = VolumeControlButtonHandler;
 
 //	// VolumeIndicator_Init(&volumeIndicator, 30, 250, 420, 30,
 //	// 		             //30,
 //	// 					 system_get_volume(),
 //	// 					 COLOR_DARKGRAY, 0x00FF, 0xC618, 0x0D00, 1, 1);
-//	VolumeIndicator_Init(
-//        &volumeIndicator,
-//        30, 250, 420, 30,
-//        NUM_VOLUME_BARS,      //
-//        COLOR_DARKGRAY,       // barColor
-//        0x00FF,               // bgColor
-//        0xC618,               // inactiveBgColor
-//        0x0D00,               // frameColor
-//        1,                    // frameWidth
-//        1                     // barSpacing
-//    );
 
 
 	testMenu = &menuPool[menuPoolIndex++];
@@ -677,6 +666,10 @@ void test_menu()
 	DrawMenuScreen(true);
 	osDelay(5000);
 
+	currentMenu = announcementMenu;
+	DrawMenuScreen(true);
+	osDelay(5000);
+
 	currentMenu = batteriesTestMenu;
 	DrawMenuScreen(true);
 
@@ -1060,31 +1053,31 @@ void MenuLoadSDCardMessages(void)
 //
 //}
 //
-//// void IncreaseVolume(void)
-//// {
-////     if (currentMenu->type == MENU_TYPE_ANNOUNCEMENT) {
-////         uint8_t level = volumeIndicator.level;
-//
-////         if (level < volumeIndicator.numBars) {
-////             level++;
-////             VolumeIndicator_SetLevel(&volumeIndicator, level);
-//// 			system_set_volume(volumeIndicator.level);
-////         }
-////     }
-//// }
-//
-//// void DecreaseVolume(void)
-//// {
-////     if (currentMenu->type == MENU_TYPE_ANNOUNCEMENT) {
-////         uint8_t level = volumeIndicator.level;
-//
-////         if (level > 0) {
-////             level--;
-////             VolumeIndicator_SetLevel(&volumeIndicator, level);
-//// 			system_set_volume(volumeIndicator.level);
-////         }
-////     }
-//// }
+ void IncreaseVolume(void)
+ {
+     if (currentMenu->type == MENU_TYPE_ANNOUNCEMENT) {
+         uint8_t level = volumeIndicator.level;
+
+         if (level < volumeIndicator.numBars) {
+             level++;
+             VolumeIndicator_SetLevel(level);
+ 			//system_set_volume(volumeIndicator.level);
+         }
+     }
+ }
+
+ void DecreaseVolume(void)
+ {
+     if (currentMenu->type == MENU_TYPE_ANNOUNCEMENT) {
+         uint8_t level = volumeIndicator.level;
+
+         if (level > 0) {
+             level--;
+             VolumeIndicator_SetLevel(level);
+// 			system_set_volume(volumeIndicator.level);
+         }
+     }
+ }
 //
 ////
 ////void IncreaseVolume(void)
@@ -1173,43 +1166,22 @@ void DisplayMenuItem(uint8_t visualIndex, const MenuItem* item, bool selected, b
 
 void Draw_MENU_TYPE_IDLE()
 {
-	//uint16_t bg_color = COLOR_BLACK;
-
-//	const char* text = currentMenu->screenText[GetLanguage()];
-//	if (text) {
-//		hx8357_write_alignedX_string(STATUS_BAR_LINE_Y_POS + 20, text, &Font_11x18, COLOR_WHITE, bg_color, ALIGN_CENTER);
-//	}
-
 	FaultsDisplay_DrawAll(MENU_BASE_X, IDLE_Y_POS);
 }
 
-//void Draw_MENU_TYPE_ANNOUNCEMENT(void)
-//{
-//	uint16_t bg_color = COLOR_BLACK;
-//
-////	const char* text = currentMenu->screenText[GetLanguage()];
-////	if (text) {
-////		hx8357_write_alignedX_string(STATUS_BAR_LINE_Y_POS + 20, text, &Font_16x26, COLOR_WHITE, bg_color, ALIGN_CENTER);
-////	}
-//
-//	MenuDrawImage(currentMenu);
-//
-//
-//	VolumeIndicator_Draw(&volumeIndicator);
-//
-//	// Set the initial level
-//	//uint8_t initial_bars = volume_db_to_bars(system_get_volume());
-//	//VolumeIndicator_SetLevel(&volumeIndicator, initial_bars);
-//
-//}
+void Draw_MENU_TYPE_ANNOUNCEMENT(void)
+{
+	MenuDrawImage(currentMenu);
+	VolumeIndicator_Draw(&volumeIndicator);
+
+	// Set the initial level
+	//uint8_t initial_bars = volume_db_to_bars(system_get_volume());
+	//VolumeIndicator_SetLevel(&volumeIndicator, initial_bars);
+
+}
 
 void Draw_MENU_TYPE_SIREN_INFO(void)
 {
-//	uint16_t bg_color = COLOR_BLACK;
-//	if (currentMenu->textFilename)
-//	{
-//		hx8357_write_alignedX_string(STATUS_BAR_LINE_Y_POS + 45, currentMenu->textFilename, &Font_11x18, COLOR_MAGENTA, bg_color, ALIGN_CENTER);
-//	}
 	MenuDrawImage(currentMenu);
 
 	isPlayAudioFile = true;
@@ -1226,35 +1198,16 @@ void Draw_MENU_TYPE_REPORT(void)
 
 void Draw_MENU_TYPE_TEST_BAT(void)
 {
-// 	uint16_t bg_color = COLOR_BLACK;
-//	const char* text = currentMenu->screenText[GetLanguage()];
-//	if (text) {
-//		hx8357_write_alignedX_string(STATUS_BAR_LINE_Y_POS + 20, text, &Font_16x26, COLOR_WHITE, bg_color, ALIGN_CENTER);
-//	}
-
 	BatteriesDisplay_DrawAll(MENU_BASE_X, BAT_Y_POS);
 }
 
 void Draw_MENU_TYPE_TEST_DRIV(void)
 {
-//	uint16_t bg_color = COLOR_BLACK;
-//	const char* text = currentMenu->screenText[GetLanguage()];
-//	if (text) {
-//		hx8357_write_alignedX_string(STATUS_BAR_LINE_Y_POS + 20, text, &Font_16x26, COLOR_WHITE, bg_color, ALIGN_CENTER);
-//	}
-
 	TestDrvDisplay_DrawAll(MENU_BASE_X, DRV_Y_POS);
 }
 
 void Draw_MENU_TYPE_TEST_AMP(void)
 {
-//	uint16_t bg_color = COLOR_BLACK;
-
-//	const char* text = currentMenu->screenText[GetLanguage()];
-//	if (text) {
-//		hx8357_write_alignedX_string(STATUS_BAR_LINE_Y_POS + 20, text, &Font_16x26, COLOR_WHITE, bg_color, ALIGN_CENTER);
-//	}
-
 	TestAmplDisplay_DrawAll(MENU_BASE_X, AMP_Y_POS);
 }
 
@@ -1355,10 +1308,10 @@ void DrawMenuScreen(bool forceFullRedraw)
 //        {
 //        	 Draw_MENU_TYPE_PASSWORD();
 //        }
-//        else if (currentMenu->type == MENU_TYPE_ANNOUNCEMENT)
-//        {
-//			Draw_MENU_TYPE_ANNOUNCEMENT();
-//        }
+        else if (currentMenu->type == MENU_TYPE_ANNOUNCEMENT)
+        {
+			Draw_MENU_TYPE_ANNOUNCEMENT();
+        }
         else if (currentMenu->type == MENU_TYPE_SIREN_INFO)
         {
 			Draw_MENU_TYPE_SIREN_INFO();
