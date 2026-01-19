@@ -4,10 +4,10 @@
 #define INC_SCREENS_LCD_MENU_H_
 
 //#include "lcd_display.h"
+#include <mcp23008_btns.h>
 #include "lcd_lang.h"
 //#include "ds3231.h"
 //#include "lcd_widget_volume_indicator.h"
-#include "ch423_keys.h"
 #include <stdbool.h>
 
 #define MAX_MENU_ITEMS 	25
@@ -61,12 +61,12 @@ typedef struct Menu {
 } Menu;
 
 //void _basic_init_menu(Menu* m);
-//
-//void menu_handle_button(ButtonEvent_t event);
-//
-//bool hot_key_handle_button(ButtonEvent_t event);
-//
-//void HandleButtonPress(ButtonEvent_t event);
+
+void menu_handle_button(ButtonEvent_t event);
+
+bool hot_key_handle_button(ButtonEvent_t event);
+
+void HandleButtonPress(ButtonEvent_t event);
 //void passwordMenu_HandleButtonPress(ButtonEvent_t event);
 //void alarmInfoMenu_HandleButtonPress(ButtonEvent_t event);
 //

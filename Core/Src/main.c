@@ -30,6 +30,8 @@
 #include "audio.h"
 #include "hx8357d.h"
 #include "lcd_menu.h"
+#include "mcp23008_btns.h"
+#include "queue.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -60,6 +62,7 @@ I2S_HandleTypeDef hi2s2;
 DMA_HandleTypeDef hdma_spi2_tx;
 
 SPI_HandleTypeDef hspi1;
+SPI_HandleTypeDef hspi4;
 
 UART_HandleTypeDef huart2;
 
@@ -89,6 +92,13 @@ osThreadId_t LCDTaskHandle;
 const osThreadAttr_t LCDTask_attributes = {
   .name = "LCDTask",
   .stack_size = 512 * 4,
+  .priority = (osPriority_t) osPriorityLow,
+};
+/* Definitions for InputTask_Name */
+osThreadId_t InputTask_NameHandle;
+const osThreadAttr_t InputTask_Name_attributes = {
+  .name = "InputTask_Name",
+  .stack_size = 128 * 4,
   .priority = (osPriority_t) osPriorityLow,
 };
 /* Definitions for xButtonQueue */
@@ -127,10 +137,12 @@ static void MX_I2C1_Init(void);
 static void MX_I2C2_Init(void);
 static void MX_I2C4_Init(void);
 static void MX_SPI1_Init(void);
+static void MX_SPI4_Init(void);
 void StartDefaultTask(void *argument);
 void UART_Receive_Task(void *argument);
 void AudioPlaybackTask(void *argument);
 void LCDStartTask(void *argument);
+void InputTask(void *argument);
 
 /* USER CODE BEGIN PFP */
 void Print_Msg(const char* msg)
@@ -194,6 +206,7 @@ int main(void)
   MX_I2C4_Init();
   MX_SPI1_Init();
   MX_FATFS_Init();
+  MX_SPI4_Init();
   /* USER CODE BEGIN 2 */
 
   /* USER CODE END 2 */
@@ -243,6 +256,9 @@ int main(void)
 
   /* creation of LCDTask */
   LCDTaskHandle = osThreadNew(LCDStartTask, NULL, &LCDTask_attributes);
+
+  /* creation of InputTask_Name */
+  InputTask_NameHandle = osThreadNew(InputTask, NULL, &InputTask_Name_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -625,6 +641,54 @@ static void MX_SPI1_Init(void)
 }
 
 /**
+  * @brief SPI4 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_SPI4_Init(void)
+{
+
+  /* USER CODE BEGIN SPI4_Init 0 */
+
+  /* USER CODE END SPI4_Init 0 */
+
+  /* USER CODE BEGIN SPI4_Init 1 */
+
+  /* USER CODE END SPI4_Init 1 */
+  /* SPI4 parameter configuration*/
+  hspi4.Instance = SPI4;
+  hspi4.Init.Mode = SPI_MODE_MASTER;
+  hspi4.Init.Direction = SPI_DIRECTION_2LINES;
+  hspi4.Init.DataSize = SPI_DATASIZE_8BIT;
+  hspi4.Init.CLKPolarity = SPI_POLARITY_LOW;
+  hspi4.Init.CLKPhase = SPI_PHASE_1EDGE;
+  hspi4.Init.NSS = SPI_NSS_SOFT;
+  hspi4.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_2;
+  hspi4.Init.FirstBit = SPI_FIRSTBIT_MSB;
+  hspi4.Init.TIMode = SPI_TIMODE_DISABLE;
+  hspi4.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
+  hspi4.Init.CRCPolynomial = 0x0;
+  hspi4.Init.NSSPMode = SPI_NSS_PULSE_ENABLE;
+  hspi4.Init.NSSPolarity = SPI_NSS_POLARITY_LOW;
+  hspi4.Init.FifoThreshold = SPI_FIFO_THRESHOLD_01DATA;
+  hspi4.Init.TxCRCInitializationPattern = SPI_CRC_INITIALIZATION_ALL_ZERO_PATTERN;
+  hspi4.Init.RxCRCInitializationPattern = SPI_CRC_INITIALIZATION_ALL_ZERO_PATTERN;
+  hspi4.Init.MasterSSIdleness = SPI_MASTER_SS_IDLENESS_00CYCLE;
+  hspi4.Init.MasterInterDataIdleness = SPI_MASTER_INTERDATA_IDLENESS_00CYCLE;
+  hspi4.Init.MasterReceiverAutoSusp = SPI_MASTER_RX_AUTOSUSP_DISABLE;
+  hspi4.Init.MasterKeepIOState = SPI_MASTER_KEEP_IO_STATE_DISABLE;
+  hspi4.Init.IOSwap = SPI_IO_SWAP_DISABLE;
+  if (HAL_SPI_Init(&hspi4) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN SPI4_Init 2 */
+
+  /* USER CODE END SPI4_Init 2 */
+
+}
+
+/**
   * @brief USART2 Initialization Function
   * @param None
   * @retval None
@@ -701,11 +765,15 @@ static void MX_GPIO_Init(void)
   /* USER CODE END MX_GPIO_Init_1 */
 
   /* GPIO Ports Clock Enable */
+  __HAL_RCC_GPIOE_CLK_ENABLE();
   __HAL_RCC_GPIOC_CLK_ENABLE();
   __HAL_RCC_GPIOF_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
   __HAL_RCC_GPIOD_CLK_ENABLE();
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(CS_AUDIO_GPIO_Port, CS_AUDIO_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(USB_PWR_EN_GPIO_Port, USB_PWR_EN_Pin, GPIO_PIN_SET);
@@ -715,6 +783,13 @@ static void MX_GPIO_Init(void)
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOB, LCD_CS_Pin|LCD_RESET_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin : CS_AUDIO_Pin */
+  GPIO_InitStruct.Pin = CS_AUDIO_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(CS_AUDIO_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pin : USB_PWR_EN_Pin */
   GPIO_InitStruct.Pin = USB_PWR_EN_Pin;
@@ -841,32 +916,78 @@ void LCDStartTask(void *argument)
 	hx8357_init();
 	Menu_Init();
 	DrawStatusBar();
-	//DrawMenuScreen(true);
-	//hx8357_test_draw_rect();
 
+	ButtonEvent_t event;
 
-//	MenuLoadSDCardSirens();
-//	DrawMenuScreen(true);
-//	SirenPlayFile("TestSirena_1.wav");
-//	osDelay(3000);
-//
-//	MenuLoadSDCardMessages();
-//	DrawMenuScreen(true);
-//	SirenPlayFile("TestSirena_1.wav");
-
+//	uint32_t lastRtcUpdateTick = osKernelGetTickCount();
 
   /* Infinite loop */
-  for(;;)
-  {
-//	  test_count_up_menu();
-//	  DrawMenuScreen(true);
-//	  osDelay(2000);
+	for(;;)
+	{
+//	  test_menu();
+//	  osDelay(1);
 
-	  test_menu();
+		if (xQueueReceive(xButtonQueueHandle, &event, pdMS_TO_TICKS(10)))
+		{
+			if ((event.button != BTN_NONE) && (event.action == BA_PRESSED))
+			{
+				menu_handle_button(event);
+			}
+		}
+		else
+		{
+//			SetIdleMenu();
+		}
 
-	  osDelay(1);
-  }
+//		uint32_t now = osKernelGetTickCount();
+//		if ((now - lastRtcUpdateTick) >= 1000)
+//		{
+//			UpdateDateTime();
+//
+//			if (osMutexAcquire(timeRtcMutexHandle, osWaitForever) == osOK)
+//			{
+//				//ds3231_get_datetime();
+//				osMutexRelease(timeRtcMutexHandle);
+//			}
+//
+//			lastRtcUpdateTick = now;
+//		}
+
+		osDelay(1);
+	}
   /* USER CODE END LCDStartTask */
+}
+
+/* USER CODE BEGIN Header_InputTask */
+/**
+* @brief Function implementing the InputTask_Name thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_InputTask */
+void InputTask(void *argument)
+{
+  /* USER CODE BEGIN InputTask */
+	mcp23008_btns_init();
+
+	ButtonEvent_t event;
+
+  /* Infinite loop */
+	for(;;)
+	{
+//		if (mcp23008_keys_poll(&event))
+//		{
+//			//DrawDebugInfo(&event);
+//
+//			if ((event.button != BTN_NONE) && (event.action == BA_PRESSED))
+//			{
+//				xQueueSend(xButtonQueueHandle, &event, portMAX_DELAY);
+//			}
+//		}
+
+		osDelay(20);
+	}
+  /* USER CODE END InputTask */
 }
 
  /* MPU Configuration */

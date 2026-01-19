@@ -1,22 +1,19 @@
-
-#ifndef INC_KEYS_CH423_KEYS_H_
-#define INC_KEYS_CH423_KEYS_H_
-
+#ifndef INC_KEYS_MCP23008_BTNS_H_
+#define INC_KEYS_MCP23008_BTNS_H_
 
 #include <stdint.h>
 #include <stdbool.h>
 
-#define NUM_KEYS 8
-#define DEBOUNCE_MS 30
-
+#define NUM_KEYS 		16
+#define DEBOUNCE_MS 	20
 
 typedef enum {
     BTN_UP,
     BTN_DOWN,
     BTN_LEFT,
     BTN_RIGHT,
-    BTN_SELECT,//ENTER
-    BTN_BACK, // ESC
+	BTN_ENTER,
+	BTN_ESC,
 
 	BTN_A,
 	BTN_B,
@@ -56,11 +53,10 @@ typedef struct {
     ButtonAction_t action;
 } ButtonEvent_t;
 
-
-void ch423_keys_init(void);
-bool ch423_keys_poll(ButtonEvent_t *out_event);
+void mcp23008_btns_init(void);
+bool mcp23008_keys_poll(ButtonEvent_t *out_event);
 const char* ButtonActionToString(ButtonAction_t ba);
 const char* ButtonToString(Button_t btn) ;
 
 
-#endif /* INC_KEYS_CH423_KEYS_H_ */
+#endif /* INC_KEYS_MCP23008_BTNS_H_ */

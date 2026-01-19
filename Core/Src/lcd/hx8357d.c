@@ -10,7 +10,8 @@ static void DC_DATA() { HAL_GPIO_WritePin(LCD_DC_GPIO_Port, LCD_DC_Pin, GPIO_PIN
 static void RST_LOW() { HAL_GPIO_WritePin(LCD_RESET_GPIO_Port, LCD_RESET_Pin, GPIO_PIN_RESET); }
 static void RST_HIGH(){ HAL_GPIO_WritePin(LCD_RESET_GPIO_Port, LCD_RESET_Pin, GPIO_PIN_SET); }
 static void BLK_ON()  { HAL_GPIO_WritePin(LCD_LED_GPIO_Port, LCD_LED_Pin, GPIO_PIN_SET); }
-//static void BLK_OFF() { HAL_GPIO_WritePin(LCD_LED_GPIO_Port, LCD_LED_Pin, GPIO_PIN_RESET); }
+static void BLK_OFF() { HAL_GPIO_WritePin(LCD_LED_GPIO_Port, LCD_LED_Pin, GPIO_PIN_RESET); }
+
 static void hx8357_set_rotation(ScreenRotation_t rotation);
 static void hx8357_send_cmd(uint8_t cmd);
 static void hx8357_send_data(uint8_t data);
@@ -134,7 +135,7 @@ void hx8357_reset(void)
 
 void hx8357_init(void)
 {
-    BLK_ON();
+	BLK_ON();
     hx8357_reset();
 
     hx8357_send_cmd(HX8357_SWRESET);

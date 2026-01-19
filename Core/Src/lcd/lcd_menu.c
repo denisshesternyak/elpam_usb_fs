@@ -28,15 +28,14 @@
 //bool isResetPasswordAfterIdle = false;
 //
 //extern QueueHandle_t audioQueue;
-//
-//uint32_t lastInteractionTick = 0;
-//const uint32_t INACTIVITY_TIMEOUT_MS = 20000; // 20 sec
-//
-//#define BACKLIGHT_TIMEOUT_MS 10000 // 10 sec
+
+uint32_t lastInteractionTick = 0;
+#define INACTIVITY_TIMEOUT_MS 	20000
+#define BACKLIGHT_TIMEOUT_MS 	10000
 //
 bool isPlayAudioFile = false;
-//bool isIdle = false;
-//bool isBacklightOn = true;
+bool isIdle = false;
+bool isBacklightOn = true;
 
 #define MAX_MENU_POOL 40
 
@@ -120,7 +119,6 @@ MenuImage menu_microfon_img = {
 
 #define SERIAL_NUMBER "123456"
 
-
 ///////////////////////////////////////////////////////////////////
 void RunSilentTest(void);
 void RunBatteriesTest(void);
@@ -129,6 +127,13 @@ void RunDriversTest(void);
 void MenuLoadSDCardSirens(void);
 //void MenuLoadSDCardMessages(void);
 ///////////////////////////////////////////////////////////////////
+
+//static void BLK_ON()  { HAL_GPIO_WritePin(LCD_LED_GPIO_Port, LCD_LED_Pin, GPIO_PIN_SET); }
+//static void BLK_OFF() { HAL_GPIO_WritePin(LCD_LED_GPIO_Port, LCD_LED_Pin, GPIO_PIN_RESET); }
+static void handle_button_up(void);
+static void handle_button_down(void);
+static void handle_button_enter(void);
+static void handle_button_esc(void);
 
 void _basic_init_menu(Menu* m)
 {
@@ -189,7 +194,7 @@ void Menu_Init(void)
 	idleMenu->screenText[LANG_HE] = "---";
 	idleMenu->textFilename  = NULL;
 	idleMenu->itemCount = 0;
-	//idleMenu->buttonHandler = HandleButtonPress;
+	idleMenu->buttonHandler = HandleButtonPress;
 
 //	///////////////////////////////////////////////
     rootMenu = &menuPool[menuPoolIndex++];
@@ -360,7 +365,7 @@ void Menu_Init(void)
     //currentMenu = rootMenu;
 
     // testing
-	//currentMenu = idleMenu;
+	currentMenu = idleMenu;
 
     //currentMenu = sirenMenu;
     //currentMenu = alarmInfoMenu;
@@ -779,32 +784,31 @@ void MenuLoadSDCardMessages(void)
 }
 
 
-//void menu_handle_button(ButtonEvent_t event)
-//{
-//
-//	lastInteractionTick = osKernelGetTickCount();
-//
-//	if (!currentMenu) return;
-//
-//	if (event.action == BA_RELEASED) return;
-//
+void menu_handle_button(ButtonEvent_t event)
+{
+	lastInteractionTick = osKernelGetTickCount();
+
+	if (!currentMenu) return;
+
+	if (event.action == BA_RELEASED) return;
+
 //	if (!isBacklightOn)
 //	{
-//		HAL_GPIO_WritePin(LCD_LED_GPIO_Port, LCD_LED_Pin, GPIO_PIN_SET);
+//		BLK_ON();
 //		isBacklightOn = true;
 //		return;
 //	}
-//
-//	if (hot_key_handle_button(event) == true) return;
-//
-//	if (isIdle == true)
-//	{
+
+	if (hot_key_handle_button(event)) return;
+
+	if (isIdle)
+	{
 //		if(isResetPasswordAfterIdle){
 //			Password_Reset(false);
 //		}
-//
-//		isIdle = false;
-//
+
+		isIdle = false;
+
 //		if (Password_IsCorrect())
 //		{
 //			currentMenu = rootMenu;
@@ -814,159 +818,71 @@ void MenuLoadSDCardMessages(void)
 //			Password_Reset(false);
 //			currentMenu = passwordMenu;
 //		}
-//		currentMenu->currentSelection = 0;
-//		DrawMenuScreen(true);
-//
-//		return;
-//	}
-//
-//	if (currentMenu->buttonHandler) {
-//	    currentMenu->buttonHandler(event);
-//	    return;
-//	}
-//
-//}
-//bool hot_key_handle_button(ButtonEvent_t event)
-//{
-//	switch (event.button)
-//    {
-//		case BTN_TEST:
-//			currentMenu = testMenu;
-//			currentMenu->currentSelection = 0;
-//			DrawMenuScreen(true);
-//			return true;
-//		case BTN_ANNOUNCEMENT:
-//			currentMenu = rootMenu;
-//			currentMenu->currentSelection = 0;
-//			DrawMenuScreen(true);
-//			return true;
-//		case BTN_MESSAGE:
-//			currentMenu = messagesMenu;
-//			currentMenu->currentSelection = 0;
-//			DrawMenuScreen(true);
-//			return true;
-//		case BTN_ALARM:
-//			currentMenu = sirenMenu;
-//			currentMenu->currentSelection = 0;
-//			DrawMenuScreen(true);
-//			return true;
-//		}
-//
-//		return false;
-//}
-//
-//void HandleButtonPress(ButtonEvent_t event)
-//{
-//	 if (!currentMenu) return;
-//
-//    switch(event.button)
-//    {
-//        case BTN_UP:
-//        	 if (currentMenu->itemCount == 0) return;
-//
-//            if (currentMenu->currentSelection > 0)
-//            {
-//                currentMenu->currentSelection--;
-//
-//                if (currentMenu->currentSelection < currentMenu->scrollOffset)
-//                {
-//                    currentMenu->scrollOffset--;
-//                    DrawMenuScreen(true);
-//                }
-//                else
-//				{
-//					DrawMenuScreen(false);
-//				}
-//            }
-//            else
-//            {
-//                currentMenu->currentSelection = currentMenu->itemCount - 1;
-//
-//                if (currentMenu->itemCount > MAX_VISIBLE_ITEMS)
-//                    currentMenu->scrollOffset = currentMenu->itemCount - MAX_VISIBLE_ITEMS;
-//                else
-//                    currentMenu->scrollOffset = 0;
-//
-//                DrawMenuScreen(false);
-//            }
-//            break;
-//
-//
-//        case BTN_DOWN:
-//            if (!currentMenu || currentMenu->itemCount == 0) return;
-//
-//            {
-//                uint8_t oldScroll = currentMenu->scrollOffset;
-//                uint8_t oldSelection = currentMenu->currentSelection;
-//
-//                if (currentMenu->currentSelection < currentMenu->itemCount - 1)
-//                {
-//                    currentMenu->currentSelection++;
-//
-//                    if (currentMenu->currentSelection >= currentMenu->scrollOffset + MAX_VISIBLE_ITEMS)
-//                    {
-//                        currentMenu->scrollOffset++;
-//                    }
-//                }
-//                else
-//                {
-//
-//                    currentMenu->currentSelection = 0;
-//                    currentMenu->scrollOffset = 0;
-//                }
-//
-//
-//                if (currentMenu->scrollOffset != oldScroll)
-//                    DrawMenuScreen(true);
-//                else if (currentMenu->currentSelection != oldSelection)
-//                    DrawMenuScreen(false);
-//            }
-//            break;
-//
-//        case BTN_SELECT:
-//        		if (currentMenu->itemCount == 0) return;
-//
-//				{
-//					MenuItem* item = &currentMenu->items[currentMenu->currentSelection];
-//
-//					if (item == NULL) return;
-//					if (item->prepareAction != NULL) {
-//						item->prepareAction();
-//					}
-//					if (item->submenu != NULL) {
-//						currentMenu = item->submenu;
-//						currentMenu->scrollOffset = 0;
-//						DrawMenuScreen(true);
-//					}
-//					if (item->postAction != NULL) {
-//						item->postAction();
-//					}
-//					return;
-//				}
-//
-//        case BTN_BACK:
-//            if (currentMenu->parent != NULL) {
-//
-//            	if ((currentMenu->type == MENU_TYPE_MESSAGE_PLAY) && (isPlayAudioFile == true))
-//				{
-//					isPlayAudioFile = false;
-//				}
-//
-//                currentMenu = currentMenu->parent;
-//
-//                if (currentMenu->type == MENU_TYPE_IDLE){
-//                    isIdle = true;
-//                }
-//
-//                DrawMenuScreen(true);
-//            }
-//            return;
-//
-//        default:
-//            return;
-//    }
-//}
-//
+		currentMenu = rootMenu;
+		currentMenu->currentSelection = 0;
+		DrawMenuScreen(true);
+
+		return;
+	}
+
+	if (currentMenu->buttonHandler) {
+	    currentMenu->buttonHandler(event);
+	    return;
+	}
+}
+
+bool hot_key_handle_button(ButtonEvent_t event)
+{
+	switch (event.button)
+    {
+	case BTN_TEST:
+		currentMenu = testMenu;
+		currentMenu->currentSelection = 0;
+		DrawMenuScreen(true);
+		return true;
+	case BTN_ANNOUNCEMENT:
+		currentMenu = rootMenu;
+		currentMenu->currentSelection = 0;
+		DrawMenuScreen(true);
+		return true;
+	case BTN_MESSAGE:
+		currentMenu = messagesMenu;
+		currentMenu->currentSelection = 0;
+		DrawMenuScreen(true);
+		return true;
+	case BTN_ALARM:
+		currentMenu = sirenMenu;
+		currentMenu->currentSelection = 0;
+		DrawMenuScreen(true);
+		return true;
+	}
+
+	return false;
+}
+
+void HandleButtonPress(ButtonEvent_t event)
+{
+	if (!currentMenu) return;
+
+    switch(event.button)
+    {
+        case BTN_UP:
+        	handle_button_up();
+        	break;
+        case BTN_DOWN:
+        	handle_button_down();
+        	break;
+        case BTN_ENTER:
+        	handle_button_enter();
+        	break;
+        case BTN_ESC:
+        	handle_button_esc();
+        	break;
+        default:
+        	return;
+    }
+}
+
 //void passwordMenu_HandleButtonPress(ButtonEvent_t event)
 //{
 //	if ((!passwordMenu) && (currentMenu != passwordMenu)) return;
@@ -974,9 +890,9 @@ void MenuLoadSDCardMessages(void)
 //	switch(event.button)
 //	{
 //		//case BTN__BACK:	 Password_Reset(true);      break;
-//		case BTN_BACK:
+//		case BTN_ESC:
 //				Password_Backspace();  break;
-//		case BTN_SELECT:
+//		case BTN_ENTER:
 //						Password_Enter();
 //						if (Password_IsCorrect())
 //						{
@@ -1010,7 +926,7 @@ void MenuLoadSDCardMessages(void)
 //
 //	switch(event.button)
 //	{
-//		case BTN_BACK:
+//		case BTN_ESC:
 //			isPlayAudioFile = false;
 //			if (currentMenu->parent != NULL) {
 //				currentMenu = currentMenu->parent;
@@ -1040,9 +956,9 @@ void MenuLoadSDCardMessages(void)
 //		case BTN_DOWN:
 //			DecreaseVolume(); // VOLUME -
 //			break;
-//		case BTN_SELECT:
+//		case BTN_ENTER:
 //			break;
-//		case BTN_BACK:
+//		case BTN_ESC:
 //			currentMenu = currentMenu->parent;
 //			DrawMenuScreen(true);
 //			break;
@@ -1462,32 +1378,129 @@ void UpdateDateTime()
 //	LCD_WriteString(TIME_X_POS, TIME_Y_POS, timeStr, Font_7x10, COLOR_WHITE, COLOR_BLACK);
 }
 
-//void SetIdleMenu(void)
-//{
-//	return;
-//
-//	if (!isIdle || isBacklightOn)
-//	{
-//		uint32_t now = osKernelGetTickCount();
-//
-//		if (!isIdle && (now - lastInteractionTick >= INACTIVITY_TIMEOUT_MS)) {
-//			isIdle = true;
-//
-//
-//			DrawMenuScreen(true);
-//			lastInteractionTick = now;
-//		}
+void SetIdleMenu(void)
+{
+	if (!isIdle || isBacklightOn)
+	{
+		uint32_t now = osKernelGetTickCount();
+
+		if (now - lastInteractionTick >= INACTIVITY_TIMEOUT_MS) {
+			isIdle = true;
+
+			DrawMenuScreen(true);
+			lastInteractionTick = now;
+		}
 //		else if (isIdle && isBacklightOn && (now - lastInteractionTick >= BACKLIGHT_TIMEOUT_MS)) {
-//			HAL_GPIO_WritePin(LCD_LED_GPIO_Port, LCD_LED_Pin, GPIO_PIN_RESET);
+//			BLK_OFF();
 //			isBacklightOn = false;
 //		}
-//	}
-//}
-//
-//
+	}
+}
+
+
 //void ShowUartCommand(void)
 //{
 //	//LCD_FillRectangle(0, 0, LCD_GetWidth(), STATUS_BAR_LINE_Y_POS -1, COLOR_BLACK);
 //	LCD_WriteString(LOGO_X_POS, LOGO_Y_POS, "EES-3000", &Font_7x10, COLOR_WHITE, COLOR_BLACK);
 //
 //}
+
+
+static void handle_button_up(void)
+{
+	if (currentMenu->itemCount == 0) return;
+
+	if (currentMenu->currentSelection > 0)
+	{
+		currentMenu->currentSelection--;
+
+		if (currentMenu->currentSelection < currentMenu->scrollOffset)
+		{
+			currentMenu->scrollOffset--;
+			DrawMenuScreen(true);
+		}
+		else
+		{
+			DrawMenuScreen(false);
+		}
+	}
+	else
+	{
+		currentMenu->currentSelection = currentMenu->itemCount - 1;
+
+		if (currentMenu->itemCount > MAX_VISIBLE_ITEMS)
+			currentMenu->scrollOffset = currentMenu->itemCount - MAX_VISIBLE_ITEMS;
+		else
+			currentMenu->scrollOffset = 0;
+
+		DrawMenuScreen(false);
+	}
+}
+
+static void handle_button_down(void)
+{
+	if (!currentMenu || currentMenu->itemCount == 0) return;
+
+	uint8_t oldScroll = currentMenu->scrollOffset;
+	uint8_t oldSelection = currentMenu->currentSelection;
+
+	if (currentMenu->currentSelection < currentMenu->itemCount - 1)
+	{
+		currentMenu->currentSelection++;
+
+		if (currentMenu->currentSelection >= currentMenu->scrollOffset + MAX_VISIBLE_ITEMS)
+		{
+			currentMenu->scrollOffset++;
+		}
+	}
+	else
+	{
+		currentMenu->currentSelection = 0;
+		currentMenu->scrollOffset = 0;
+	}
+
+	if (currentMenu->scrollOffset != oldScroll)
+		DrawMenuScreen(true);
+	else if (currentMenu->currentSelection != oldSelection)
+		DrawMenuScreen(false);
+}
+
+static void handle_button_enter(void)
+{
+	if (currentMenu->itemCount == 0) return;
+	MenuItem* item = &currentMenu->items[currentMenu->currentSelection];
+
+	if (item == NULL) return;
+	if (item->prepareAction != NULL) {
+		item->prepareAction();
+	}
+	if (item->submenu != NULL) {
+		currentMenu = item->submenu;
+		currentMenu->scrollOffset = 0;
+		DrawMenuScreen(true);
+	}
+	if (item->postAction != NULL) {
+		item->postAction();
+	}
+}
+
+static void handle_button_esc(void)
+{
+	if (!currentMenu->parent) return;
+
+	if ((currentMenu->type == MENU_TYPE_MESSAGE_PLAY) && (isPlayAudioFile == true))
+	{
+		isPlayAudioFile = false;
+	}
+
+	currentMenu = currentMenu->parent;
+
+	if (currentMenu->type == MENU_TYPE_IDLE){
+		isIdle = true;
+	}
+
+	DrawMenuScreen(true);
+}
+
+
+

@@ -60,6 +60,8 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
+#define CS_AUDIO_Pin GPIO_PIN_3
+#define CS_AUDIO_GPIO_Port GPIOE
 #define USB_PWR_EN_Pin GPIO_PIN_10
 #define USB_PWR_EN_GPIO_Port GPIOD
 #define LCD_LED_Pin GPIO_PIN_8
