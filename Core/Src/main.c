@@ -20,18 +20,18 @@
 #include "main.h"
 #include "cmsis_os.h"
 #include "fatfs.h"
-#include "usb_host.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include <string.h>
+#include "queue.h"
 #include "rs232.h"
 #include "command_dispatcher.h"
 #include "audio.h"
 #include "hx8357d.h"
 #include "lcd_menu.h"
 #include "mcp23008_btns.h"
-#include "queue.h"
+#include "fatfs_sd_spi.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -153,6 +153,8 @@ void Print_Msg(const char* msg)
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+extern uint16_t Timer1, Timer2;
+
 void SirenPlayFile(const char *filename)
 {
 	for (int i = 0; i < 100; ++i)
@@ -326,10 +328,9 @@ void SystemClock_Config(void)
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
   */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI48|RCC_OSCILLATORTYPE_HSI;
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
   RCC_OscInitStruct.HSIState = RCC_HSI_DIV1;
   RCC_OscInitStruct.HSICalibrationValue = 64;
-  RCC_OscInitStruct.HSI48State = RCC_HSI48_ON;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI;
   RCC_OscInitStruct.PLL.PLLM = 4;
@@ -830,8 +831,6 @@ static void MX_GPIO_Init(void)
 /* USER CODE END Header_StartDefaultTask */
 void StartDefaultTask(void *argument)
 {
-  /* init code for USB_HOST */
-  MX_USB_HOST_Init();
   /* USER CODE BEGIN 5 */
   /* Infinite loop */
   for(;;)
@@ -1034,6 +1033,10 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   /* USER CODE END Callback 0 */
   if (htim->Instance == TIM1)
   {
+	if(Timer1 > 0)
+		Timer1--;
+	if(Timer2 > 0)
+		Timer2--;
     HAL_IncTick();
   }
   /* USER CODE BEGIN Callback 1 */

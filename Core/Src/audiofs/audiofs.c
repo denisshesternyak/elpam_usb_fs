@@ -13,10 +13,11 @@ extern Audio_Player_t player;
 
 static FRESULT audiofs_mount_drive(void)
 {
-    FRESULT res = f_mount(&USBHFatFS, (const TCHAR *)USBHPath, 0);
+    //FRESULT res = f_mount(&USBHFatFS, (const TCHAR *)USBHPath, 0);
+	FRESULT res = f_mount(&fs, "", 0);
     if (res == FR_OK)
     {
-        Print_Msg("USB Drive mounted successfully\r\n");
+        Print_Msg("SD Drive mounted successfully\r\n");
     }
     else
     {
@@ -73,7 +74,7 @@ static void audiofs_list_root_directory(void)
 void audiofs_init(void)
 {
 	audiofs_mount_drive();
-//	audiofs_list_root_directory();
+	audiofs_list_root_directory();
 }
 
 void audiofs_close_file(void)

@@ -24,11 +24,7 @@
 /-----------------------------------------------------------------------------*/
 #include "main.h"
 #include "stm32h7xx_hal.h"
-#include "usbh_core.h"
-#include "usbh_msc.h"
 #include "cmsis_os.h" /* _FS_REENTRANT set to 1 and CMSIS API chosen */
-/* Handle for USB Host */
-#define hUSB_Host hUsbHostHS
 
 /*-----------------------------------------------------------------------------/
 / Function Configurations
