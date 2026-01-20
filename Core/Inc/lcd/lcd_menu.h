@@ -50,9 +50,11 @@ typedef struct Menu {
     struct Menu* parent;
 	MenuType type;
 	uint8_t scrollOffset;
+	uint8_t oldOffset;
     MenuItem items[MAX_MENU_ITEMS];
     uint8_t itemCount;
     uint8_t currentSelection;
+    uint8_t oldSelection;
 	const char* screenText[LANG_COUNT];
 	char* textFilename;
 	MenuImage* imageData;
@@ -81,7 +83,7 @@ void ClearMenu(Menu* menu);
 void MenuLoadSDCardMessages(void);
 void MenuLoadSDCardSirens(void);
 //void MenuShowMessages(void);
-//void SetIdleMenu(void);
+void SetIdleMenu(void);
 //void ShowUartCommand(void);
 //
 //

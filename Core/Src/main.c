@@ -918,7 +918,10 @@ void LCDStartTask(void *argument)
 
 	ButtonEvent_t event;
 
+	SetIdleMenu();
+
 //	uint32_t lastRtcUpdateTick = osKernelGetTickCount();
+//	test_menu();
 
   /* Infinite loop */
 	for(;;)
@@ -933,10 +936,10 @@ void LCDStartTask(void *argument)
 				menu_handle_button(event);
 			}
 		}
-		else
-		{
-//			SetIdleMenu();
-		}
+//		else
+//		{
+////			SetIdleMenu();
+//		}
 
 //		uint32_t now = osKernelGetTickCount();
 //		if ((now - lastRtcUpdateTick) >= 1000)
@@ -970,6 +973,7 @@ void InputTask(void *argument)
 	mcp23008_btns_init();
 
 	ButtonEvent_t event;
+	osDelay(1000);
 
   /* Infinite loop */
 	for(;;)
@@ -983,8 +987,44 @@ void InputTask(void *argument)
 //				xQueueSend(xButtonQueueHandle, &event, portMAX_DELAY);
 //			}
 //		}
+//		osDelay(20);
 
-		osDelay(20);
+
+		event.button = BTN_ENTER;
+		event.action = BA_PRESSED;
+		xQueueSend(xButtonQueueHandle, &event, portMAX_DELAY);
+		osDelay(3000);
+
+		event.button = BTN_ESC;
+		event.action = BA_PRESSED;
+		xQueueSend(xButtonQueueHandle, &event, portMAX_DELAY);
+		osDelay(3000);
+
+		event.button = BTN_DOWN;
+		event.action = BA_PRESSED;
+		xQueueSend(xButtonQueueHandle, &event, portMAX_DELAY);
+		osDelay(3000);
+
+
+//		event.button = BTN_TEST;
+//		event.action = BA_PRESSED;
+//		xQueueSend(xButtonQueueHandle, &event, portMAX_DELAY);
+//		osDelay(5000);
+//
+//		event.button = BTN_ANNOUNCEMENT;
+//		event.action = BA_PRESSED;
+//		xQueueSend(xButtonQueueHandle, &event, portMAX_DELAY);
+//		osDelay(5000);
+//
+//		event.button = BTN_MESSAGE;
+//		event.action = BA_PRESSED;
+//		xQueueSend(xButtonQueueHandle, &event, portMAX_DELAY);
+//		osDelay(5000);
+//
+//		event.button = BTN_ALARM;
+//		event.action = BA_PRESSED;
+//		xQueueSend(xButtonQueueHandle, &event, portMAX_DELAY);
+//		osDelay(5000);
 	}
   /* USER CODE END InputTask */
 }
