@@ -918,7 +918,7 @@ void LCDStartTask(void *argument)
 
 	ButtonEvent_t event;
 
-	SetIdleMenu();
+//	SetIdleMenu();
 
 //	uint32_t lastRtcUpdateTick = osKernelGetTickCount();
 //	test_menu();
@@ -975,6 +975,36 @@ void InputTask(void *argument)
 	ButtonEvent_t event;
 	osDelay(1000);
 
+	event.button = BTN_DOWN;
+	event.action = BA_PRESSED;
+	xQueueSend(xButtonQueueHandle, &event, portMAX_DELAY);
+	osDelay(5000);
+
+	event.button = BTN_ENTER;
+			event.action = BA_PRESSED;
+			xQueueSend(xButtonQueueHandle, &event, portMAX_DELAY);
+			osDelay(5000);
+
+			event.button = BTN_DOWN;
+			event.action = BA_PRESSED;
+			xQueueSend(xButtonQueueHandle, &event, portMAX_DELAY);
+			osDelay(5000);
+
+			event.button = BTN_ENTER;
+			event.action = BA_PRESSED;
+			xQueueSend(xButtonQueueHandle, &event, portMAX_DELAY);
+			osDelay(5000);
+
+			event.button = BTN_ESC;
+			event.action = BA_PRESSED;
+			xQueueSend(xButtonQueueHandle, &event, portMAX_DELAY);
+			osDelay(5000);
+
+			event.button = BTN_ESC;
+			event.action = BA_PRESSED;
+			xQueueSend(xButtonQueueHandle, &event, portMAX_DELAY);
+			osDelay(5000);
+
   /* Infinite loop */
 	for(;;)
 	{
@@ -990,20 +1020,7 @@ void InputTask(void *argument)
 //		osDelay(20);
 
 
-		event.button = BTN_ENTER;
-		event.action = BA_PRESSED;
-		xQueueSend(xButtonQueueHandle, &event, portMAX_DELAY);
-		osDelay(3000);
 
-		event.button = BTN_ESC;
-		event.action = BA_PRESSED;
-		xQueueSend(xButtonQueueHandle, &event, portMAX_DELAY);
-		osDelay(3000);
-
-		event.button = BTN_DOWN;
-		event.action = BA_PRESSED;
-		xQueueSend(xButtonQueueHandle, &event, portMAX_DELAY);
-		osDelay(3000);
 
 
 //		event.button = BTN_TEST;

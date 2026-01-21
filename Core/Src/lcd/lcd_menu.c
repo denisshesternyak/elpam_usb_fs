@@ -56,12 +56,14 @@ Menu* sirenMenu = NULL;
 Menu* announcementMenu = NULL;
 Menu* testMenu = NULL;
 Menu* reportMenu = NULL;
-//Menu* maintenanceMenu = NULL;
 Menu* messagePlayMenu = NULL;
 Menu* batteriesTestMenu = NULL;
 Menu* apmplifiresTestMunu = NULL;
 Menu* driversTestMenu = NULL;
 Menu* alarmInfoMenu = NULL;
+Menu* maintenanceMenu = NULL;
+Menu* languageMenu = NULL;
+
 //Menu* passwordMenu = NULL;
 //
 //static uint8_t volumeValue = 10;
@@ -126,6 +128,7 @@ void RunAmplifiresTest(void);
 void RunDriversTest(void);
 void MenuLoadSDCardSirens(void);
 void MenuLoadSDCardMessages(void);
+static void MenuInitLanguage(void);
 ///////////////////////////////////////////////////////////////////
 
 //static void BLK_ON()  { HAL_GPIO_WritePin(LCD_LED_GPIO_Port, LCD_LED_Pin, GPIO_PIN_SET); }
@@ -194,6 +197,8 @@ void Menu_Init(void)
 	apmplifiresTestMunu = &menuPool[menuPoolIndex++];
 	driversTestMenu = &menuPool[menuPoolIndex++];
 	reportMenu = &menuPool[menuPoolIndex++];
+	maintenanceMenu = &menuPool[menuPoolIndex++];
+	languageMenu = &menuPool[menuPoolIndex++];
 
 //	passwordMenu->type = MENU_TYPE_PASSWORD;
 //	passwordMenu->parent = rootMenu;
@@ -219,14 +224,13 @@ void Menu_Init(void)
     rootMenu->screenText[LANG_HE] = "### -Menu- ###";
     rootMenu->textFilename  = NULL;
     rootMenu->buttonHandler = HandleButtonPress;
-    rootMenu->items[0] = (MenuItem){ .name = { "1. Siren", "1. סירנה" }, .prepareAction = &MenuLoadSDCardSirens, .postAction = NULL, .submenu = sirenMenu  };
+    rootMenu->items[0] = (MenuItem){ .name = { "1. Siren", "-Siren- .1" }, .prepareAction = &MenuLoadSDCardSirens, .postAction = NULL, .submenu = sirenMenu  };
     rootMenu->items[1] = (MenuItem){ .name = { "2. Messages", "2. הודעות" }, .prepareAction = &MenuLoadSDCardMessages, .postAction = NULL, .submenu = messagesMenu  };
     rootMenu->items[2] = (MenuItem){ .name = { "3. Announcement", "3. הכרזה" }, .prepareAction = NULL, .postAction = NULL, .submenu = announcementMenu    };
     rootMenu->items[3] = (MenuItem){ .name = { "4. Test", "4. בדיקה" }, .prepareAction = NULL,  .postAction = NULL,.submenu = testMenu    };
     rootMenu->items[4] = (MenuItem){ .name = { "5. Report", "5. דוח" }, .prepareAction = NULL,  .postAction = NULL, .submenu = reportMenu    };
-//    rootMenu->items[5] = (MenuItem){ .name = { "6. Maintenance", "6. תחזוקה" }, .prepareAction = NULL, .postAction = NULL, .submenu = NULL  };
-//    rootMenu->itemCount = 6;
-    rootMenu->itemCount = 5;
+    rootMenu->items[5] = (MenuItem){ .name = { "6. Maintenance", "6. תחזוקה" }, .prepareAction = NULL, .postAction = NULL, .submenu = maintenanceMenu  };
+	rootMenu->itemCount = 6;
 
 //    /////////////////////////////////////////
     // "Siren"
@@ -292,19 +296,19 @@ void Menu_Init(void)
 
 
 	testMenu->parent = rootMenu;
-	testMenu->screenText[LANG_EN] = "### Test ###";
-	testMenu->screenText[LANG_HE] = "### -Test- ###";
+	testMenu->screenText[LANG_EN] = "### Tests ###";
+	testMenu->screenText[LANG_HE] = "### -Tests- ###";
 	testMenu->type = MENU_TYPE_LIST;
+	testMenu->parent = rootMenu;
+	testMenu->currentSelection = 0;
+	testMenu->scrollOffset = 0;
+	testMenu->buttonHandler = HandleButtonPress;
 	testMenu->items[0] = (MenuItem){ .name = { "1. Silent Test", "" },     .postAction = &RunSilentTest, .submenu = NULL    };
 	testMenu->items[1] = (MenuItem){ .name = { "2. Batteries Test", "" },  .postAction = &RunBatteriesTest, .submenu = NULL    };
 	testMenu->items[2] = (MenuItem){ .name = { "3. Amplifiers Test", "" }, .postAction = &RunAmplifiresTest,   .submenu = NULL    };
 	testMenu->items[3] = (MenuItem){ .name = { "4. Drivers Test", "" },    .postAction = &RunDriversTest, .submenu = NULL  };
-	testMenu->parent = rootMenu;
-	testMenu->currentSelection = 0;
 	testMenu->itemCount = 4;
-	testMenu->scrollOffset = 0;
-	testMenu->buttonHandler = HandleButtonPress;
-//
+
 //	//---------------------------------------------------------------
 	batteriesTestMenu->parent = testMenu;
 	batteriesTestMenu->screenText[LANG_EN] = "### Batteries Test ###";
@@ -352,6 +356,7 @@ void Menu_Init(void)
 	reportMenu->screenText[LANG_EN] = "### Report ###";
 	reportMenu->screenText[LANG_HE] = "### -Report- ###";
 	reportMenu->type = MENU_TYPE_REPORT;
+	reportMenu->currentSelection = 0;
 	reportMenu->itemCount = 0;
 	reportMenu->scrollOffset = 0;
 	reportMenu->buttonHandler = HandleButtonPress;
@@ -359,19 +364,30 @@ void Menu_Init(void)
 ////	reportMenu = &menuPool[menuPoolIndex++];
 ////	reportMenu->screenText[LANG_EN] = "Repor";
 ////	reportMenu->screenText[LANG_HE] = "--";
-////
-////
-////	maintenanceMenu = &menuPool[menuPoolIndex++];
-////	maintenanceMenu->screenText[LANG_EN] = "Maintenance";
-////	maintenanceMenu->screenText[LANG_HE] = "--";
-//
-//	rootMenu->items[0].submenu = sirenMenu;
-//	rootMenu->items[1].submenu = messagesMenu;
-//	rootMenu->items[2].submenu = announcementMenu;
-//	rootMenu->items[3].submenu = testMenu;
-//	rootMenu->items[4].submenu = reportMenu;
-//
-    currentMenu = rootMenu;
+
+	maintenanceMenu->parent = rootMenu;
+	maintenanceMenu->screenText[LANG_EN] = "### Maintenance ###";
+	maintenanceMenu->screenText[LANG_HE] = "### -Maintenance- ###";
+	maintenanceMenu->type = MENU_TYPE_LIST;
+	maintenanceMenu->currentSelection = 0;
+	maintenanceMenu->scrollOffset = 0;
+	maintenanceMenu->buttonHandler = HandleButtonPress;
+	maintenanceMenu->items[0] = (MenuItem){ .name = { "1. Time & Date", "1. Time & Date" },     .prepareAction = NULL, .postAction = NULL, .submenu = NULL    };
+	maintenanceMenu->items[1] = (MenuItem){ .name = { "2. Language select", "2. Language select" }, .prepareAction = &MenuInitLanguage, .postAction = NULL, .submenu = languageMenu    };
+	maintenanceMenu->itemCount = 2;
+
+	languageMenu->parent = maintenanceMenu;
+	languageMenu->screenText[LANG_EN] = "### Language ###";
+	languageMenu->screenText[LANG_HE] = "### -Language- ###";
+	languageMenu->type = MENU_TYPE_LIST;
+	maintenanceMenu->currentSelection = 0;
+	languageMenu->itemCount = 0;
+	languageMenu->scrollOffset = 0;
+	languageMenu->buttonHandler = HandleButtonPress;
+
+    //currentMenu = rootMenu;
+	currentMenu = maintenanceMenu;
+	DrawMenuScreen(true);
 
     // testing
 //	currentMenu = idleMenu;
@@ -626,7 +642,6 @@ void MenuLoadSDCardSirens(void)
 	currentMenu = alarmInfoMenu;
 }
 
-
 void MenuLoadSDCardMessages(void)
 {
     if (!messagesMenu || !messagePlayMenu) return;
@@ -670,6 +685,32 @@ void MenuLoadSDCardMessages(void)
     messagesMenu->currentSelection = 0;
     messagesMenu->scrollOffset = 0;
     currentMenu = messagePlayMenu;
+}
+
+void MenuInitLanguage(void)
+{
+	if (!languageMenu) return;
+
+	ClearMenu(languageMenu);
+
+	for (uint8_t i = 0; i < LANG_COUNT && i < MAX_MENU_ITEMS; ++i)
+	{
+		char langSel = (GetLanguage() == i) ? '*' : ' ';
+		sprintf(messageFilenames[i], "%d. %s %c", i+1, LanguageToString(i), langSel);
+		//strncpy(messageFilenames[i], LanguageToString(i), MAX_FILENAME_LEN);
+
+		languageMenu->items[i].name[LANG_EN] = messageFilenames[i];
+		languageMenu->items[i].name[LANG_HE] = messageFilenames[i];
+		//sirenMenu->items[i].prepareAction = &sirenPrepareAction;
+		//sirenMenu->items[i].postAction = &sirenPostAction;
+		//sirenMenu->items[i].submenu = alarmInfoMenu;
+		languageMenu->items[i].filepath = messageFilenames[i];
+	}
+
+	languageMenu->itemCount = LANG_COUNT;
+//	languageMenu->currentSelection = 0;
+//	languageMenu->scrollOffset = 0;
+	//currentMenu = alarmInfoMenu;
 }
 
 void test_count_up_menu()
@@ -1096,8 +1137,10 @@ void DisplayMenuItem(uint8_t visualIndex, const MenuItem* item, bool selected, b
     hx8357_fill_rect(MENU_BASE_X , y_pos,  hx8357_get_width() - (MENU_BASE_X*2), MENU_ITEM_HEIGHT, bg_color);
 
     const char* text = (dummy) ? "..." : item->name[GetLanguage()];
-    hx8357_write_string(MENU_BASE_X, y_pos, text, &Font_11x18, text_color, bg_color);
+    //hx8357_write_string(MENU_BASE_X, y_pos, text, &Font_11x18, text_color, bg_color);
 
+    Alignment align = (currentMenu == languageMenu || currentMenu == maintenanceMenu) ? ALIGN_LEFT : (GetLanguage() == LANG_EN) ? ALIGN_LEFT : ALIGN_RIGHT;
+    hx8357_write_alignedX_string(MENU_BASE_X, y_pos, text, &Font_11x18, text_color, bg_color, align);
 }
 //#define DEBUG_PRINT_BUTTON_STATE_2
 
@@ -1153,7 +1196,7 @@ void Draw_MENU_TYPE_MESSAGE_PLAY(void)
 	uint16_t bg_color = COLOR_BLACK;
 
 	if (currentMenu->textFilename) {
-		hx8357_write_alignedX_string(STATUS_BAR_LINE_Y_POS + 45, currentMenu->textFilename, &Font_11x18, COLOR_MAGENTA, bg_color, ALIGN_CENTER);
+		hx8357_write_alignedX_string(0, STATUS_BAR_LINE_Y_POS + 45, currentMenu->textFilename, &Font_11x18, COLOR_MAGENTA, bg_color, ALIGN_CENTER);
 	}
 
 	MenuDrawImage(currentMenu);
@@ -1233,7 +1276,7 @@ void DrawMenuScreen(bool forceFullRedraw)
 
     	const char* text = currentMenu->screenText[GetLanguage()];
     	if (text) {
-    		hx8357_write_alignedX_string(TITLE_MENU_Y_POS, text, &Font_11x18, COLOR_WHITE, bg_color, ALIGN_CENTER);
+    		hx8357_write_alignedX_string(0, TITLE_MENU_Y_POS, text, &Font_11x18, COLOR_WHITE, bg_color, ALIGN_CENTER);
     	}
 
         if (currentMenu->type == MENU_TYPE_IDLE)
@@ -1339,13 +1382,13 @@ void DrawStatusBar()
 {
 	char serialStr[20];
 	hx8357_fill_rect(0, 0, hx8357_get_width(), STATUS_BAR_LINE_Y_POS, COLOR_BLACK);
-	hx8357_write_alignedX_string(LOGO_Y_POS, "EES-3000", &Font_11x18, COLOR_WHITE, COLOR_BLACK, ALIGN_LEFT);
+	hx8357_write_alignedX_string(0, LOGO_Y_POS, "EES-3000", &Font_11x18, COLOR_WHITE, COLOR_BLACK, ALIGN_LEFT);
 	//hx8357_write_string(LOGO_X_POS, LOGO_Y_POS, "EES-3000", &Font_11x18, COLOR_WHITE, COLOR_BLACK);
 
 	UpdateDateTime();
 
 	snprintf(serialStr, sizeof(serialStr), "Serial: %s", SERIAL_NUMBER);
-	hx8357_write_alignedX_string(SERIAL_Y_POS, serialStr, &Font_7x10, COLOR_YELLOW, COLOR_BLACK, ALIGN_RIGHT);
+	hx8357_write_alignedX_string(0, SERIAL_Y_POS, serialStr, &Font_7x10, COLOR_YELLOW, COLOR_BLACK, ALIGN_RIGHT);
 	//hx8357_write_string(SERIAL_X_POS, SERIAL_Y_POS, serialStr, &Font_7x10, COLOR_YELLOW, COLOR_BLACK);
 
 	hx8357_fill_rect(0, STATUS_BAR_LINE_Y_POS-1, hx8357_get_width(), 1, COLOR_GRAY);
@@ -1354,7 +1397,7 @@ void DrawStatusBar()
 void UpdateDateTime()
 {
 	//LCD_FillRectangle(TIME_X_POS, TIME_Y_POS, 235, TIME_HEIGHT, COLOR_BLACK);
-	hx8357_write_alignedX_string(TIME_Y_POS, "DD/MM/YY hh:mm", &Font_7x10, COLOR_YELLOW, COLOR_BLACK, ALIGN_RIGHT);
+	hx8357_write_alignedX_string(0, TIME_Y_POS, "DD/MM/YY hh:mm", &Font_7x10, COLOR_YELLOW, COLOR_BLACK, ALIGN_RIGHT);
 	return;
 
 //	uint16_t year = time_rtc.year;
@@ -1461,14 +1504,23 @@ static void handle_button_enter(void)
 	MenuItem* item = &currentMenu->items[currentMenu->currentSelection];
 	if (!item) return;
 
+	if(currentMenu == languageMenu)
+	{
+		Language lang = (currentMenu->currentSelection == LANG_EN) ? LANG_EN : LANG_HE;
+		SetLanguage(lang);
+		MenuInitLanguage();
+		DrawMenuScreen(false);
+		return;
+	}
+
 	if (item->prepareAction) {
 		item->prepareAction();
 	}
 
 	if (item->submenu) {
 		currentMenu = item->submenu;
-//		currentMenu->scrollOffset = 0;
-//		currentMenu->currentSelection = 0;
+		currentMenu->scrollOffset = 0;
+		currentMenu->currentSelection = 0;
 		DrawMenuScreen(true);
 	}
 

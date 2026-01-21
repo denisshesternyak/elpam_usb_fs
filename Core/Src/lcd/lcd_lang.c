@@ -1,16 +1,16 @@
-/*
- * lcd_lang.c
- *
- *  Created on: Jun 19, 2025
- *      Author: roman
- */
-
-
 #include "lcd_lang.h"
-
 
 static Language currentLanguage = LANG_EN;
 
+const char* LanguageToString(Language lang)
+{
+    switch(lang) {
+        case LANG_EN:   return "ENGLISH";
+        case LANG_HE:   return "HEBREW";
+        default: 		return "";
+    }
+    return "";
+}
 
 void SetLanguage(Language lang) {
     
@@ -19,7 +19,6 @@ void SetLanguage(Language lang) {
     }
     
 }
-
 
 Language GetLanguage(void) {
     return currentLanguage;

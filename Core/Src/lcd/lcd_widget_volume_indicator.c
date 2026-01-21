@@ -13,7 +13,7 @@ void draw_txt_volume()
 {
 	sprintf(debug_msg, "level:%d   Volume: %d dB", volumeIndicator.level, valid_volume_levels_tmp[volumeIndicator.level]);
 
-	hx8357_write_alignedX_string(200, debug_msg, &Font_11x18, COLOR_YELLOW, COLOR_BLACK, ALIGN_CENTER);
+	hx8357_write_alignedX_string(0, 200, debug_msg, &Font_11x18, COLOR_YELLOW, COLOR_BLACK, ALIGN_CENTER);
 }
 
 static void fill_single_bar(uint8_t index)
@@ -26,7 +26,7 @@ static void fill_single_bar(uint8_t index)
 	hx8357_fill_rect(barX, barY, barW - VOLUME_BAR_SPACING_X, barH, COLOR_BLUE);
 
 	sprintf(debug_msg, "Vol: %-3d dB, Level: %-3d", valid_volume_levels_tmp[index], volumeIndicator.level);
-	hx8357_write_alignedX_string(200, debug_msg, &Font_11x18, COLOR_YELLOW, COLOR_BLACK, ALIGN_CENTER);
+	hx8357_write_alignedX_string(0, 200, debug_msg, &Font_11x18, COLOR_YELLOW, COLOR_BLACK, ALIGN_CENTER);
 
 //	osDelay(3);
 }

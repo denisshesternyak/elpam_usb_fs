@@ -308,27 +308,27 @@ void hx8357_writeN_string(uint16_t x, uint16_t y, const char* str, size_t len, F
     }
 }
 
-void hx8357_write_alignedX_string(uint16_t y, const char* str, FontDef* font, uint16_t textColor, uint16_t bgColor, Alignment align)
+void hx8357_write_alignedX_string(uint16_t x, uint16_t y, const char* str, FontDef* font, uint16_t textColor, uint16_t bgColor, Alignment align)
 {
 	uint16_t textWidth = strlen(str) * font->width;
-	uint16_t x = 0;
+	uint16_t dx = 0;
 
 	switch (align) {
 		case ALIGN_LEFT:
-			x = 0;
+			dx = x;
 			break;
 		case ALIGN_CENTER:
-			x = (LCD_WIDTH - textWidth) / 2;
+			dx = (LCD_WIDTH - textWidth) / 2;
 			break;
 		case ALIGN_RIGHT:
-			x = LCD_WIDTH - textWidth;
+			dx = LCD_WIDTH - textWidth - x;
 			break;
 		default:
-			x = 0;
+			dx = x;
 			break;
 	}
 
-	hx8357_write_string(x, y, str, font, textColor, bgColor);
+	hx8357_write_string(dx, y, str, font, textColor, bgColor);
 }
 
 void hx8357_draw_image(uint16_t x, uint16_t y, uint16_t w, uint16_t h, const uint16_t* data) {
