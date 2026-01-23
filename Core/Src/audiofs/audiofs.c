@@ -6,15 +6,15 @@ static void audiofs_unmount_drive(void);
 static void audiofs_list_root_directory(void);
 static void audiofs_read_wav_header(WAV_BaseHeader_t *header);
 
-FATFS fs;
+FATFS fss;
 DIR dir;
-FILINFO fno;
+FILINFO fnoo;
 extern Audio_Player_t player;
 
 static FRESULT audiofs_mount_drive(void)
 {
     //FRESULT res = f_mount(&USBHFatFS, (const TCHAR *)USBHPath, 0);
-	FRESULT res = f_mount(&fs, "", 0);
+	FRESULT res = f_mount(&fss, "", 0);
     if (res == FR_OK)
     {
         Print_Msg("SD Drive mounted successfully\r\n");
@@ -52,18 +52,18 @@ static void audiofs_list_root_directory(void)
 
     for (;;)
     {
-        res = f_readdir(&dir, &fno);
-        if (res != FR_OK || fno.fname[0] == 0)
+        res = f_readdir(&dir, &fnoo);
+        if (res != FR_OK || fnoo.fname[0] == 0)
             break;
 
-        if (fno.fattrib & AM_DIR)
+        if (fnoo.fattrib & AM_DIR)
         {
-            sprintf(msg, "  <DIR>  %s\r\n", fno.fname);
+            sprintf(msg, "  <DIR>  %s\r\n", fnoo.fname);
         }
         else
         {
-        	sprintf(msg, "%s\r\n", fno.fname);
-            //audiofs_read_wav_header(fno.fname);
+        	sprintf(msg, "%s\r\n", fnoo.fname);
+            //audiofs_read_wav_header(fnoo.fname);
         }
         Print_Msg(msg);
     }

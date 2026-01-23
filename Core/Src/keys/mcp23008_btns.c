@@ -59,9 +59,6 @@ void mcp23008_btns_init(void)
     char msg[64];
     Print_Msg("mcp23008_btns_init\r\n");
 
-    sprintf(msg, "0x00, 0x06, 0x09: 0x%02x 0x%02x 0x%02x\r\n", mcp23008_read_reg(0x00), mcp23008_read_reg(0x06), mcp23008_read_reg(0x09));
-    Print_Msg(msg);
-
     mcp23008_init_keyboard();
 
     sprintf(msg, "0x00, 0x06, 0x09: 0x%02x 0x%02x 0x%02x\r\n", mcp23008_read_reg(0x00), mcp23008_read_reg(0x06), mcp23008_read_reg(0x09));
