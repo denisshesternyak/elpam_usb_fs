@@ -116,5 +116,6 @@ void PlayMessageEnd(void);
 //void DrawDebugInfo(const ButtonEvent_t* event);
 
 void test_count_up_menu();
+void UpdateProgressBar(uint8_t value);
 
 #endif /* INC_SCREENS_LCD_MENU_H_ */

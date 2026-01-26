@@ -111,7 +111,7 @@ void rs232_process(void)
 	{
 		uint32_t duration = HAL_GetTick() - player.start_time_arming;
 		player.is_arming = duration < ARMING_TIME;
-//		if(!player.is_arming)Print_Msg("ARM time's up\r\n");
+		if(!player.is_arming)Print_Msg("ARM time's up\r\n");
 	}
 }
 

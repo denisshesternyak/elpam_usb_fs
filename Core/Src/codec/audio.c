@@ -12,19 +12,27 @@
 
 extern I2S_HandleTypeDef hi2s2;
 Audio_Player_t player;
-extern interval_timer_t interval_timer;
+//extern interval_timer_t interval_timer;
 extern osMessageQueueId_t xAudioQueueHandle;
+//extern osMessageQueueId_t xDisplayQueueHandle;
 
 static volatile uint32_t start_play;
 static uint8_t dma_buffer[AUDIO_BUFFER_SIZE] __attribute__((aligned(32)));
-
 
 // List of acceptable levels
 const uint8_t valid_volume_levels[] = {
     80, 83, 86, 89, 92, 95, 98, 101, 104, 107, 110, 113, 116, 119, 122
 };
 
-static void audio_playback_duration(void);
+static void audio_start_playback(void);
+static void audio_play_playback();
+static void audio_stop_playback(void);
+static void audio_pause_playback(void);
+
+//static void audio_start_record(void);
+//static void audio_stop_record(void);
+
+//static void audio_playback_duration(void);
 
 //static bool audio_get_track_name();
 //
@@ -57,6 +65,7 @@ void audio_init(void)
 {
     memset(&player, 0, sizeof(player));
     player.new_volume = DEF_VALUE_VOLUME;
+	player.count_progree = 12;
 
     audio_init_sin_table();
 
@@ -73,6 +82,10 @@ void audio_init(void)
 
 void audio_process(AudioEvent_t event)
 {
+//	char msg[64];
+//	sprintf(msg, "audio_process: %d\r\n", event);
+//	Print_Msg(msg);
+
 	switch(event)
 	{
 	case AUDIO_IDLE:
@@ -131,21 +144,27 @@ void audio_start_playback(void)
 
 	if(player.new_volume != player.current_volume) audio_set_volume(player.new_volume);
 
-    Print_Msg("Playing...");
 //    start_play = HAL_GetTick();
 
-	hi2s2.Init.MCLKOutput = I2S_MCLKOUTPUT_ENABLE;
-	HAL_I2S_Init(&hi2s2);
-    HAL_I2S_Transmit_DMA(&hi2s2, (uint16_t*)dma_buffer, AUDIO_HALF_BUFFER_SIZE);
+//	hi2s2.Init.MCLKOutput = I2S_MCLKOUTPUT_ENABLE;
+//	HAL_I2S_Init(&hi2s2);
+//    HAL_I2S_Transmit_DMA(&hi2s2, (uint16_t*)dma_buffer, AUDIO_HALF_BUFFER_SIZE);
 
     player.is_playing = true;
     player.audio_state = AUDIO_PLAY;
     xQueueSend(xAudioQueueHandle, &player.audio_state, portMAX_DELAY);
+
+//	TaskEvent event;
+//	event.data.value_progress = 0;
+//	event.type = EVENT_PROGRESS_UPDATE;
+//    xQueueSend(xDisplayQueueHandle, &event, portMAX_DELAY);
 }
 
 void audio_play_playback()
 {
-	if (!player.is_playing || player.buff_state == BUFFER_IDLE) return;
+//	Print_Msg("AUDIO_PLAY\r\n");
+
+//	if (!player.is_playing || player.buff_state == BUFFER_IDLE) return;
 
 //	UINT br;
 	uint32_t offset = (player.buff_state == BUFFER_HALF) ? 0 : AUDIO_HALF_BUFFER_SIZE;
@@ -154,7 +173,7 @@ void audio_play_playback()
 	switch(player.type_input)
 	{
 	case AUDIO_SIN:
-		audio_playback_duration();
+//		audio_playback_duration();
 		audio_generate_sine(buf_ptr, AUDIO_STEREO_PAIRS_HALF);
 		break;
 	case AUDIO_SD:
@@ -168,14 +187,28 @@ void audio_play_playback()
 		break;
 	}
 
-	player.buff_state = BUFFER_IDLE;
+	static uint8_t update_progree = 0;
+	if(update_progree++ > player.count_progree)
+	{
+		update_progree = 0;
+//		char msg[64];
+//		sprintf(msg, "Progress %d\r\n", player.duration);
+//		Print_Msg(msg);
+
+//		TaskEvent event;
+//		event.data.value_progress = player.duration;
+//		event.type = EVENT_PROGRESS_UPDATE;
+//		xQueueSend(xDisplayQueueHandle, &event, portMAX_DELAY);
+	}
+
+//	player.buff_state = BUFFER_IDLE;
+	if (player.audio_state != AUDIO_STOP)
+		xQueueSend(xAudioQueueHandle, &player.audio_state, portMAX_DELAY);
 }
 
 void audio_stop_playback(void)
 {
-	char msg[64];
-	sprintf(msg, "AUDIO_STOP\r\n");
-	Print_Msg(msg);
+	Print_Msg("AUDIO_STOP\r\n");
 //	uint32_t duration = HAL_GetTick() - start_play;
 //	sprintf(msg, "Playback time %lus %lums\r\n", duration/1000, duration%1000);
 //	Print_Msg(msg);
@@ -187,11 +220,12 @@ void audio_stop_playback(void)
 	player.buff_state = BUFFER_IDLE;
 	player.current_priority = AUDIO_PRIORITY_IDLE;
 	player.priority = AUDIO_PRIORITY_IDLE;
+	player.duration = 0;
 //	player.bytes_read = 0;
 
-    HAL_I2S_DMAStop(&hi2s2);
-    hi2s2.Init.MCLKOutput = I2S_MCLKOUTPUT_DISABLE;
-    HAL_I2S_Init(&hi2s2);
+//    HAL_I2S_DMAStop(&hi2s2);
+//    hi2s2.Init.MCLKOutput = I2S_MCLKOUTPUT_DISABLE;
+//    HAL_I2S_Init(&hi2s2);
 
 //    audiofs_close_file();
 }
@@ -316,24 +350,24 @@ void audio_set_volume(uint8_t level)
     //VolumeIndicator_SetLevelSilent(&volumeIndicator, bar_index);
 }
 
-static void audio_playback_duration(void)
-{
-	uint32_t current_tick = osKernelGetTickCount();
-	uint32_t elapsed = (current_tick >= interval_timer.step_start_tick) ?
-					   (current_tick - interval_timer.step_start_tick) :
-					   (0xFFFFFFFF - interval_timer.step_start_tick + current_tick + 1);
-
-	if (elapsed >= interval_timer.intervals[interval_timer.current_step])
-	{
-		interval_timer.current_step++;
-
-		if (interval_timer.current_step < interval_timer.interval_count)
-		{
-			interval_timer.step_start_tick = current_tick;
-		}
-		else
-		{
-			player.audio_state = AUDIO_STOP;
-		}
-	}
-}
+//static void audio_playback_duration(void)
+//{
+//	uint32_t current_tick = osKernelGetTickCount();
+//	uint32_t elapsed = (current_tick >= interval_timer.step_start_tick) ?
+//					   (current_tick - interval_timer.step_start_tick) :
+//					   (0xFFFFFFFF - interval_timer.step_start_tick + current_tick + 1);
+//
+//	if (elapsed >= interval_timer.intervals[interval_timer.current_step])
+//	{
+//		interval_timer.current_step++;
+//
+//		if (interval_timer.current_step < interval_timer.interval_count)
+//		{
+//			interval_timer.step_start_tick = current_tick;
+//		}
+//		else
+//		{
+//			player.audio_state = AUDIO_STOP;
+//		}
+//	}
+//}

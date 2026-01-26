@@ -12,12 +12,4 @@ void audio_init(void);
 void audio_process(AudioEvent_t event);
 void audio_set_volume(uint8_t level);
 
-void audio_start_playback(void);
-void audio_play_playback();
-void audio_stop_playback(void);
-void audio_pause_playback(void);
-
-void audio_start_record(void);
-void audio_stop_record(void);
-
 #endif /* INC_CODEC_AUDIO_H_ */

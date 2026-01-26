@@ -842,6 +842,11 @@ static void MX_GPIO_Init(void)
 void StartDefaultTask(void *argument)
 {
   /* USER CODE BEGIN 5 */
+    osDelay(1000);
+
+	Mount_SD("/");
+	Scan_SD("/");
+	Unmount_SD("/");
   /* Infinite loop */
   for(;;)
   {
@@ -902,13 +907,6 @@ void UART_Receive_Task(void *argument)
 void AudioPlaybackTask(void *argument)
 {
   /* USER CODE BEGIN AudioPlaybackTask */
-
-    osDelay(1000);
-
-	Mount_SD("/");
-	Scan_SD("/");
-	Unmount_SD("/");
-
 	audio_init();
 
 	AudioEvent_t event;
@@ -920,7 +918,7 @@ void AudioPlaybackTask(void *argument)
 	  {
 		  audio_process(event);
 	  }
-	  osDelay(1);
+	  osDelay(10);
   }
   /* USER CODE END AudioPlaybackTask */
 }
@@ -995,10 +993,10 @@ void InputTask(void *argument)
 	osDelay(5000);
 
 
-//	event.button = BTN_ENTER;
-//	event.action = BA_PRESSED;
-//	xQueueSend(xButtonQueueHandle, &event, portMAX_DELAY);
-//	osDelay(5000);
+	event.button = BTN_ENTER;
+	event.action = BA_PRESSED;
+	xQueueSend(xButtonQueueHandle, &event, portMAX_DELAY);
+	osDelay(5000);
 //
 //	event.button = BTN_DOWN;
 //	event.action = BA_PRESSED;
@@ -1045,20 +1043,20 @@ void InputTask(void *argument)
 //		osDelay(20);
 
 
-		event.button = BTN_ENTER;
-		event.action = BA_PRESSED;
-		xQueueSend(xButtonQueueHandle, &event, portMAX_DELAY);
-		osDelay(5000);
-
-		event.button = BTN_ESC;
-		event.action = BA_PRESSED;
-		xQueueSend(xButtonQueueHandle, &event, portMAX_DELAY);
-		osDelay(5000);
-
-		event.button = BTN_DOWN;
-		event.action = BA_PRESSED;
-		xQueueSend(xButtonQueueHandle, &event, portMAX_DELAY);
-		osDelay(5000);
+//		event.button = BTN_ENTER;
+//		event.action = BA_PRESSED;
+//		xQueueSend(xButtonQueueHandle, &event, portMAX_DELAY);
+//		osDelay(5000);
+//
+//		event.button = BTN_ESC;
+//		event.action = BA_PRESSED;
+//		xQueueSend(xButtonQueueHandle, &event, portMAX_DELAY);
+//		osDelay(5000);
+//
+//		event.button = BTN_DOWN;
+//		event.action = BA_PRESSED;
+//		xQueueSend(xButtonQueueHandle, &event, portMAX_DELAY);
+//		osDelay(5000);
 
 
 //		event.button = BTN_TEST;
@@ -1080,6 +1078,7 @@ void InputTask(void *argument)
 //		event.action = BA_PRESSED;
 //		xQueueSend(xButtonQueueHandle, &event, portMAX_DELAY);
 //		osDelay(5000);
+		osDelay(10);
 	}
   /* USER CODE END InputTask */
 }

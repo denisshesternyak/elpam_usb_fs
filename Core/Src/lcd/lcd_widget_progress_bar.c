@@ -11,7 +11,7 @@ void MenuDrawProgress(uint8_t progressPercent)
 {
     if (progressPercent == 0) borderDrawn = false;
     if (progressPercent > 100) progressPercent = 100;
-    if (progressPercent == lastProgress) return;
+    //if (progressPercent == lastProgress) return;
 
     lastProgress = progressPercent;
 

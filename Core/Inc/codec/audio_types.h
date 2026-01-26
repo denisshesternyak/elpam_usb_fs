@@ -107,6 +107,8 @@ typedef struct
     char current_filename[32];
     uint8_t current_volume;
     uint8_t new_volume;
+    uint8_t count_progree;
+    uint8_t duration;
 } Audio_Player_t;
 
 #endif /* INC_CODEC_AUDIO_TYPES_H_ */

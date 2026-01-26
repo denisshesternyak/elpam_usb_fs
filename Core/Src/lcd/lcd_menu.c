@@ -725,7 +725,7 @@ static void PrepareSinuseItems(void)
 		"Sinus 20000Hz 120s",
 		"Sinus 836Hz and 856Hz 60s",
 		"Sinus ALARM 90s",
-		"Sinus ALL_CLEAR 90s",
+		"Sinus ALL CLEAR 90s",
 		"Sinus ALL CLEAR 120s",
 		"Sinus ABC 120s"
 	};
@@ -842,16 +842,16 @@ void sinusPrepareAction(void)
 void sinusPostAction(void)
 {
 	isPlayAudioFile = true;
-	Print_Msg(alarmInfoMenu->textFilename);
+//	Print_Msg(alarmInfoMenu->textFilename);
 
 //	if(player.is_arming && !player.is_playing)
-	{
-		player.type_input = AUDIO_SIN;
-		player.current_sin = (SinTask_t)currentMenu->currentSelection;
-		player.priority = AUDIO_PRIORITY_LOW;
-		player.audio_state = AUDIO_START;
-	    xQueueSend(xAudioQueueHandle, &player.audio_state, portMAX_DELAY);
-	}
+//	{
+//		player.type_input = AUDIO_SIN;
+//		player.current_sin = (SinTask_t)currentMenu->currentSelection;
+//		player.priority = AUDIO_PRIORITY_LOW;
+//		player.audio_state = AUDIO_START;
+//	    xQueueSend(xAudioQueueHandle, &player.audio_state, portMAX_DELAY);
+//	}
 
 //	xQueueSend(audioQueue, &alarmInfoMenu->textFilename, 0);
 }
@@ -1010,12 +1010,12 @@ void alarmInfoMenu_HandleButtonPress(ButtonEvent_t event)
 				}
 				DrawMenuScreen(true);
 			}
-			if(player.is_playing)
-			{
-				player.audio_state = AUDIO_STOP;
-				player.priority = AUDIO_PRIORITY_LOW;
-				xQueueSend(xAudioQueueHandle, &player.audio_state, portMAX_DELAY);
-			}
+//			if(player.is_playing)
+//			{
+//				player.audio_state = AUDIO_STOP;
+//				player.priority = AUDIO_PRIORITY_LOW;
+//				xQueueSend(xAudioQueueHandle, &player.audio_state, portMAX_DELAY);
+//			}
 			break;
 
 		default:
@@ -1039,12 +1039,12 @@ void sinusInfoMenu_HandleButtonPress(ButtonEvent_t event)
 				}
 				DrawMenuScreen(true);
 			}
-			if(player.is_playing)
-			{
-				player.audio_state = AUDIO_STOP;
-				player.priority = AUDIO_PRIORITY_LOW;
-				xQueueSend(xAudioQueueHandle, &player.audio_state, portMAX_DELAY);
-			}
+//			if(player.is_playing)
+//			{
+//				player.audio_state = AUDIO_STOP;
+//				player.priority = AUDIO_PRIORITY_LOW;
+//				xQueueSend(xAudioQueueHandle, &player.audio_state, portMAX_DELAY);
+//			}
 			break;
 
 		default:
@@ -1233,6 +1233,10 @@ void Draw_MENU_TYPE_SIREN_INFO(void)
 	MenuDrawImage(currentMenu);
 
 	isPlayAudioFile = true;
+
+//	char msg[64];
+//	sprintf(msg, "-- %s\r\n", currentMenu->parent->textFilename);
+//	Print_Msg(msg);
 
 	MenuDrawProgress(0);
 
@@ -1473,6 +1477,12 @@ void UpdateDateTime()
 //										time_rtc.hour,time_rtc.minute, time_rtc.second);
 //
 //	LCD_WriteString(TIME_X_POS, TIME_Y_POS, timeStr, Font_7x10, COLOR_WHITE, COLOR_BLACK);
+}
+
+void UpdateProgressBar(uint8_t value)
+{
+	if(currentMenu != sinusInfoMenu && !player.is_playing) return;
+	MenuDrawProgress(value);
 }
 
 void SetIdleMenu(void)

@@ -10,7 +10,7 @@ static int16_t sin_table[WAVE_TABLE_SIZE];
 static uint32_t phase_acc_ch1 = 0;
 static uint32_t phase_acc_ch2 = 0;
 
-interval_timer_t interval_timer;
+//interval_timer_t interval_timer;
 inc_data_t inc_data;
 
 extern Audio_Player_t player;
@@ -27,9 +27,6 @@ void audio_init_sin_table(void)
 
 void audio_generate_sine(uint8_t *buffer, uint32_t samples_per_channel)
 {
-    static uint64_t ramp_counter = 0;
-    static uint64_t total_samples_generated = 0;
-
     uint32_t current_add = (inc_data.current_step == 1) ? inc_data.add_inc[1] : inc_data.add_inc[0];
 
     uint32_t start_target = inc_data.target_phase[0];
@@ -74,14 +71,14 @@ void audio_generate_sine(uint8_t *buffer, uint32_t samples_per_channel)
         phase_inc_ch1 = inc_data.current_inc;
         phase_inc_ch2 = inc_data.current_inc;
 
-        ramp_counter++;
-        total_samples_generated++;
+        inc_data.ramp_counter++;
+        inc_data.total_samples_generated++;
 
         uint64_t samples_per_ramp = (inc_data.current_step == 1 && !inc_data.stable_middle) ? cycle_ramp : ending_ramp;
 
-        if (ramp_counter >= samples_per_ramp)
+        if (inc_data.ramp_counter >= samples_per_ramp)
         {
-            ramp_counter = 0;
+        	inc_data.ramp_counter = 0;
 
             if (inc_data.current_step == 0)
             {
@@ -103,7 +100,7 @@ void audio_generate_sine(uint8_t *buffer, uint32_t samples_per_channel)
                     inc_data.target_inc = (inc_data.target_inc == min_cycle_target) ? max_cycle_target : min_cycle_target;
                 }
 
-                if (total_samples_generated - ending_ramp >= middle_ramp)
+                if (inc_data.total_samples_generated - ending_ramp >= middle_ramp)
                 {
                     inc_data.current_step = 2;
                     inc_data.target_inc = start_target;
@@ -116,21 +113,27 @@ void audio_generate_sine(uint8_t *buffer, uint32_t samples_per_channel)
 				{
 					memset(buffer + buffer_idx + 4, 0, bytes_to_clear);
 				}
-                ramp_counter = 0;
-                total_samples_generated = 0;
+			    player.duration = 100;
+                inc_data.total_samples_generated = 0;
                 player.audio_state = AUDIO_STOP;
         	    xQueueSend(xAudioQueueHandle, &player.audio_state, portMAX_DELAY);
-				break;
+				return;
             }
         }
     }
+    player.duration = (inc_data.total_samples_generated * 100) / inc_data.duration;
 }
 
 void init_generation(SinTask_t sinus)
 {
-	memset(&interval_timer, 0, sizeof(interval_timer));
-	interval_timer.current_step = 0;
-	interval_timer.step_start_tick = osKernelGetTickCount();
+
+	char msg[64];
+	sprintf(msg, "++sinus %d\r\n", sinus);
+	Print_Msg(msg);
+
+//	memset(&interval_timer, 0, sizeof(interval_timer));
+//	interval_timer.current_step = 0;
+//	interval_timer.step_start_tick = osKernelGetTickCount();
 
 	switch(sinus)
 	{
@@ -166,6 +169,9 @@ void init_generation(SinTask_t sinus)
 		break;
 	}
 
+	inc_data.total_samples_generated = 0;
+	inc_data.ramp_counter = 0;
+
 	phase_acc_ch1 = 0;
 	phase_acc_ch2 = 0;
 }
@@ -179,6 +185,7 @@ void set_increment(uint32_t value_ch1, uint32_t value_ch2)
 static void init_constant_tone(uint32_t freq_left_inc, uint32_t freq_right_inc, uint32_t duration_ms)
 {
     inc_data.samples_per_phase[2] = (uint64_t)SAMPLE_RATE * duration_ms / 1000;
+    inc_data.duration = inc_data.samples_per_phase[2];
 
     inc_data.current_step = 1;
     inc_data.stable_middle = true;
@@ -201,6 +208,8 @@ static void init_cycle_tone(uint32_t start_inc, uint32_t end_inc, uint32_t mid_i
 	inc_data.samples_per_phase[0] = (uint64_t)SAMPLE_RATE * ending_ms / 1000;
 	inc_data.samples_per_phase[1] = (uint64_t)SAMPLE_RATE * (ending_ms/2) / 1000;
     inc_data.samples_per_phase[2] = (uint64_t)SAMPLE_RATE * mid_ms / 1000;
+
+    inc_data.duration = (inc_data.samples_per_phase[0] * 2) + inc_data.samples_per_phase[2];
 
     inc_data.current_step = 0;
     inc_data.stable_freq_phase = end_inc;

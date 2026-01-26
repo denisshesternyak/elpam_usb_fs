@@ -33,6 +33,9 @@ typedef struct {
 
 typedef struct {
     uint64_t samples_per_phase[3];
+    uint64_t ramp_counter;
+    uint64_t total_samples_generated;
+    uint64_t duration;
     uint32_t target_phase[3];
     uint32_t current_inc;
     uint32_t target_inc;
