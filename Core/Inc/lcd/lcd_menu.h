@@ -69,9 +69,11 @@ void menu_handle_button(ButtonEvent_t event);
 bool hot_key_handle_button(ButtonEvent_t event);
 
 void HandleButtonPress(ButtonEvent_t event);
+void languageMenu_HandleButtonPress(ButtonEvent_t event);
 //void passwordMenu_HandleButtonPress(ButtonEvent_t event);
-//void alarmInfoMenu_HandleButtonPress(ButtonEvent_t event);
-//
+void alarmInfoMenu_HandleButtonPress(ButtonEvent_t event);
+void sinusInfoMenu_HandleButtonPress(ButtonEvent_t event);
+
 void Menu_Init(void);
 
 void DrawStatusBar(void);
@@ -85,10 +87,10 @@ void MenuLoadSDCardSirens(void);
 //void MenuShowMessages(void);
 void SetIdleMenu(void);
 //void ShowUartCommand(void);
-//
-//
-//void sirenPrepareAction(void);
-//void sirenPostAction(void);
+
+
+void sirenPrepareAction(void);
+void sirenPostAction(void);
 //
 ////---------------------------------------------
 //// MENU_TYPE_ANNOUNCEMENT
@@ -114,6 +116,5 @@ void PlayMessageEnd(void);
 //void DrawDebugInfo(const ButtonEvent_t* event);
 
 void test_count_up_menu();
-void test_menu();
 
 #endif /* INC_SCREENS_LCD_MENU_H_ */

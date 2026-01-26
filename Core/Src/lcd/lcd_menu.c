@@ -1,10 +1,8 @@
-
-
 #include "main.h"
 #include "lcd_menu.h"
 #include <stdio.h>
 #include "cmsis_os.h"
-//#include "queue.h"
+#include "queue.h"
 //#include "lcd_display.h"
 //#include "lcd_widget_siren_info_indicator.h"
 //#include "lcd_widget_password.h"
@@ -24,6 +22,7 @@
 #include "lcd_widget_test_drivers_indicator.h"
 #include "lcd_widget_test_ampl_indicator.h"
 #include "lcd_widget_report_indicator.h"
+#include "audio_types.h"
 
 //bool isResetPasswordAfterIdle = false;
 //
@@ -42,11 +41,15 @@ bool isBacklightOn = true;
 static Menu menuPool[MAX_MENU_POOL];
 uint8_t menuPoolIndex = 0;
 
+extern osMessageQueueId_t xAudioQueueHandle;
+
 
 #define MAX_FILENAME_LEN 64
 
 char messageFilenames[MAX_MENU_ITEMS][MAX_FILENAME_LEN];
 const char* selectedFile = NULL;
+
+extern Player_t player;
 
 Menu* currentMenu = NULL;
 Menu* idleMenu = NULL;
@@ -63,6 +66,8 @@ Menu* driversTestMenu = NULL;
 Menu* alarmInfoMenu = NULL;
 Menu* maintenanceMenu = NULL;
 Menu* languageMenu = NULL;
+Menu* sinusMenu = NULL;
+Menu* sinusInfoMenu = NULL;
 
 //Menu* passwordMenu = NULL;
 //
@@ -110,6 +115,7 @@ MenuImage menu_microfon_img = {
 #define STATUS_BAR_LINE_Y_POS  35
 #define TITLE_MENU_Y_POS  (STATUS_BAR_LINE_Y_POS + 10)
 
+#define SIREN_Y_POS  (TITLE_MENU_Y_POS + 45)
 #define IDLE_Y_POS  (TITLE_MENU_Y_POS + 25)
 #define BAT_Y_POS  (TITLE_MENU_Y_POS + 25)
 #define AMP_Y_POS  (TITLE_MENU_Y_POS + 50)
@@ -129,6 +135,7 @@ void RunDriversTest(void);
 void MenuLoadSDCardSirens(void);
 void MenuLoadSDCardMessages(void);
 static void MenuInitLanguage(void);
+static void PrepareSinuseItems(void);
 ///////////////////////////////////////////////////////////////////
 
 //static void BLK_ON()  { HAL_GPIO_WritePin(LCD_LED_GPIO_Port, LCD_LED_Pin, GPIO_PIN_SET); }
@@ -199,6 +206,8 @@ void Menu_Init(void)
 	reportMenu = &menuPool[menuPoolIndex++];
 	maintenanceMenu = &menuPool[menuPoolIndex++];
 	languageMenu = &menuPool[menuPoolIndex++];
+	sinusMenu = &menuPool[menuPoolIndex++];
+	sinusInfoMenu = &menuPool[menuPoolIndex++];
 
 //	passwordMenu->type = MENU_TYPE_PASSWORD;
 //	passwordMenu->parent = rootMenu;
@@ -250,8 +259,7 @@ void Menu_Init(void)
     alarmInfoMenu->currentSelection = 0;
     alarmInfoMenu->scrollOffset = 0;
     alarmInfoMenu->itemCount = 0;
-//    alarmInfoMenu->buttonHandler = alarmInfoMenu_HandleButtonPress;
-    alarmInfoMenu->buttonHandler = HandleButtonPress;
+    alarmInfoMenu->buttonHandler = alarmInfoMenu_HandleButtonPress;
 
 //    //-----------------------------------------------------------------------------------------------------------
 	messagesMenu->parent = rootMenu;
@@ -299,7 +307,6 @@ void Menu_Init(void)
 	testMenu->screenText[LANG_EN] = "### Tests ###";
 	testMenu->screenText[LANG_HE] = "### -Tests- ###";
 	testMenu->type = MENU_TYPE_LIST;
-	testMenu->parent = rootMenu;
 	testMenu->currentSelection = 0;
 	testMenu->scrollOffset = 0;
 	testMenu->buttonHandler = HandleButtonPress;
@@ -307,7 +314,8 @@ void Menu_Init(void)
 	testMenu->items[1] = (MenuItem){ .name = { "2. Batteries Test", "" },  .postAction = &RunBatteriesTest, .submenu = NULL    };
 	testMenu->items[2] = (MenuItem){ .name = { "3. Amplifiers Test", "" }, .postAction = &RunAmplifiresTest,   .submenu = NULL    };
 	testMenu->items[3] = (MenuItem){ .name = { "4. Drivers Test", "" },    .postAction = &RunDriversTest, .submenu = NULL  };
-	testMenu->itemCount = 4;
+	testMenu->items[4] = (MenuItem){ .name = { "5. Sinus Test", "" }, .prepareAction = &PrepareSinuseItems, .postAction = NULL, .submenu = sinusMenu  };
+	testMenu->itemCount = 5;
 
 //	//---------------------------------------------------------------
 	batteriesTestMenu->parent = testMenu;
@@ -344,6 +352,22 @@ void Menu_Init(void)
 //	driversTestMenu->buttonHandler = HandleButtonPress;
 	driversTestMenu->buttonHandler = HandleButtonPress;
 
+	sinusMenu->parent = testMenu;
+	sinusMenu->screenText[LANG_EN] = "### Generate sinus ###";
+	sinusMenu->screenText[LANG_HE] = "### -Generate sinus- ###";
+	sinusMenu->type = MENU_TYPE_LIST;
+	sinusMenu->currentSelection = 0;
+	sinusMenu->scrollOffset = 0;
+	sinusMenu->buttonHandler = HandleButtonPress;
+
+	sinusInfoMenu->parent = sinusMenu;
+	sinusInfoMenu->type = MENU_TYPE_SIREN_INFO;
+	sinusInfoMenu->screenText[LANG_EN] = "### Sinus info ###";
+	sinusInfoMenu->screenText[LANG_HE] = "### -Sinus info- ###";
+	sinusInfoMenu->currentSelection = 0;
+	sinusInfoMenu->scrollOffset = 0;
+	sinusInfoMenu->itemCount = 0;
+	sinusInfoMenu->buttonHandler = sinusInfoMenu_HandleButtonPress;
 
 	testMenu->items[0].submenu =  NULL; // ,,,,
 	testMenu->items[1].submenu = batteriesTestMenu;
@@ -380,13 +404,14 @@ void Menu_Init(void)
 	languageMenu->screenText[LANG_EN] = "### Language ###";
 	languageMenu->screenText[LANG_HE] = "### -Language- ###";
 	languageMenu->type = MENU_TYPE_LIST;
-	maintenanceMenu->currentSelection = 0;
+	languageMenu->currentSelection = 0;
 	languageMenu->itemCount = 0;
 	languageMenu->scrollOffset = 0;
-	languageMenu->buttonHandler = HandleButtonPress;
+	languageMenu->buttonHandler = languageMenu_HandleButtonPress;
 
     //currentMenu = rootMenu;
-	currentMenu = maintenanceMenu;
+	PrepareSinuseItems();
+	currentMenu = sinusMenu;
 	DrawMenuScreen(true);
 
     // testing
@@ -632,7 +657,7 @@ void MenuLoadSDCardSirens(void)
 	   sirenMenu->items[i].name[LANG_HE] = messageFilenames[i];
 	   //sirenMenu->items[i].prepareAction = &sirenPrepareAction;
 	   //sirenMenu->items[i].postAction = &sirenPostAction;
-	   //sirenMenu->items[i].submenu = alarmInfoMenu;
+	   sirenMenu->items[i].submenu = alarmInfoMenu;
 	   sirenMenu->items[i].filepath = messageFilenames[i];
 	}
 
@@ -687,11 +712,49 @@ void MenuLoadSDCardMessages(void)
     currentMenu = messagePlayMenu;
 }
 
+static void PrepareSinuseItems(void)
+{
+    if (!sinusMenu) return;
+
+	ClearMenu(sinusMenu);
+
+    static const char* sinus_info[] = {
+		"Sinus 420Hz 120s",
+		"Sinus 1000Hz 120s",
+		"Sinus 1020Hz 120s",
+		"Sinus 20000Hz 120s",
+		"Sinus 836Hz and 856Hz 60s",
+		"Sinus ALARM 90s",
+		"Sinus ALL_CLEAR 90s",
+		"Sinus ALL CLEAR 120s",
+		"Sinus ABC 120s"
+	};
+
+    const uint8_t count = sizeof(sinus_info) / sizeof(sinus_info[0]);
+
+    for (uint8_t i = 0; i < count && i < MAX_MENU_ITEMS; ++i)
+    {
+    	sprintf(messageFilenames[i], "%d. %s", i+1, sinus_info[i]);
+
+        sinusMenu->items[i].name[LANG_EN] = messageFilenames[i];
+        sinusMenu->items[i].name[LANG_HE] = messageFilenames[i];
+        sinusMenu->items[i].prepareAction = &sirenPrepareAction;
+//        sinusMenu->items[i].postAction = &sirenPostAction;
+        sinusMenu->items[i].submenu = sinusInfoMenu;
+        sinusMenu->items[i].filepath = sinus_info[i];
+    }
+
+	sinusMenu->itemCount = count;
+	sinusMenu->currentSelection = 0;
+	sinusMenu->scrollOffset = 0;
+    currentMenu = sinusInfoMenu;
+}
+
 void MenuInitLanguage(void)
 {
 	if (!languageMenu) return;
 
-	ClearMenu(languageMenu);
+	//ClearMenu(languageMenu);
 
 	for (uint8_t i = 0; i < LANG_COUNT && i < MAX_MENU_ITEMS; ++i)
 	{
@@ -744,104 +807,53 @@ void test_count_up_menu()
 //    Print_Msg(msg);
 }
 
-void test_menu()
+void sirenPrepareAction(void)
 {
-//	currentMenu = rootMenu;
-//	DrawMenuScreen(true);
+	if (!currentMenu || currentMenu->currentSelection >= currentMenu->itemCount)
+		return;
 
-	bool state = true;
+	const char* filepath = currentMenu->items[currentMenu->currentSelection].filepath;
 
-	currentMenu = reportMenu;
-	DrawMenuScreen(true);
+	if (!filepath || !alarmInfoMenu)
+		return;
 
-	for(uint8_t i = 0; i<5; i++)
-	{
-		Report_setIndicator(2, state);
-		state = !state;
-		osDelay(1000);
-	}
-
-	currentMenu = testMenu;
-	DrawMenuScreen(true);
-	osDelay(5000);
-
-	MenuLoadSDCardSirens();
-	currentMenu = sirenMenu;
-	DrawMenuScreen(true);
-	osDelay(5000);
-
-	MenuLoadSDCardMessages();
-	currentMenu = messagesMenu;
-	DrawMenuScreen(true);
-	osDelay(5000);
-
-	currentMenu = announcementMenu;
-	DrawMenuScreen(true);
-	osDelay(5000);
-
-	currentMenu = batteriesTestMenu;
-	DrawMenuScreen(true);
-
-	for(uint8_t i = 0; i<5; i++)
-	{
-		BatteriesDisplay_SetStatus(0, state);
-		state = !state;
-		osDelay(1000);
-	}
-
-	currentMenu = idleMenu;
-	DrawMenuScreen(true);
-
-	for(uint8_t i = 0; i<5; i++)
-	{
-		FaultsDisplay_SetStatus(0, state);
-		state = !state;
-		osDelay(1000);
-	}
-
-	currentMenu = apmplifiresTestMunu;
-	DrawMenuScreen(true);
-
-	for(uint8_t i = 0; i<5; i++)
-	{
-		TestAmplDisplay_SetStatus(5, state);
-		state = !state;
-		osDelay(1000);
-	}
-
-	currentMenu = driversTestMenu;
-	DrawMenuScreen(true);
-	for(uint8_t i = 0; i<5; i++)
-	{
-		TestDrvDisplay_SetStatus(8, state);
-		state = !state;
-		osDelay(1000);
-	}
+	currentMenu->textFilename = filepath;
 }
 
-//void sirenPrepareAction(void)
-//{
-//
-//	if (!currentMenu || currentMenu->currentSelection >= currentMenu->itemCount)
-//		return;
-//
-//
-//	const char* filepath = currentMenu->items[currentMenu->currentSelection].filepath;
-//
-//
-//	if (!filepath || !alarmInfoMenu)
-//		return;
-//
-//
-//	alarmInfoMenu->textFilename = filepath;
-//	currentMenu = alarmInfoMenu;
-//}
-//
 //void sirenPostAction(void)
 //{
 //	isPlayAudioFile = true;
 //	xQueueSend(audioQueue, &alarmInfoMenu->textFilename, 0);
 //}
+
+void sinusPrepareAction(void)
+{
+	if (!currentMenu || currentMenu->currentSelection >= currentMenu->itemCount)
+		return;
+
+	const char* filepath = currentMenu->items[currentMenu->currentSelection].filepath;
+
+	if (!filepath || !alarmInfoMenu)
+		return;
+
+	currentMenu->textFilename = filepath;
+}
+
+void sinusPostAction(void)
+{
+	isPlayAudioFile = true;
+	Print_Msg(alarmInfoMenu->textFilename);
+
+//	if(player.is_arming && !player.is_playing)
+	{
+		player.type_output = AUDIO_SIN;
+		player.current_sin = (SinTask_t)currentMenu->currentSelection;
+		player.audio_state = AUDIO_START;
+	    xQueueSend(xAudioQueueHandle, &player.audio_state, portMAX_DELAY);
+	}
+
+//	xQueueSend(audioQueue, &alarmInfoMenu->textFilename, 0);
+}
 
 void menu_handle_button(ButtonEvent_t event)
 {
@@ -982,30 +994,53 @@ void HandleButtonPress(ButtonEvent_t event)
 //	}
 //}
 //
-//void alarmInfoMenu_HandleButtonPress(ButtonEvent_t event)
-//{
-//	if (!alarmInfoMenu) return;
-//
-//	switch(event.button)
-//	{
-//		case BTN_ESC:
-//			isPlayAudioFile = false;
-//			if (currentMenu->parent != NULL) {
-//				currentMenu = currentMenu->parent;
-//
-//				if (currentMenu->type == MENU_TYPE_IDLE){
-//					isIdle = true;
-//				}
-//				DrawMenuScreen(true);
-//			}
-//			break;
-//
-//		default:
-//				return;
-//	}
-//
-//}
-//
+void alarmInfoMenu_HandleButtonPress(ButtonEvent_t event)
+{
+	if (!alarmInfoMenu) return;
+
+	switch(event.button)
+	{
+		case BTN_ESC:
+			isPlayAudioFile = false;
+			if (currentMenu->parent != NULL) {
+				currentMenu = currentMenu->parent;
+
+				if (currentMenu->type == MENU_TYPE_IDLE){
+					isIdle = true;
+				}
+				DrawMenuScreen(true);
+			}
+			break;
+
+		default:
+				return;
+	}
+
+}
+
+void sinusInfoMenu_HandleButtonPress(ButtonEvent_t event)
+{
+	if (!sinusInfoMenu) return;
+
+	switch(event.button)
+	{
+		case BTN_ESC:
+			isPlayAudioFile = false;
+			if (currentMenu->parent != NULL) {
+				currentMenu = currentMenu->parent;
+
+				if (currentMenu->type == MENU_TYPE_IDLE){
+					isIdle = true;
+				}
+				DrawMenuScreen(true);
+			}
+			break;
+
+		default:
+				return;
+	}
+
+}
 //void VolumeControlButtonHandler(ButtonEvent_t event)
 //{
 //	 if (!currentMenu) return;
@@ -1030,7 +1065,24 @@ void HandleButtonPress(ButtonEvent_t event)
 //	}
 //
 //}
-//
+
+void languageMenu_HandleButtonPress(ButtonEvent_t event)
+{
+	if (!languageMenu || languageMenu->itemCount == 0) return;
+
+	switch(event.button)
+	{
+		case BTN_ENTER:
+			SetLanguage((Language)languageMenu->currentSelection);
+			MenuInitLanguage();
+			DrawMenuScreen(false);
+			return;
+		default:
+			break;
+	}
+	HandleButtonPress(event);
+}
+
  void IncreaseVolume(void)
  {
      if (currentMenu->type == MENU_TYPE_ANNOUNCEMENT) {
@@ -1162,6 +1214,11 @@ void Draw_MENU_TYPE_ANNOUNCEMENT(void)
 
 void Draw_MENU_TYPE_SIREN_INFO(void)
 {
+	if (currentMenu->parent->textFilename)
+	{
+		hx8357_write_alignedX_string(0, SIREN_Y_POS, currentMenu->parent->textFilename, &Font_11x18, COLOR_MAGENTA, COLOR_BLACK, ALIGN_CENTER);
+	}
+
 	MenuDrawImage(currentMenu);
 
 	isPlayAudioFile = true;
@@ -1193,12 +1250,6 @@ void Draw_MENU_TYPE_TEST_AMP(void)
 
 void Draw_MENU_TYPE_MESSAGE_PLAY(void)
 {
-	uint16_t bg_color = COLOR_BLACK;
-
-	if (currentMenu->textFilename) {
-		hx8357_write_alignedX_string(0, STATUS_BAR_LINE_Y_POS + 45, currentMenu->textFilename, &Font_11x18, COLOR_MAGENTA, bg_color, ALIGN_CENTER);
-	}
-
 	MenuDrawImage(currentMenu);
 
 	isPlayAudioFile = true;
@@ -1503,15 +1554,6 @@ static void handle_button_enter(void)
 
 	MenuItem* item = &currentMenu->items[currentMenu->currentSelection];
 	if (!item) return;
-
-	if(currentMenu == languageMenu)
-	{
-		Language lang = (currentMenu->currentSelection == LANG_EN) ? LANG_EN : LANG_HE;
-		SetLanguage(lang);
-		MenuInitLanguage();
-		DrawMenuScreen(false);
-		return;
-	}
 
 	if (item->prepareAction) {
 		item->prepareAction();

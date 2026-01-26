@@ -1,59 +1,65 @@
 #include <audio.h>
+#include "main.h"
 #include "math.h"
+#include "cmsis_os.h"
+#include "queue.h"
 #include "string.h"
 #include "audio_cmd.h"
 #include "audio_regs.h"
 #include "audio_generate_sin.h"
-#include "audiofs.h"
+//#include "audiofs.h"
 #include "system_status.h"
 
 extern I2S_HandleTypeDef hi2s2;
 Audio_Player_t player;
+extern interval_timer_t interval_timer;
+extern osMessageQueueId_t xAudioQueueHandle;
 
 static volatile uint32_t start_play;
+static uint8_t dma_buffer[AUDIO_BUFFER_SIZE] __attribute__((aligned(32)));
+
 
 // List of acceptable levels
 const uint8_t valid_volume_levels[] = {
     80, 83, 86, 89, 92, 95, 98, 101, 104, 107, 110, 113, 116, 119, 122
 };
 
-static bool audio_get_track_name();
+static void audio_playback_duration(void);
 
-static bool audio_get_track_name(void)
-{
-    const char* name = NULL;
-
-    switch (player.current_track) {
-        case TRACK_1: name = "sine_4~1.wav"; break;
-        case TRACK_2: name = "2.wav"; break;
-        case TRACK_3: name = "3.wav"; break;
-        case TRACK_4: name = "4.wav"; break;
-        default:
-            return false;
-    }
-
-    if (!name) {
-        player.current_filename[0] = '\0';
-        return false;
-    }
-
-    size_t len = sizeof(player.current_filename);
-    strncpy(player.current_filename, name, len - 1);
-    player.current_filename[len - 1] = '\0';
-
-    return true;
-}
+//static bool audio_get_track_name();
+//
+//static bool audio_get_track_name(void)
+//{
+//    const char* name = NULL;
+//
+//    switch (player.current_sin) {
+//        case TRACK_1: name = "sine_4~1.wav"; break;
+//        case TRACK_2: name = "2.wav"; break;
+//        case TRACK_3: name = "3.wav"; break;
+//        case TRACK_4: name = "4.wav"; break;
+//        default:
+//            return false;
+//    }
+//
+//    if (!name) {
+//        player.current_filename[0] = '\0';
+//        return false;
+//    }
+//
+//    size_t len = sizeof(player.current_filename);
+//    strncpy(player.current_filename, name, len - 1);
+//    player.current_filename[len - 1] = '\0';
+//
+//    return true;
+//}
 
 void audio_init(void)
 {
-	hi2s2.Init.MCLKOutput = I2S_MCLKOUTPUT_DISABLE;
-	HAL_I2S_Init(&hi2s2);
-
     memset(&player, 0, sizeof(player));
     player.audio_state = AUDIO_IDLE;
     player.new_volume = DEF_VALUE_VOLUME;
 
-	audio_init_wave_table();
+    audio_init_sin_table();
 
 	/*HAL_Delay(10);
 	audio_reset();
@@ -63,12 +69,12 @@ void audio_init(void)
 	audio_init_playback();
 	//audiofs_init_record();
 
-	audiofs_init();
+//	audiofs_init();
 }
 
-void audio_process(void)
+void audio_process(AudioEvent_t event)
 {
-	switch(player.audio_state)
+	switch(event)
 	{
 	case AUDIO_IDLE:
 		break;
@@ -95,12 +101,13 @@ void audio_start_playback(void)
 	switch(player.type_output)
 	{
 	case AUDIO_SIN:
-		audio_generate_sine(player.dma_buffer, AUDIO_STEREO_PAIRS_FULL);
+		init_generation(player.current_sin);
+		audio_generate_sine(dma_buffer, AUDIO_STEREO_PAIRS_FULL);
 		res = true;
 		break;
 	case AUDIO_SD:
-		if(!audio_get_track_name()) return;
-		res = audiofs_load_file();
+//		if(!audio_get_track_name()) return;
+//		res = audiofs_load_file();
 		break;
 	case AUDIO_IN1:
 	case AUDIO_IN2:
@@ -119,33 +126,35 @@ void audio_start_playback(void)
 
 	if(player.new_volume != player.current_volume) audio_set_volume(player.new_volume);
 
-    player.is_playing = true;
-    player.audio_state = AUDIO_PLAY;
-
     Print_Msg("Playing...");
-    start_play = HAL_GetTick();
+//    start_play = HAL_GetTick();
 
 	hi2s2.Init.MCLKOutput = I2S_MCLKOUTPUT_ENABLE;
 	HAL_I2S_Init(&hi2s2);
-    HAL_I2S_Transmit_DMA(&hi2s2, (uint16_t*)player.dma_buffer, AUDIO_HALF_BUFFER_SIZE);
+    HAL_I2S_Transmit_DMA(&hi2s2, (uint16_t*)dma_buffer, AUDIO_HALF_BUFFER_SIZE);
+
+    player.is_playing = true;
+    player.audio_state = AUDIO_PLAY;
+    xQueueSend(xAudioQueueHandle, &player.audio_state, portMAX_DELAY);
 }
 
 void audio_play_playback()
 {
 	if (!player.is_playing || player.buff_state == BUFFER_IDLE) return;
 
-	UINT br;
+//	UINT br;
 	uint32_t offset = (player.buff_state == BUFFER_HALF) ? 0 : AUDIO_HALF_BUFFER_SIZE;
-	uint8_t *buf_ptr = player.dma_buffer + offset;
+	uint8_t *buf_ptr = dma_buffer + offset;
 
 	switch(player.type_output)
 	{
 	case AUDIO_SIN:
+		audio_playback_duration();
 		audio_generate_sine(buf_ptr, AUDIO_STEREO_PAIRS_HALF);
 		break;
 	case AUDIO_SD:
-		br = audiofs_read_buffer_part(buf_ptr, AUDIO_HALF_BUFFER_SIZE);
-		if (br <= 0) audio_stop_playback();
+//		br = audiofs_read_buffer_part(buf_ptr, AUDIO_HALF_BUFFER_SIZE);
+//		if (br <= 0) audio_stop_playback();
 		break;
 	case AUDIO_IN1:
 	case AUDIO_IN2:
@@ -153,14 +162,16 @@ void audio_play_playback()
 	default:
 		break;
 	}
+
+	player.buff_state = BUFFER_IDLE;
 }
 
 void audio_stop_playback(void)
 {
 	char msg[64];
-	uint32_t duration = HAL_GetTick() - start_play;
-	sprintf(msg, "Playback time %lus %lums\r\n", duration/1000, duration%1000);
-	Print_Msg(msg);
+//	uint32_t duration = HAL_GetTick() - start_play;
+//	sprintf(msg, "Playback time %lus %lums\r\n", duration/1000, duration%1000);
+//	Print_Msg(msg);
 
 	sprintf(msg, "AUDIO_STOP\r\n");
 	Print_Msg(msg);
@@ -168,13 +179,13 @@ void audio_stop_playback(void)
 	player.is_playing = false;
     player.audio_state = AUDIO_IDLE;
 	player.buff_state = BUFFER_IDLE;
-	player.bytes_read = 0;
+//	player.bytes_read = 0;
 
     HAL_I2S_DMAStop(&hi2s2);
     hi2s2.Init.MCLKOutput = I2S_MCLKOUTPUT_DISABLE;
     HAL_I2S_Init(&hi2s2);
 
-    audiofs_close_file();
+//    audiofs_close_file();
 }
 
 void audio_pause_playback(void)
@@ -188,7 +199,9 @@ void HAL_I2S_TxHalfCpltCallback(I2S_HandleTypeDef *hi2s)
 	{
 		if (player.is_playing)
 		{
+			BaseType_t xHigherPriorityTaskWoken = pdFALSE;
 			player.buff_state = BUFFER_HALF;
+			xQueueSendFromISR(xAudioQueueHandle, &player.audio_state, &xHigherPriorityTaskWoken);
 		}
 	}
 }
@@ -199,7 +212,9 @@ void HAL_I2S_TxCpltCallback(I2S_HandleTypeDef *hi2s)
 	{
 		if (player.is_playing)
 		{
+			BaseType_t xHigherPriorityTaskWoken = pdFALSE;
 			player.buff_state = BUFFER_FULL;
+			xQueueSendFromISR(xAudioQueueHandle, &player.audio_state, &xHigherPriorityTaskWoken);
 		}
 	}
 }
@@ -293,3 +308,24 @@ void audio_set_volume(uint8_t level)
     //VolumeIndicator_SetLevelSilent(&volumeIndicator, bar_index);
 }
 
+static void audio_playback_duration(void)
+{
+	uint32_t current_tick = osKernelGetTickCount();
+	uint32_t elapsed = (current_tick >= interval_timer.step_start_tick) ?
+					   (current_tick - interval_timer.step_start_tick) :
+					   (0xFFFFFFFF - interval_timer.step_start_tick + current_tick + 1);
+
+	if (elapsed >= interval_timer.intervals[interval_timer.current_step])
+	{
+		interval_timer.current_step++;
+
+		if (interval_timer.current_step < interval_timer.interval_count)
+		{
+			interval_timer.step_start_tick = current_tick;
+		}
+		else
+		{
+			player.audio_state = AUDIO_STOP;
+		}
+	}
+}

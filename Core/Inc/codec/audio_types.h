@@ -1,7 +1,7 @@
 #ifndef INC_CODEC_AUDIO_TYPES_H_
 #define INC_CODEC_AUDIO_TYPES_H_
 
-#include "fatfs.h"
+//#include "fatfs.h"
 #include "stdbool.h"
 
 #define AUDIO_BUFFER_SIZE  				16384
@@ -17,7 +17,7 @@ typedef enum {
 	AUDIO_PLAY,
 	AUDIO_STOP,
 	AUDIO_PAUSE
-}AudioState_t;
+}AudioEvent_t;
 
 typedef enum {
 	BUFFER_IDLE,
@@ -26,11 +26,16 @@ typedef enum {
 }BufferState_t;
 
 typedef enum {
-	TRACK_1,
-	TRACK_2,
-	TRACK_3,
-	TRACK_4
-}AudioTrack_t;
+	SINUS_420HZ_120S,
+	SINUS_1000HZ_120S,
+	SINUS_1020HZ_120S,
+	SINUS_20000HZ_120S,
+	SINUS_836HZ_856HZ_60S,
+	SINUS_ALARM_90S,
+	SINUS_ALL_CLEAR_90S,
+	SINUS_ALL_CLEAR_120S,
+	SINUS_ABC_120S
+}SinTask_t;
 
 typedef enum {
 	AUDIO_SIN,
@@ -70,30 +75,52 @@ typedef struct
 
 typedef struct
 {
-    FIL	file;
-    uint8_t dma_buffer[AUDIO_BUFFER_SIZE] __attribute__((aligned(32)));
-
-    WAV_Info_t wav_info;
+//    FIL	file;
+//    WAV_Info_t wav_info;
     BufferState_t buff_state;
-    AudioState_t audio_state;
-    AudioTrack_t current_track;
+    AudioEvent_t audio_state;
+    SinTask_t current_sin;
     AudioTypeOutput_t type_output;
 
-    uint32_t file_size;
-    uint32_t bytes_read;
-    uint32_t current_file_pos;
+//    uint32_t file_size;
+//    uint32_t bytes_read;
+//    uint32_t current_file_pos;
 
     uint32_t start_time_arming;
 
     volatile bool is_playing;
     volatile bool is_paused;
-    volatile bool end_of_file;
-    volatile bool file_opened;
+//    volatile bool end_of_file;
+//    volatile bool file_opened;
     volatile bool is_arming;
 
     char current_filename[32];
     uint8_t current_volume;
     uint8_t new_volume;
 } Audio_Player_t;
+
+typedef struct
+{
+    BufferState_t buff_state;
+    AudioEvent_t audio_state;
+    SinTask_t current_sin;
+    AudioTypeOutput_t type_output;
+
+//    uint32_t file_size;
+//    uint32_t bytes_read;
+//    uint32_t current_file_pos;
+//
+//    uint32_t start_time_arming;
+//
+//    volatile bool is_playing;
+//    volatile bool is_paused;
+//    volatile bool end_of_file;
+//    volatile bool file_opened;
+//    volatile bool is_arming;
+//
+//    char current_filename[32];
+//    uint8_t current_volume;
+//    uint8_t new_volume;
+} Player_t;
 
 #endif /* INC_CODEC_AUDIO_TYPES_H_ */

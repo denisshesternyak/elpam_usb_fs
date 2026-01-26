@@ -9,7 +9,7 @@
 #define CNVR_VOL(vol) 	((MIN_VOLUME_CODEC + ((vol) - MIN_VOLUME) * 55 / 42))
 
 void audio_init(void);
-void audio_process(void);
+void audio_process(AudioEvent_t event);
 void audio_set_volume(uint8_t level);
 
 void audio_start_playback(void);

@@ -1,12 +1,9 @@
-/*
- * command_dispatcher.c
- *
- */
-
 #include "command_dispatcher.h"
 #include "system_status.h"
 #include "defines.h"
 #include "main.h"
+#include "cmsis_os.h"
+#include "queue.h"
 #include "defines.h"  // For USE_DEBUG_COMMAND_DISPATCHER
 #include <string.h>
 #include <stdio.h>
@@ -16,6 +13,7 @@
 extern UART_HandleTypeDef huart2;
 
 extern Audio_Player_t player;
+extern osMessageQueueId_t xAudioQueueHandle;
 
 // Buffer for debug messages
 #if defined(USE_DEBUG_COMMAND_DISPATCHER)
@@ -39,7 +37,7 @@ void handle_arm(void)
     set_system_mode(SYSTEM_MODE_ARMING);
     player.start_time_arming = HAL_GetTick();
     player.is_arming = true;
-	Print_Msg("ARM is started\r\n");
+//	Print_Msg("ARM is started\r\n");
 
 #if defined(USE_DEBUG_COMMAND_DISPATCHER)
     //sprintf(debug_msg, "CMD: ARM\r\n");
@@ -58,9 +56,11 @@ void handle_all_clear_1(void)
     set_system_mode(SYSTEM_MODE_ALL_CLEAR_1);
     if(player.is_arming && !player.is_playing)
     {
-		player.type_output = AUDIO_SD;
-		player.current_track = TRACK_1;
+		player.type_output = AUDIO_SIN;
+		player.current_sin = SINUS_ALL_CLEAR_90S;
 		player.audio_state = AUDIO_START;
+	    xQueueSend(xAudioQueueHandle, &player.audio_state, portMAX_DELAY);
+		//Print_Msg("All_clear_1 is start\r\n");
     }
 
 #if defined(USE_DEBUG_COMMAND_DISPATCHER)
@@ -79,11 +79,13 @@ void handle_all_clear_2(void)
 {
     set_system_mode(SYSTEM_MODE_ALL_CLEAR_2);
     if(player.is_arming && !player.is_playing)
-    {
-		player.type_output = AUDIO_SD;
-		player.current_track = TRACK_2;
+	{
+		player.type_output = AUDIO_SIN;
+		player.current_sin = SINUS_ALL_CLEAR_120S;
 		player.audio_state = AUDIO_START;
-    }
+//	    xQueueSend(xAudioQueueHandle, &player.audio_state, portMAX_DELAY);
+		//Print_Msg("All_clear_2 is start\r\n");
+	}
 
 #if defined(USE_DEBUG_COMMAND_DISPATCHER)
     //sprintf(debug_msg, "CMD: ALL CLEAR 2\r\n");
@@ -103,8 +105,10 @@ void handle_alarm(void)
      if(player.is_arming && !player.is_playing)
      {
 		player.type_output = AUDIO_SIN;
+		player.current_sin = SINUS_ALARM_90S;
 		player.audio_state = AUDIO_START;
-		Print_Msg("WAIL is start\r\n");
+//	    xQueueSend(xAudioQueueHandle, &player.audio_state, portMAX_DELAY);
+		//Print_Msg("Alarm is start\r\n");
      }
 
 #if defined(USE_DEBUG_COMMAND_DISPATCHER)
@@ -122,6 +126,15 @@ void handle_alarm(void)
 void handle_chemical(void)
 {
     set_system_mode(SYSTEM_MODE_CHEMICAL);
+    if(player.is_arming && !player.is_playing)
+	{
+		player.type_output = AUDIO_SIN;
+		player.current_sin = SINUS_ABC_120S;
+		player.audio_state = AUDIO_START;
+//	    xQueueSend(xAudioQueueHandle, &player.audio_state, portMAX_DELAY);
+//		Print_Msg("Chemical is start\r\n");
+	}
+
 
 
 #if defined(USE_DEBUG_COMMAND_DISPATCHER)
@@ -139,7 +152,9 @@ void handle_chemical(void)
 void handle_disarm(void)
 {
     set_system_mode(SYSTEM_MODE_CANCEL_IMMEDIATE);
-    player.audio_state = AUDIO_STOP;
+    //player.audio_state = AUDIO_STOP;
+    player.start_time_arming =0;
+    player.is_arming = false;
 
 #if defined(USE_DEBUG_COMMAND_DISPATCHER)
     //sprintf(debug_msg, "CMD: DISARM\r\n");
@@ -157,6 +172,8 @@ void handle_cancel(void)
 {
     set_system_mode(SYSTEM_MODE_CANCEL_DELAYED);
     player.audio_state = AUDIO_STOP;
+//    xQueueSend(xAudioQueueHandle, &player.audio_state, portMAX_DELAY);
+
 
 #if defined(USE_DEBUG_COMMAND_DISPATCHER)
     //sprintf(debug_msg, "CMD: CANCEL\r\n");

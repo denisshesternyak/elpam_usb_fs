@@ -85,7 +85,7 @@ const osThreadAttr_t UART_Receive_Ta_attributes = {
 osThreadId_t AudioPlaybackTaHandle;
 const osThreadAttr_t AudioPlaybackTa_attributes = {
   .name = "AudioPlaybackTa",
-  .stack_size = 512 * 4,
+  .stack_size = 1024 * 4,
   .priority = (osPriority_t) osPriorityNormal,
 };
 /* Definitions for LCDTask */
@@ -106,6 +106,11 @@ const osThreadAttr_t InputTask_Name_attributes = {
 osMessageQueueId_t xButtonQueueHandle;
 const osMessageQueueAttr_t xButtonQueue_attributes = {
   .name = "xButtonQueue"
+};
+/* Definitions for xAudioQueue */
+osMessageQueueId_t xAudioQueueHandle;
+const osMessageQueueAttr_t xAudioQueue_attributes = {
+  .name = "xAudioQueue"
 };
 /* Definitions for timeRtcMutex */
 osMutexId_t timeRtcMutexHandle;
@@ -242,6 +247,9 @@ int main(void)
   /* Create the queue(s) */
   /* creation of xButtonQueue */
   xButtonQueueHandle = osMessageQueueNew (16, sizeof(uint16_t), &xButtonQueue_attributes);
+
+  /* creation of xAudioQueue */
+  xAudioQueueHandle = osMessageQueueNew (16, sizeof(uint16_t), &xAudioQueue_attributes);
 
   /* USER CODE BEGIN RTOS_QUEUES */
   /* add queues, ... */
@@ -578,7 +586,7 @@ static void MX_I2S2_Init(void)
   hi2s2.Init.Standard = I2S_STANDARD_PHILIPS;
   hi2s2.Init.DataFormat = I2S_DATAFORMAT_16B;
   hi2s2.Init.MCLKOutput = I2S_MCLKOUTPUT_ENABLE;
-  hi2s2.Init.AudioFreq = I2S_AUDIOFREQ_16K;
+  hi2s2.Init.AudioFreq = I2S_AUDIOFREQ_44K;
   hi2s2.Init.CPOL = I2S_CPOL_LOW;
   hi2s2.Init.FirstBit = I2S_FIRSTBIT_MSB;
   hi2s2.Init.WSInversion = I2S_WS_INVERSION_DISABLE;
@@ -589,7 +597,8 @@ static void MX_I2S2_Init(void)
     Error_Handler();
   }
   /* USER CODE BEGIN I2S2_Init 2 */
-
+	hi2s2.Init.MCLKOutput = I2S_MCLKOUTPUT_DISABLE;
+	HAL_I2S_Init(&hi2s2);
   /* USER CODE END I2S2_Init 2 */
 
 }
@@ -878,7 +887,7 @@ void UART_Receive_Task(void *argument)
   for(;;)
   {
 	rs232_process();
-    osDelay(1);
+    osDelay(10);
   }
   /* USER CODE END UART_Receive_Task */
 }
@@ -900,12 +909,18 @@ void AudioPlaybackTask(void *argument)
 	Scan_SD("/");
 	Unmount_SD("/");
 
-	//audio_init();
+	audio_init();
+
+	AudioEvent_t event;
+
   /* Infinite loop */
   for(;;)
   {
-	//audio_process();
-    osDelay(1);
+	  if (xQueueReceive(xAudioQueueHandle, &event, portMAX_DELAY))
+	  {
+		  audio_process(event);
+	  }
+	  osDelay(20);
   }
   /* USER CODE END AudioPlaybackTask */
 }
@@ -929,14 +944,10 @@ void LCDStartTask(void *argument)
 //	SetIdleMenu();
 
 //	uint32_t lastRtcUpdateTick = osKernelGetTickCount();
-//	test_menu();
 
   /* Infinite loop */
 	for(;;)
 	{
-//	  test_menu();
-//	  osDelay(1);
-
 		if (xQueueReceive(xButtonQueueHandle, &event, pdMS_TO_TICKS(10)))
 		{
 			if ((event.button != BTN_NONE) && (event.action == BA_PRESSED))
@@ -981,37 +992,43 @@ void InputTask(void *argument)
 	mcp23008_btns_init();
 
 	ButtonEvent_t event;
-	osDelay(1000);
+	osDelay(5000);
 
+
+//	event.button = BTN_ENTER;
+//	event.action = BA_PRESSED;
+//	xQueueSend(xButtonQueueHandle, &event, portMAX_DELAY);
+//	osDelay(5000);
+//
 //	event.button = BTN_DOWN;
 //	event.action = BA_PRESSED;
 //	xQueueSend(xButtonQueueHandle, &event, portMAX_DELAY);
 //	osDelay(5000);
 //
 //	event.button = BTN_ENTER;
-//			event.action = BA_PRESSED;
-//			xQueueSend(xButtonQueueHandle, &event, portMAX_DELAY);
-//			osDelay(5000);
+//	event.action = BA_PRESSED;
+//	xQueueSend(xButtonQueueHandle, &event, portMAX_DELAY);
+//	osDelay(5000);
 //
-//			event.button = BTN_DOWN;
-//			event.action = BA_PRESSED;
-//			xQueueSend(xButtonQueueHandle, &event, portMAX_DELAY);
-//			osDelay(5000);
+//	event.button = BTN_ESC;
+//	event.action = BA_PRESSED;
+//	xQueueSend(xButtonQueueHandle, &event, portMAX_DELAY);
+//	osDelay(5000);
 //
-//			event.button = BTN_ENTER;
-//			event.action = BA_PRESSED;
-//			xQueueSend(xButtonQueueHandle, &event, portMAX_DELAY);
-//			osDelay(5000);
+//	event.button = BTN_DOWN;
+//	event.action = BA_PRESSED;
+//	xQueueSend(xButtonQueueHandle, &event, portMAX_DELAY);
+//	osDelay(5000);
 //
-//			event.button = BTN_ESC;
-//			event.action = BA_PRESSED;
-//			xQueueSend(xButtonQueueHandle, &event, portMAX_DELAY);
-//			osDelay(5000);
+//	event.button = BTN_ENTER;
+//	event.action = BA_PRESSED;
+//	xQueueSend(xButtonQueueHandle, &event, portMAX_DELAY);
+//	osDelay(5000);
 //
-//			event.button = BTN_ESC;
-//			event.action = BA_PRESSED;
-//			xQueueSend(xButtonQueueHandle, &event, portMAX_DELAY);
-//			osDelay(5000);
+//	event.button = BTN_ESC;
+//	event.action = BA_PRESSED;
+//	xQueueSend(xButtonQueueHandle, &event, portMAX_DELAY);
+//	osDelay(5000);
 
   /* Infinite loop */
 	for(;;)
@@ -1028,7 +1045,20 @@ void InputTask(void *argument)
 //		osDelay(20);
 
 
+		event.button = BTN_ENTER;
+		event.action = BA_PRESSED;
+		xQueueSend(xButtonQueueHandle, &event, portMAX_DELAY);
+		osDelay(5000);
 
+		event.button = BTN_ESC;
+		event.action = BA_PRESSED;
+		xQueueSend(xButtonQueueHandle, &event, portMAX_DELAY);
+		osDelay(5000);
+
+		event.button = BTN_DOWN;
+		event.action = BA_PRESSED;
+		xQueueSend(xButtonQueueHandle, &event, portMAX_DELAY);
+		osDelay(5000);
 
 
 //		event.button = BTN_TEST;
