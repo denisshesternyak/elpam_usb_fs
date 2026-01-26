@@ -1010,8 +1010,12 @@ void alarmInfoMenu_HandleButtonPress(ButtonEvent_t event)
 				}
 				DrawMenuScreen(true);
 			}
-			player.audio_state = AUDIO_STOP;
-		    xQueueSend(xAudioQueueHandle, &player.audio_state, portMAX_DELAY);
+			if(player.is_playing)
+			{
+				player.audio_state = AUDIO_STOP;
+				player.priority = AUDIO_PRIORITY_LOW;
+				xQueueSend(xAudioQueueHandle, &player.audio_state, portMAX_DELAY);
+			}
 			break;
 
 		default:
@@ -1035,8 +1039,12 @@ void sinusInfoMenu_HandleButtonPress(ButtonEvent_t event)
 				}
 				DrawMenuScreen(true);
 			}
-			player.audio_state = AUDIO_STOP;
-		    xQueueSend(xAudioQueueHandle, &player.audio_state, portMAX_DELAY);
+			if(player.is_playing)
+			{
+				player.audio_state = AUDIO_STOP;
+				player.priority = AUDIO_PRIORITY_LOW;
+				xQueueSend(xAudioQueueHandle, &player.audio_state, portMAX_DELAY);
+			}
 			break;
 
 		default:

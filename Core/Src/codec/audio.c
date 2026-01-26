@@ -174,12 +174,13 @@ void audio_play_playback()
 void audio_stop_playback(void)
 {
 	char msg[64];
+	sprintf(msg, "AUDIO_STOP\r\n");
+	Print_Msg(msg);
 //	uint32_t duration = HAL_GetTick() - start_play;
 //	sprintf(msg, "Playback time %lus %lums\r\n", duration/1000, duration%1000);
 //	Print_Msg(msg);
 
-	sprintf(msg, "AUDIO_STOP\r\n");
-	Print_Msg(msg);
+	if (player.priority < player.current_priority) return;
 
 	player.is_playing = false;
     player.audio_state = AUDIO_IDLE;
