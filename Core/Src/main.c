@@ -884,11 +884,11 @@ void UART_Receive_Task(void *argument)
 	system_status_init();
 
   /* Infinite loop */
-  for(;;)
-  {
-	rs232_process();
-    osDelay(10);
-  }
+	for(;;)
+	{
+		rs232_process();
+		osDelay(10);
+	}
   /* USER CODE END UART_Receive_Task */
 }
 
@@ -920,7 +920,7 @@ void AudioPlaybackTask(void *argument)
 	  {
 		  audio_process(event);
 	  }
-	  osDelay(20);
+	  osDelay(1);
   }
   /* USER CODE END AudioPlaybackTask */
 }

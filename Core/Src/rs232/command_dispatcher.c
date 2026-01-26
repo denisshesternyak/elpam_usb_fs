@@ -54,11 +54,12 @@ void handle_arm(void)
 void handle_all_clear_1(void)
 {
     set_system_mode(SYSTEM_MODE_ALL_CLEAR_1);
-    if(player.is_arming && !player.is_playing)
+    if(player.is_arming)
     {
-		player.type_output = AUDIO_SIN;
+		player.type_input = AUDIO_SIN;
 		player.current_sin = SINUS_ALL_CLEAR_90S;
 		player.audio_state = AUDIO_START;
+		player.priority = AUDIO_PRIORITY_HIGH;
 	    xQueueSend(xAudioQueueHandle, &player.audio_state, portMAX_DELAY);
 		//Print_Msg("All_clear_1 is start\r\n");
     }
@@ -78,12 +79,13 @@ void handle_all_clear_1(void)
 void handle_all_clear_2(void)
 {
     set_system_mode(SYSTEM_MODE_ALL_CLEAR_2);
-    if(player.is_arming && !player.is_playing)
+    if(player.is_arming)
 	{
-		player.type_output = AUDIO_SIN;
+		player.type_input = AUDIO_SIN;
 		player.current_sin = SINUS_ALL_CLEAR_120S;
 		player.audio_state = AUDIO_START;
-//	    xQueueSend(xAudioQueueHandle, &player.audio_state, portMAX_DELAY);
+		player.priority = AUDIO_PRIORITY_HIGH;
+	    xQueueSend(xAudioQueueHandle, &player.audio_state, portMAX_DELAY);
 		//Print_Msg("All_clear_2 is start\r\n");
 	}
 
@@ -102,12 +104,13 @@ void handle_all_clear_2(void)
 void handle_alarm(void)
 {
      set_system_mode(SYSTEM_MODE_ALARM_WAIL);
-     if(player.is_arming && !player.is_playing)
+     if(player.is_arming)
      {
-		player.type_output = AUDIO_SIN;
+		player.type_input = AUDIO_SIN;
 		player.current_sin = SINUS_ALARM_90S;
 		player.audio_state = AUDIO_START;
-//	    xQueueSend(xAudioQueueHandle, &player.audio_state, portMAX_DELAY);
+		player.priority = AUDIO_PRIORITY_HIGH;
+	    xQueueSend(xAudioQueueHandle, &player.audio_state, portMAX_DELAY);
 		//Print_Msg("Alarm is start\r\n");
      }
 
@@ -126,12 +129,13 @@ void handle_alarm(void)
 void handle_chemical(void)
 {
     set_system_mode(SYSTEM_MODE_CHEMICAL);
-    if(player.is_arming && !player.is_playing)
+    if(player.is_arming)
 	{
-		player.type_output = AUDIO_SIN;
+		player.type_input = AUDIO_SIN;
 		player.current_sin = SINUS_ABC_120S;
+		player.priority = AUDIO_PRIORITY_HIGH;
 		player.audio_state = AUDIO_START;
-//	    xQueueSend(xAudioQueueHandle, &player.audio_state, portMAX_DELAY);
+	    xQueueSend(xAudioQueueHandle, &player.audio_state, portMAX_DELAY);
 //		Print_Msg("Chemical is start\r\n");
 	}
 
@@ -172,7 +176,8 @@ void handle_cancel(void)
 {
     set_system_mode(SYSTEM_MODE_CANCEL_DELAYED);
     player.audio_state = AUDIO_STOP;
-//    xQueueSend(xAudioQueueHandle, &player.audio_state, portMAX_DELAY);
+	player.priority = AUDIO_PRIORITY_HIGH;
+    xQueueSend(xAudioQueueHandle, &player.audio_state, portMAX_DELAY);
 
 
 #if defined(USE_DEBUG_COMMAND_DISPATCHER)

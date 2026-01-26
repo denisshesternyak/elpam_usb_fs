@@ -20,6 +20,13 @@ typedef enum {
 }AudioEvent_t;
 
 typedef enum {
+	AUDIO_PRIORITY_IDLE,
+	AUDIO_PRIORITY_LOW,
+	AUDIO_PRIORITY_MEDIUM,
+	AUDIO_PRIORITY_HIGH
+}AudioPriority_t;
+
+typedef enum {
 	BUFFER_IDLE,
 	BUFFER_HALF,
 	BUFFER_FULL
@@ -38,12 +45,13 @@ typedef enum {
 }SinTask_t;
 
 typedef enum {
+	AUDIO_NONE,
 	AUDIO_SIN,
 	AUDIO_SD,
 	AUDIO_IN1,
 	AUDIO_IN2,
 	AUDIO_IN3,
-}AudioTypeOutput_t;
+}AudioTypeInput_t;
 
 typedef struct
 {
@@ -80,7 +88,9 @@ typedef struct
     BufferState_t buff_state;
     AudioEvent_t audio_state;
     SinTask_t current_sin;
-    AudioTypeOutput_t type_output;
+    AudioTypeInput_t type_input;
+    AudioPriority_t priority;
+    AudioPriority_t current_priority;
 
 //    uint32_t file_size;
 //    uint32_t bytes_read;
@@ -98,29 +108,5 @@ typedef struct
     uint8_t current_volume;
     uint8_t new_volume;
 } Audio_Player_t;
-
-typedef struct
-{
-    BufferState_t buff_state;
-    AudioEvent_t audio_state;
-    SinTask_t current_sin;
-    AudioTypeOutput_t type_output;
-
-//    uint32_t file_size;
-//    uint32_t bytes_read;
-//    uint32_t current_file_pos;
-//
-//    uint32_t start_time_arming;
-//
-//    volatile bool is_playing;
-//    volatile bool is_paused;
-//    volatile bool end_of_file;
-//    volatile bool file_opened;
-//    volatile bool is_arming;
-//
-//    char current_filename[32];
-//    uint8_t current_volume;
-//    uint8_t new_volume;
-} Player_t;
 
 #endif /* INC_CODEC_AUDIO_TYPES_H_ */

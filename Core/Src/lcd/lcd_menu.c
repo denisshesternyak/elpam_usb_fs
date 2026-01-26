@@ -49,7 +49,7 @@ extern osMessageQueueId_t xAudioQueueHandle;
 char messageFilenames[MAX_MENU_ITEMS][MAX_FILENAME_LEN];
 const char* selectedFile = NULL;
 
-extern Player_t player;
+extern Audio_Player_t player;
 
 Menu* currentMenu = NULL;
 Menu* idleMenu = NULL;
@@ -846,8 +846,9 @@ void sinusPostAction(void)
 
 //	if(player.is_arming && !player.is_playing)
 	{
-		player.type_output = AUDIO_SIN;
+		player.type_input = AUDIO_SIN;
 		player.current_sin = (SinTask_t)currentMenu->currentSelection;
+		player.priority = AUDIO_PRIORITY_LOW;
 		player.audio_state = AUDIO_START;
 	    xQueueSend(xAudioQueueHandle, &player.audio_state, portMAX_DELAY);
 	}
@@ -1001,7 +1002,6 @@ void alarmInfoMenu_HandleButtonPress(ButtonEvent_t event)
 	switch(event.button)
 	{
 		case BTN_ESC:
-			isPlayAudioFile = false;
 			if (currentMenu->parent != NULL) {
 				currentMenu = currentMenu->parent;
 
@@ -1010,6 +1010,8 @@ void alarmInfoMenu_HandleButtonPress(ButtonEvent_t event)
 				}
 				DrawMenuScreen(true);
 			}
+			player.audio_state = AUDIO_STOP;
+		    xQueueSend(xAudioQueueHandle, &player.audio_state, portMAX_DELAY);
 			break;
 
 		default:
@@ -1025,7 +1027,6 @@ void sinusInfoMenu_HandleButtonPress(ButtonEvent_t event)
 	switch(event.button)
 	{
 		case BTN_ESC:
-			isPlayAudioFile = false;
 			if (currentMenu->parent != NULL) {
 				currentMenu = currentMenu->parent;
 
@@ -1034,6 +1035,8 @@ void sinusInfoMenu_HandleButtonPress(ButtonEvent_t event)
 				}
 				DrawMenuScreen(true);
 			}
+			player.audio_state = AUDIO_STOP;
+		    xQueueSend(xAudioQueueHandle, &player.audio_state, portMAX_DELAY);
 			break;
 
 		default:

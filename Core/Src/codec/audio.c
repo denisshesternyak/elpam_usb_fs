@@ -56,7 +56,6 @@ static void audio_playback_duration(void);
 void audio_init(void)
 {
     memset(&player, 0, sizeof(player));
-    player.audio_state = AUDIO_IDLE;
     player.new_volume = DEF_VALUE_VOLUME;
 
     audio_init_sin_table();
@@ -96,32 +95,38 @@ void audio_process(AudioEvent_t event)
 void audio_start_playback(void)
 {
 	Print_Msg("AUDIO_START\r\n");
-	bool res;
 
-	switch(player.type_output)
+	if (player.priority < player.current_priority) return;
+	else if (player.priority > player.current_priority && player.is_playing)
+	{
+		HAL_I2S_DMAStop(&hi2s2);
+//		hi2s2.Init.MCLKOutput = I2S_MCLKOUTPUT_DISABLE;
+//		HAL_I2S_Init(&hi2s2);
+	}
+
+	player.current_priority = player.priority;
+
+	switch(player.type_input)
 	{
 	case AUDIO_SIN:
 		init_generation(player.current_sin);
 		audio_generate_sine(dma_buffer, AUDIO_STEREO_PAIRS_FULL);
-		res = true;
 		break;
 	case AUDIO_SD:
 //		if(!audio_get_track_name()) return;
-//		res = audiofs_load_file();
+//		if (!audiofs_load_file())
+//		{
+//			char msg[128];
+//			sprintf(msg, "Failure load %s\r\n", player.current_filename);
+//			Print_Msg(msg);
+//			return;
+//		}
 		break;
 	case AUDIO_IN1:
 	case AUDIO_IN2:
 	case AUDIO_IN3:
 	default:
 		break;
-	}
-
-	if (!res)
-	{
-		char msg[128];
-		sprintf(msg, "Failure load %s\r\n", player.current_filename);
-		Print_Msg(msg);
-		return;
 	}
 
 	if(player.new_volume != player.current_volume) audio_set_volume(player.new_volume);
@@ -146,7 +151,7 @@ void audio_play_playback()
 	uint32_t offset = (player.buff_state == BUFFER_HALF) ? 0 : AUDIO_HALF_BUFFER_SIZE;
 	uint8_t *buf_ptr = dma_buffer + offset;
 
-	switch(player.type_output)
+	switch(player.type_input)
 	{
 	case AUDIO_SIN:
 		audio_playback_duration();
@@ -179,6 +184,8 @@ void audio_stop_playback(void)
 	player.is_playing = false;
     player.audio_state = AUDIO_IDLE;
 	player.buff_state = BUFFER_IDLE;
+	player.current_priority = AUDIO_PRIORITY_IDLE;
+	player.priority = AUDIO_PRIORITY_IDLE;
 //	player.bytes_read = 0;
 
     HAL_I2S_DMAStop(&hi2s2);
