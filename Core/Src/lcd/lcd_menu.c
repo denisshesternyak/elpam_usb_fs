@@ -718,26 +718,28 @@ static void PrepareSinuseItems(void)
 
 	ClearMenu(sinusMenu);
 
-    static const char* sinus_info[] = {
-		"Sinus 420Hz 120s",
-		"Sinus 1000Hz 120s",
-		"Sinus 1020Hz 120s",
-		"Sinus 20000Hz 120s",
-		"Sinus 836Hz and 856Hz 60s",
-		"Sinus ALARM 90s",
-		"Sinus ALL CLEAR 90s",
-		"Sinus ALL CLEAR 120s",
-		"Sinus ABC 120s"
+    static const char* sinus_info[][2] = {
+    		{ "Sinus 420Hz 120s", "סינוס 420 הרץ 120 שניות" },
+			{ "Sinus 1000Hz 120s", "סינוס 1000 הרץ 120 שניות" },
+			{ "Sinus 1020Hz 120s", "סינוס 1020 הרץ 120 שניות" },
+			{ "Sinus 20000Hz 120s", "סינוס 20000 הרץ 120 שניות" },
+			{ "Sinus 836Hz and 856Hz 60s", "סינוס 836 הרץ 856 הרץ 60 שניות" },
+			{ "Sinus ALARM 90s", "אזעקת סינוסים שנות 90" },
+			{ "Sinus ALL CLEAR 90s", "סינוסים צלולים משנות 90" },
+			{ "Sinus ALL CLEAR 120s", "סינוסים צלולים משנות 120" },
+			{ "Sinus ABC 120s", "ABC 120s סינוס" }
 	};
 
     const uint8_t count = sizeof(sinus_info) / sizeof(sinus_info[0]);
 
     for (uint8_t i = 0; i < count && i < MAX_MENU_ITEMS; ++i)
     {
-    	sprintf(messageFilenames[i], "%d. %s", i+1, sinus_info[i]);
-
+    	sprintf(messageFilenames[i], "%d. %s", i+1, sinus_info[i][0]);
         sinusMenu->items[i].name[LANG_EN] = messageFilenames[i];
+
+    	sprintf(messageFilenames[i], "%s .%d", sinus_info[i][1], i+1);
         sinusMenu->items[i].name[LANG_HE] = messageFilenames[i];
+
         sinusMenu->items[i].prepareAction = &sirenPrepareAction;
 //        sinusMenu->items[i].postAction = &sirenPostAction;
         sinusMenu->items[i].submenu = sinusInfoMenu;
@@ -1202,6 +1204,9 @@ void DisplayMenuItem(uint8_t visualIndex, const MenuItem* item, bool selected, b
     const char* text = (dummy) ? "..." : item->name[GetLanguage()];
     //hx8357_write_string(MENU_BASE_X, y_pos, text, &Font_11x18, text_color, bg_color);
 
+//    Alignment align = (currentMenu == languageMenu || currentMenu == maintenanceMenu) ? ALIGN_LEFT : (GetLanguage() == LANG_EN) ? ALIGN_LEFT : ALIGN_RIGHT;
+//    hx8357_write_alignedX_string(MENU_BASE_X, y_pos, text, &Font_11x18, text_color, bg_color, align);
+
     Alignment align = (currentMenu == languageMenu || currentMenu == maintenanceMenu) ? ALIGN_LEFT : (GetLanguage() == LANG_EN) ? ALIGN_LEFT : ALIGN_RIGHT;
     hx8357_write_alignedX_string(MENU_BASE_X, y_pos, text, &Font_11x18, text_color, bg_color, align);
 }
@@ -1234,9 +1239,9 @@ void Draw_MENU_TYPE_SIREN_INFO(void)
 
 	isPlayAudioFile = true;
 
-//	char msg[64];
-//	sprintf(msg, "-- %s\r\n", currentMenu->parent->textFilename);
-//	Print_Msg(msg);
+	char msg[64];
+	sprintf(msg, "-- %s\r\n", currentMenu->parent->textFilename);
+	Print_Msg(msg);
 
 	MenuDrawProgress(0);
 

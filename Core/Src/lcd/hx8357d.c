@@ -1,5 +1,6 @@
 #include "hx8357d.h"
 #include <string.h>
+#include "lcd_lang.h"
 
 extern SPI_HandleTypeDef hspi1;
 
@@ -17,6 +18,7 @@ static void hx8357_send_cmd(uint8_t cmd);
 static void hx8357_send_data(uint8_t data);
 static void hx8357_set_window(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1);
 static void hx8357_push_color(uint16_t color, uint32_t pixels);
+static uint8_t utf8_hebrew_to_cp862(const uint8_t *utf8, int *advance);
 
 static volatile uint16_t LCD_HEIGHT = HX8357_TFTHEIGHT;
 static volatile uint16_t LCD_WIDTH	= HX8357_TFTWIDTH;
@@ -281,20 +283,85 @@ void hx8357_write_char(uint16_t x, uint16_t y, char ch, FontDef *font, uint16_t 
     CS_HIGH();
 }
 
-void hx8357_write_string(uint16_t x, uint16_t y, const char* str, FontDef *font, uint16_t color, uint16_t bgcolor) {
-    while(*str) {
-        if(x + font->width > LCD_WIDTH) {
-            x = 0;
-            if(y + font->height > LCD_HEIGHT) {
-                break;
-            }
-            y += font->height;
-        }
+void hx8357_write_string(uint16_t x, uint16_t y, const char* str, FontDef *font, uint16_t color, uint16_t bgcolor)
+{
+	const uint8_t* p = (const uint8_t*)str;
 
-        hx8357_write_char(x, y, *str, font, color, bgcolor);
-        x += font->width;
-        str++;
-    }
+	uint8_t cp862_buf[100];
+	int len = 0;
+
+	while (*p && len < 100) {
+		int advance = 0;
+		uint8_t cp862 = utf8_hebrew_to_cp862(p, &advance);
+		cp862_buf[len++] = cp862;
+		p += advance;
+	}
+
+	if(GetLanguage() == LANG_EN)
+	{
+		for (int i = 0; i < len; i++)
+		{
+			uint8_t ch = cp862_buf[i];
+			hx8357_write_char(x, y, (char)ch, font, color, bgcolor);
+			x += font->width;
+		}
+	}
+	else if (GetLanguage() == LANG_HE)
+	{
+//		for (int i = len - 1; i >= 0; i--)
+//		{
+//			uint8_t ch = cp862_buf[i];
+//
+//			if (ch == 0xD7) continue;
+//
+//			hx8357_write_char(x, y, (char)ch, font, color, bgcolor);
+//			x += font->width;
+//		}
+		int segment_start = 0;
+		int i = 0;
+
+		while (i < len)
+		{
+			int is_hebrew = (cp862_buf[i] >= 0x80 && cp862_buf[i] <= 0x9A) ||
+						   (cp862_buf[i] == 0x20);
+
+			int j = i;
+			while (j < len)
+			{
+				uint8_t ch = cp862_buf[j];
+				int current_is_hebrew = (ch >= 0x80 && ch <= 0x9A) || (ch == 0x20);
+
+				if (current_is_hebrew != is_hebrew)
+					break;
+				j++;
+			}
+
+			int segment_len = j - i;
+
+			if (is_hebrew)
+			{
+				for (int k = j - 1; k >= i; k--)
+				{
+					uint8_t ch = cp862_buf[k];
+					if (ch == 0xD7) continue;
+
+					hx8357_write_char(x, y, (char)ch, font, color, bgcolor);
+					x += font->width;
+				}
+			}
+			else
+			{
+				for (int k = i; k < j; k++)
+				{
+					uint8_t ch = cp862_buf[k];
+					hx8357_write_char(x, y, (char)ch, font, color, bgcolor);
+					x += font->width;
+				}
+			}
+
+			i = j;
+		}
+	}
 }
 
 void hx8357_writeN_string(uint16_t x, uint16_t y, const char* str, size_t len, FontDef* font, uint16_t color, uint16_t bgcolor)
@@ -310,7 +377,17 @@ void hx8357_writeN_string(uint16_t x, uint16_t y, const char* str, size_t len, F
 
 void hx8357_write_alignedX_string(uint16_t x, uint16_t y, const char* str, FontDef* font, uint16_t textColor, uint16_t bgColor, Alignment align)
 {
-	uint16_t textWidth = strlen(str) * font->width;
+	const uint8_t* p = (const uint8_t*)str;
+	uint8_t len = 0;
+
+	while (*p) {
+		int advance = 0;
+		utf8_hebrew_to_cp862(p, &advance);
+		len++;
+		p += advance;
+	}
+
+	uint16_t textWidth = len * font->width;
 	uint16_t dx = 0;
 
 	switch (align) {
@@ -392,3 +469,25 @@ void hx8357_draw_rect(uint16_t x, uint16_t y, uint16_t width, uint16_t height, u
 //	hx8357_draw_rect(HX8357_TFTWIDTH-50, 0, 50, 50, HX8357_CYAN);
 //	hx8357_draw_rect(HX8357_TFTWIDTH-50, HX8357_TFTHEIGHT-50, 50, 50, HX8357_MAGENTA);
 //}
+
+static uint8_t utf8_hebrew_to_cp862(const uint8_t *utf8, int *advance)
+{
+    if (*utf8 < 0x80)
+    {
+        *advance = 1;
+        return *utf8;
+    }
+
+    if (*utf8 == 0xD7) {
+        uint8_t second = utf8[1];
+        if (second >= 0x90 && second <= 0xAA)
+        {
+            *advance = 2;
+            return 0x7F + (second - 0x90);
+        }
+    }
+
+    *advance = 1;
+    return ' ';
+}
+

@@ -993,10 +993,10 @@ void InputTask(void *argument)
 	osDelay(5000);
 
 
-	event.button = BTN_ENTER;
-	event.action = BA_PRESSED;
-	xQueueSend(xButtonQueueHandle, &event, portMAX_DELAY);
-	osDelay(5000);
+//	event.button = BTN_ENTER;
+//	event.action = BA_PRESSED;
+//	xQueueSend(xButtonQueueHandle, &event, portMAX_DELAY);
+//	osDelay(5000);
 //
 //	event.button = BTN_DOWN;
 //	event.action = BA_PRESSED;
