@@ -724,10 +724,10 @@ static void PrepareSinuseItems(void)
 			{ "Sinus 1020Hz 120s", "סינוס 1020 הרץ 120 שניות" },
 			{ "Sinus 20000Hz 120s", "סינוס 20000 הרץ 120 שניות" },
 			{ "Sinus 836Hz and 856Hz 60s", "סינוס 836 הרץ 856 הרץ 60 שניות" },
-			{ "Sinus ALARM 90s", "אזעקת סינוסים שנות 90" },
-			{ "Sinus ALL CLEAR 90s", "סינוסים צלולים משנות 90" },
-			{ "Sinus ALL CLEAR 120s", "סינוסים צלולים משנות 120" },
-			{ "Sinus ABC 120s", "ABC 120s סינוס" }
+			{ "Sinus ALARM 90s", "90s אזעקת סינוסים שנות" },
+			{ "Sinus ALL CLEAR 90s", "90s סינוסים צלולים משנות" },
+			{ "Sinus ALL CLEAR 120s", "120s סינוסים צלולים משנות" },
+			{ "Sinus ABC 120s", "120s ABC סינוס" }
 	};
 
     const uint8_t count = sizeof(sinus_info) / sizeof(sinus_info[0]);
@@ -743,7 +743,7 @@ static void PrepareSinuseItems(void)
         sinusMenu->items[i].prepareAction = &sirenPrepareAction;
 //        sinusMenu->items[i].postAction = &sirenPostAction;
         sinusMenu->items[i].submenu = sinusInfoMenu;
-        sinusMenu->items[i].filepath = sinus_info[i];
+        sinusMenu->items[i].filepath = sinus_info[i][GetLanguage()];
     }
 
 	sinusMenu->itemCount = count;
@@ -1239,9 +1239,9 @@ void Draw_MENU_TYPE_SIREN_INFO(void)
 
 	isPlayAudioFile = true;
 
-	char msg[64];
-	sprintf(msg, "-- %s\r\n", currentMenu->parent->textFilename);
-	Print_Msg(msg);
+//	char msg[64];
+//	sprintf(msg, "-- %s\r\n", currentMenu->parent->textFilename);
+//	Print_Msg(msg);
 
 	MenuDrawProgress(0);
 

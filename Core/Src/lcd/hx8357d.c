@@ -288,16 +288,61 @@ void hx8357_write_string(uint16_t x, uint16_t y, const char* str, FontDef *font,
 	const uint8_t* p = (const uint8_t*)str;
 
 	uint8_t cp862_buf[100];
+
 	int len = 0;
+	///////////
+	uint8_t temp[100];
+	uint8_t temp_len = 0;
+	uint8_t old_he_symbol = 0;
+	uint8_t new_he_symbol = 0;
 
 	while (*p && len < 100) {
 		int advance = 0;
 		uint8_t cp862 = utf8_hebrew_to_cp862(p, &advance);
-		cp862_buf[len++] = cp862;
+
+		if(cp862 >= 0x80 && cp862 <= 0x9A)
+		{
+			new_he_symbol = 1;
+			temp[temp_len++] = cp862;
+		}
+
+		if(new_he_symbol < old_he_symbol)
+		{
+			for(int8_t i = temp_len-1; i>=0; i--)
+			{
+				cp862_buf[len++] = temp[i];
+			}
+			temp_len = 0;
+		}
+
+		if(new_he_symbol == 0)
+		{
+			cp862_buf[len++] = cp862;
+		}
+
+		old_he_symbol = new_he_symbol;
+		new_he_symbol = 0;
 		p += advance;
 	}
 
-	if(GetLanguage() == LANG_EN)
+	if(temp_len > 0)
+	{
+		for(int8_t i = temp_len-1; i>=0; i--)
+		{
+			cp862_buf[len++] = temp[i];
+		}
+		temp_len = 0;
+	}
+
+	for (uint8_t i = 0; i < len; i++)
+	{
+		uint8_t ch = cp862_buf[i];
+		hx8357_write_char(x, y, (char)ch, font, color, bgcolor);
+		x += font->width;
+	}
+
+
+	/*if(GetLanguage() == LANG_EN)
 	{
 		for (int i = 0; i < len; i++)
 		{
@@ -361,7 +406,7 @@ void hx8357_write_string(uint16_t x, uint16_t y, const char* str, FontDef *font,
 
 			i = j;
 		}
-	}
+	}*/
 }
 
 void hx8357_writeN_string(uint16_t x, uint16_t y, const char* str, size_t len, FontDef* font, uint16_t color, uint16_t bgcolor)

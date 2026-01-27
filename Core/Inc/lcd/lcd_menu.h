@@ -34,6 +34,19 @@ typedef enum {
 	MENU_TYPE_TEST_DRIV
 } MenuType;
 
+typedef enum {
+	LCD_EVENT_IDLE,
+	LCD_EVENT_BTN,
+	LCD_EVENT_PROGRESS,
+	LCD_EVENT_RTC
+} LCDEvent;
+
+typedef struct {
+	LCDEvent event;
+	ButtonEvent_t btn;
+	uint32_t value;
+} LCDTaskEvent_t;
+
 typedef void (*MenuButtonHandler)(ButtonEvent_t event);
 typedef void (*MenuAction)(void);
 
