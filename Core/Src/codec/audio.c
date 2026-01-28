@@ -8,13 +8,14 @@
 #include "audio_regs.h"
 #include "audio_generate_sin.h"
 //#include "audiofs.h"
+#include "lcd_menu.h"
 #include "system_status.h"
 
 extern I2S_HandleTypeDef hi2s2;
 Audio_Player_t player;
 //extern interval_timer_t interval_timer;
 extern osMessageQueueId_t xAudioQueueHandle;
-//extern osMessageQueueId_t xDisplayQueueHandle;
+extern osMessageQueueId_t xLCDQueueHandle;
 
 static volatile uint32_t start_play;
 static uint8_t dma_buffer[AUDIO_BUFFER_SIZE] __attribute__((aligned(32)));
@@ -154,10 +155,8 @@ void audio_start_playback(void)
     player.audio_state = AUDIO_PLAY;
     xQueueSend(xAudioQueueHandle, &player.audio_state, portMAX_DELAY);
 
-//	TaskEvent event;
-//	event.data.value_progress = 0;
-//	event.type = EVENT_PROGRESS_UPDATE;
-//    xQueueSend(xDisplayQueueHandle, &event, portMAX_DELAY);
+	LCDTaskEvent_t lcd_event = { .event = LCD_EVENT_PROGRESS, .value = 0 };
+    xQueueSend(xLCDQueueHandle, &lcd_event, portMAX_DELAY);
 }
 
 void audio_play_playback()
@@ -188,22 +187,19 @@ void audio_play_playback()
 	}
 
 	static uint8_t update_progree = 0;
-	if(update_progree++ > player.count_progree)
+	if((update_progree++ > player.count_progree) || player.audio_state == AUDIO_STOP)
 	{
 		update_progree = 0;
 //		char msg[64];
-//		sprintf(msg, "Progress %d\r\n", player.duration);
+//		sprintf(msg, "audio %d\r\n", player.duration);
 //		Print_Msg(msg);
 
-//		TaskEvent event;
-//		event.data.value_progress = player.duration;
-//		event.type = EVENT_PROGRESS_UPDATE;
-//		xQueueSend(xDisplayQueueHandle, &event, portMAX_DELAY);
+		LCDTaskEvent_t lcd_event = { .event = LCD_EVENT_PROGRESS, .value = player.duration };
+	    xQueueSend(xLCDQueueHandle, &lcd_event, portMAX_DELAY);
 	}
 
 //	player.buff_state = BUFFER_IDLE;
-	if (player.audio_state != AUDIO_STOP)
-		xQueueSend(xAudioQueueHandle, &player.audio_state, portMAX_DELAY);
+	xQueueSend(xAudioQueueHandle, &player.audio_state, portMAX_DELAY);
 }
 
 void audio_stop_playback(void)

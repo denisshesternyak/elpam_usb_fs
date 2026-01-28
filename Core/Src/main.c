@@ -960,6 +960,7 @@ void LCDStartTask(void *argument)
 				}
 				break;
 			case LCD_EVENT_PROGRESS:
+				UpdateProgressBar(lcd_event.value);
 				break;
 			case LCD_EVENT_RTC:
 				break;
@@ -1004,6 +1005,9 @@ void InputTask(void *argument)
 
 	LCDTaskEvent_t lcd_event = { .event = LCD_EVENT_BTN, .btn = { .action = BA_PRESSED } };
 
+	lcd_event.btn.button = BTN_ENTER;
+	xQueueSend(xLCDQueueHandle, &lcd_event, portMAX_DELAY);
+
 //
 //	btn_event.button = BTN_DOWN;
 //	xQueueSend(xLCDQueueHandle, &lcd_event, portMAX_DELAY);
@@ -1031,17 +1035,17 @@ void InputTask(void *argument)
 //		}
 //		osDelay(20);
 
-		lcd_event.btn.button = BTN_ENTER;
-		xQueueSend(xLCDQueueHandle, &lcd_event, portMAX_DELAY);
-		osDelay(5000);
-
-		lcd_event.btn.button = BTN_ESC;
-		xQueueSend(xLCDQueueHandle, &lcd_event, portMAX_DELAY);
-		osDelay(5000);
-
-		lcd_event.btn.button = BTN_DOWN;
-		xQueueSend(xLCDQueueHandle, &lcd_event, portMAX_DELAY);
-		osDelay(5000);
+//		lcd_event.btn.button = BTN_ENTER;
+//		xQueueSend(xLCDQueueHandle, &lcd_event, portMAX_DELAY);
+//		osDelay(5000);
+//
+//		lcd_event.btn.button = BTN_ESC;
+//		xQueueSend(xLCDQueueHandle, &lcd_event, portMAX_DELAY);
+//		osDelay(5000);
+//
+//		lcd_event.btn.button = BTN_DOWN;
+//		xQueueSend(xLCDQueueHandle, &lcd_event, portMAX_DELAY);
+//		osDelay(5000);
 
 		osDelay(10);
 	}

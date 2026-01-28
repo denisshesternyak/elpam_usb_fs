@@ -1,7 +1,5 @@
 #include "audio_generate_sin.h"
 #include "string.h"
-#include "cmsis_os.h"
-#include "queue.h"
 
 static uint32_t phase_inc_ch1;
 static uint32_t phase_inc_ch2;
@@ -14,7 +12,6 @@ static uint32_t phase_acc_ch2 = 0;
 inc_data_t inc_data;
 
 extern Audio_Player_t player;
-extern osMessageQueueId_t xAudioQueueHandle;
 
 static void init_constant_tone(uint32_t freq_left_inc, uint32_t freq_right_inc, uint32_t duration_ms);
 static void init_cycle_tone(uint32_t start_inc, uint32_t end_inc, uint32_t mid_inc, uint32_t ending_ms, uint32_t mid_ms);
@@ -115,8 +112,7 @@ void audio_generate_sine(uint8_t *buffer, uint32_t samples_per_channel)
 				}
 			    player.duration = 100;
                 inc_data.total_samples_generated = 0;
-                player.audio_state = AUDIO_STOP;
-        	    xQueueSend(xAudioQueueHandle, &player.audio_state, portMAX_DELAY);
+        		player.audio_state = AUDIO_STOP;
 				return;
             }
         }
@@ -126,11 +122,6 @@ void audio_generate_sine(uint8_t *buffer, uint32_t samples_per_channel)
 
 void init_generation(SinTask_t sinus)
 {
-
-	char msg[64];
-	sprintf(msg, "++sinus %d\r\n", sinus);
-	Print_Msg(msg);
-
 //	memset(&interval_timer, 0, sizeof(interval_timer));
 //	interval_timer.current_step = 0;
 //	interval_timer.step_start_tick = osKernelGetTickCount();

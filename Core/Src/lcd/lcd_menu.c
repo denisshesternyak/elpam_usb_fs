@@ -1486,7 +1486,7 @@ void UpdateDateTime()
 
 void UpdateProgressBar(uint8_t value)
 {
-	if(currentMenu != sinusInfoMenu && !player.is_playing) return;
+	if(!player.is_playing || (currentMenu != sinusInfoMenu && currentMenu != alarmInfoMenu)) return;
 	MenuDrawProgress(value);
 }
 
