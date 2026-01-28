@@ -1023,19 +1023,13 @@ void LCDStartTask(void *argument)
   /* USER CODE BEGIN LCDStartTask */
 	hx8357_init();
 	Menu_Init();
-	DrawStatusBar();
 
 	LCDTaskEvent_t lcd_event;
-	osDelay(5000);
-
-//	SetIdleMenu();
-
-//	uint32_t lastRtcUpdateTick = osKernelGetTickCount();
 
   /* Infinite loop */
 	for(;;)
 	{
-		if (xQueueReceive(xLCDQueueHandle, &lcd_event, pdMS_TO_TICKS(10)))
+		if (xQueueReceive(xLCDQueueHandle, &lcd_event, portMAX_DELAY))
 		{
 			switch(lcd_event.event)
 			{
@@ -1055,8 +1049,6 @@ void LCDStartTask(void *argument)
 				break;
 			}
 		}
-
-		osDelay(1);
 	}
   /* USER CODE END LCDStartTask */
 }

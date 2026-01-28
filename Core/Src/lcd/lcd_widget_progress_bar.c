@@ -4,10 +4,10 @@
 #include <string.h>
 #include <stdio.h>
 
+static uint8_t lastProgress = 255;
+
 void MenuDrawProgress(uint8_t progressPercent)
 {
-	static uint8_t lastProgress = 255;
-
     if (progressPercent > 100) progressPercent = 100;
     if (progressPercent == lastProgress) return;
 
@@ -44,6 +44,6 @@ void MenuDrawProgress(uint8_t progressPercent)
 
 void MenuResetProgressBar(void)
 {
-
+	lastProgress = 255;
 }
 

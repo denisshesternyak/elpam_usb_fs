@@ -408,8 +408,14 @@ void Menu_Init(void)
 	languageMenu->buttonHandler = languageMenu_HandleButtonPress;
 
     //currentMenu = rootMenu;
+
+	BLK_ON();
+	isBacklightOn = true;
+
 	PrepareSinuseItems();
 	currentMenu = sinusMenu;
+
+	DrawStatusBar();
 	DrawMenuScreen(true);
 
     // testing
@@ -435,9 +441,6 @@ void Menu_Init(void)
 //
 //    currentMenu = passwordMenu;
 
-
-	BLK_ON();
-	isBacklightOn = true;
 }
 
 
@@ -817,6 +820,7 @@ void sirenPrepareAction(void)
 		return;
 
 	currentMenu->textFilename = filepath;
+	MenuResetProgressBar();
 }
 
 //void sirenPostAction(void)
