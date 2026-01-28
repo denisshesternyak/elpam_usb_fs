@@ -65,7 +65,7 @@ static void audio_pause_playback(void);
 void audio_init(void)
 {
     memset(&player, 0, sizeof(player));
-    player.new_volume = DEF_VALUE_VOLUME;
+    player.new_volume = MAX_VOLUME;//DEF_VALUE_VOLUME;
 	player.count_progree = 12;
 
     audio_init_sin_table();
@@ -147,9 +147,9 @@ void audio_start_playback(void)
 
 //    start_play = HAL_GetTick();
 
-//	hi2s2.Init.MCLKOutput = I2S_MCLKOUTPUT_ENABLE;
-//	HAL_I2S_Init(&hi2s2);
-//    HAL_I2S_Transmit_DMA(&hi2s2, (uint16_t*)dma_buffer, AUDIO_HALF_BUFFER_SIZE);
+	hi2s2.Init.MCLKOutput = I2S_MCLKOUTPUT_ENABLE;
+	HAL_I2S_Init(&hi2s2);
+    HAL_I2S_Transmit_DMA(&hi2s2, (uint16_t*)dma_buffer, AUDIO_HALF_BUFFER_SIZE);
 
     player.is_playing = true;
     player.audio_state = AUDIO_PLAY;
@@ -198,7 +198,7 @@ void audio_play_playback()
 	    xQueueSend(xLCDQueueHandle, &lcd_event, portMAX_DELAY);
 	}
 
-//	player.buff_state = BUFFER_IDLE;
+	player.buff_state = BUFFER_IDLE;
 	xQueueSend(xAudioQueueHandle, &player.audio_state, portMAX_DELAY);
 }
 
@@ -219,9 +219,9 @@ void audio_stop_playback(void)
 	player.duration = 0;
 //	player.bytes_read = 0;
 
-//    HAL_I2S_DMAStop(&hi2s2);
-//    hi2s2.Init.MCLKOutput = I2S_MCLKOUTPUT_DISABLE;
-//    HAL_I2S_Init(&hi2s2);
+    HAL_I2S_DMAStop(&hi2s2);
+    hi2s2.Init.MCLKOutput = I2S_MCLKOUTPUT_DISABLE;
+    HAL_I2S_Init(&hi2s2);
 
 //    audiofs_close_file();
 }
@@ -237,9 +237,8 @@ void HAL_I2S_TxHalfCpltCallback(I2S_HandleTypeDef *hi2s)
 	{
 		if (player.is_playing)
 		{
-			BaseType_t xHigherPriorityTaskWoken = pdFALSE;
 			player.buff_state = BUFFER_HALF;
-			xQueueSendFromISR(xAudioQueueHandle, &player.audio_state, &xHigherPriorityTaskWoken);
+			xQueueSendFromISR(xAudioQueueHandle, &player.audio_state, NULL);
 		}
 	}
 }
@@ -250,9 +249,8 @@ void HAL_I2S_TxCpltCallback(I2S_HandleTypeDef *hi2s)
 	{
 		if (player.is_playing)
 		{
-			BaseType_t xHigherPriorityTaskWoken = pdFALSE;
 			player.buff_state = BUFFER_FULL;
-			xQueueSendFromISR(xAudioQueueHandle, &player.audio_state, &xHigherPriorityTaskWoken);
+			xQueueSendFromISR(xAudioQueueHandle, &player.audio_state, NULL);
 		}
 	}
 }

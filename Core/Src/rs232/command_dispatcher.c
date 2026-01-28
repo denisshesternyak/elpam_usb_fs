@@ -62,8 +62,7 @@ void handle_all_clear_1(void)
 		player.current_sin = SINUS_ALL_CLEAR_90S;
 		player.audio_state = AUDIO_START;
 		player.priority = AUDIO_PRIORITY_HIGH;
-		BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-		xQueueSendFromISR(xAudioQueueHandle, &player.audio_state, &xHigherPriorityTaskWoken);
+		xQueueSendFromISR(xAudioQueueHandle, &player.audio_state, NULL);
     }
 
 #if defined(USE_DEBUG_COMMAND_DISPATCHER)
@@ -87,8 +86,7 @@ void handle_all_clear_2(void)
 		player.current_sin = SINUS_ALL_CLEAR_120S;
 		player.audio_state = AUDIO_START;
 		player.priority = AUDIO_PRIORITY_HIGH;
-		BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-		xQueueSendFromISR(xAudioQueueHandle, &player.audio_state, &xHigherPriorityTaskWoken);
+		xQueueSendFromISR(xAudioQueueHandle, &player.audio_state, NULL);
 		//Print_Msg("All_clear_2 is start\r\n");
 	}
 
@@ -113,8 +111,7 @@ void handle_alarm(void)
 		player.current_sin = SINUS_ALARM_90S;
 		player.audio_state = AUDIO_START;
 		player.priority = AUDIO_PRIORITY_HIGH;
-		BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-		xQueueSendFromISR(xAudioQueueHandle, &player.audio_state, &xHigherPriorityTaskWoken);
+		xQueueSendFromISR(xAudioQueueHandle, &player.audio_state, NULL);
 		//Print_Msg("Alarm is start\r\n");
      }
 
@@ -139,8 +136,7 @@ void handle_chemical(void)
 		player.current_sin = SINUS_ABC_120S;
 		player.priority = AUDIO_PRIORITY_HIGH;
 		player.audio_state = AUDIO_START;
-		BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-		xQueueSendFromISR(xAudioQueueHandle, &player.audio_state, &xHigherPriorityTaskWoken);
+		xQueueSendFromISR(xAudioQueueHandle, &player.audio_state, NULL);
 //		Print_Msg("Chemical is start\r\n");
 	}
 
@@ -182,8 +178,7 @@ void handle_cancel(void)
     set_system_mode(SYSTEM_MODE_CANCEL_DELAYED);
     player.audio_state = AUDIO_STOP;
 	player.priority = AUDIO_PRIORITY_HIGH;
-	BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-	xQueueSendFromISR(xAudioQueueHandle, &player.audio_state, &xHigherPriorityTaskWoken);
+	xQueueSendFromISR(xAudioQueueHandle, &player.audio_state, NULL);
 
 #if defined(USE_DEBUG_COMMAND_DISPATCHER)
     //sprintf(debug_msg, "CMD: CANCEL\r\n");

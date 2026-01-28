@@ -10,7 +10,9 @@
 //#include "lcd_widget_volume_indicator.h"
 #include <stdbool.h>
 
-#define MAX_MENU_ITEMS 	25
+#define MAX_MENU_ITEMS 			25
+#define INACTIVITY_TIMEOUT_MS 	20
+#define BACKLIGHT_TIMEOUT_MS 	10
 
 typedef struct {
     const void* image;
@@ -98,7 +100,6 @@ void ClearMenu(Menu* menu);
 void MenuLoadSDCardMessages(void);
 void MenuLoadSDCardSirens(void);
 //void MenuShowMessages(void);
-void SetIdleMenu(void);
 //void ShowUartCommand(void);
 
 

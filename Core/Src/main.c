@@ -62,6 +62,8 @@ I2C_HandleTypeDef hi2c5;
 I2S_HandleTypeDef hi2s2;
 DMA_HandleTypeDef hdma_spi2_tx;
 
+RTC_HandleTypeDef hrtc;
+
 SPI_HandleTypeDef hspi1;
 SPI_HandleTypeDef hspi4;
 
@@ -92,7 +94,7 @@ const osThreadAttr_t AudioPlaybackTa_attributes = {
 osThreadId_t LCDTaskHandle;
 const osThreadAttr_t LCDTask_attributes = {
   .name = "LCDTask",
-  .stack_size = 512 * 4,
+  .stack_size = 1024 * 4,
   .priority = (osPriority_t) osPriorityLow,
 };
 /* Definitions for InputTask_Name */
@@ -144,6 +146,7 @@ static void MX_I2C2_Init(void);
 static void MX_I2C4_Init(void);
 static void MX_SPI1_Init(void);
 static void MX_SPI4_Init(void);
+static void MX_RTC_Init(void);
 void StartDefaultTask(void *argument);
 void UART_Receive_Task(void *argument);
 void AudioPlaybackTask(void *argument);
@@ -154,6 +157,12 @@ void InputTask(void *argument);
 void Print_Msg(const char* msg)
 {
 	HAL_UART_Transmit(&huart2, (uint8_t *)msg, strlen(msg), 1000);
+}
+
+void HAL_RTCEx_WakeUpTimerEventCallback(RTC_HandleTypeDef *hrtc)
+{
+	LCDTaskEvent_t event = {.event = LCD_EVENT_RTC};
+    xQueueSendFromISR(xLCDQueueHandle, &event, NULL);
 }
 /* USER CODE END PFP */
 
@@ -215,6 +224,7 @@ int main(void)
   MX_SPI1_Init();
   MX_FATFS_Init();
   MX_SPI4_Init();
+  MX_RTC_Init();
   /* USER CODE BEGIN 2 */
 
   /* USER CODE END 2 */
@@ -334,10 +344,16 @@ void SystemClock_Config(void)
 
   while(!__HAL_PWR_GET_FLAG(PWR_FLAG_VOSRDY)) {}
 
+  /** Configure LSE Drive Capability
+  */
+  HAL_PWR_EnableBkUpAccess();
+  __HAL_RCC_LSEDRIVE_CONFIG(RCC_LSEDRIVE_LOW);
+
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
   */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI|RCC_OSCILLATORTYPE_LSE;
+  RCC_OscInitStruct.LSEState = RCC_LSE_ON;
   RCC_OscInitStruct.HSIState = RCC_HSI_DIV1;
   RCC_OscInitStruct.HSICalibrationValue = 64;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
@@ -600,6 +616,78 @@ static void MX_I2S2_Init(void)
 	hi2s2.Init.MCLKOutput = I2S_MCLKOUTPUT_DISABLE;
 	HAL_I2S_Init(&hi2s2);
   /* USER CODE END I2S2_Init 2 */
+
+}
+
+/**
+  * @brief RTC Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_RTC_Init(void)
+{
+
+  /* USER CODE BEGIN RTC_Init 0 */
+
+  /* USER CODE END RTC_Init 0 */
+
+  RTC_TimeTypeDef sTime = {0};
+  RTC_DateTypeDef sDate = {0};
+
+  /* USER CODE BEGIN RTC_Init 1 */
+
+  /* USER CODE END RTC_Init 1 */
+
+  /** Initialize RTC Only
+  */
+  hrtc.Instance = RTC;
+  hrtc.Init.HourFormat = RTC_HOURFORMAT_24;
+  hrtc.Init.AsynchPrediv = 127;
+  hrtc.Init.SynchPrediv = 255;
+  hrtc.Init.OutPut = RTC_OUTPUT_DISABLE;
+  hrtc.Init.OutPutPolarity = RTC_OUTPUT_POLARITY_HIGH;
+  hrtc.Init.OutPutType = RTC_OUTPUT_TYPE_OPENDRAIN;
+  hrtc.Init.OutPutRemap = RTC_OUTPUT_REMAP_NONE;
+  if (HAL_RTC_Init(&hrtc) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /* USER CODE BEGIN Check_RTC_BKUP */
+  HAL_RTCEx_DeactivateWakeUpTimer(&hrtc);
+  __HAL_RTC_WAKEUPTIMER_CLEAR_FLAG(&hrtc, RTC_FLAG_WUTF);
+  /* USER CODE END Check_RTC_BKUP */
+
+  /** Initialize RTC and set the Time and Date
+  */
+  sTime.Hours = 0;
+  sTime.Minutes = 0;
+  sTime.Seconds = 0;
+  sTime.DayLightSaving = RTC_DAYLIGHTSAVING_NONE;
+  sTime.StoreOperation = RTC_STOREOPERATION_RESET;
+  if (HAL_RTC_SetTime(&hrtc, &sTime, RTC_FORMAT_BIN) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sDate.WeekDay = RTC_WEEKDAY_WEDNESDAY;
+  sDate.Month = RTC_MONTH_JANUARY;
+  sDate.Date = 28;
+  sDate.Year = 26;
+
+  if (HAL_RTC_SetDate(&hrtc, &sDate, RTC_FORMAT_BIN) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /** Enable the WakeUp
+  */
+  if (HAL_RTCEx_SetWakeUpTimer_IT(&hrtc, 0, RTC_WAKEUPCLOCK_CK_SPRE_16BITS) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN RTC_Init 2 */
+
+  /* USER CODE END RTC_Init 2 */
 
 }
 
@@ -963,27 +1051,10 @@ void LCDStartTask(void *argument)
 				UpdateProgressBar(lcd_event.value);
 				break;
 			case LCD_EVENT_RTC:
+				UpdateDateTime();
 				break;
 			}
 		}
-//		else
-//		{
-////			SetIdleMenu();
-//		}
-
-//		uint32_t now = osKernelGetTickCount();
-//		if ((now - lastRtcUpdateTick) >= 1000)
-//		{
-//			UpdateDateTime();
-//
-//			if (osMutexAcquire(timeRtcMutexHandle, osWaitForever) == osOK)
-//			{
-//				//ds3231_get_datetime();
-//				osMutexRelease(timeRtcMutexHandle);
-//			}
-//
-//			lastRtcUpdateTick = now;
-//		}
 
 		osDelay(1);
 	}
@@ -1005,8 +1076,8 @@ void InputTask(void *argument)
 
 	LCDTaskEvent_t lcd_event = { .event = LCD_EVENT_BTN, .btn = { .action = BA_PRESSED } };
 
-	lcd_event.btn.button = BTN_ENTER;
-	xQueueSend(xLCDQueueHandle, &lcd_event, portMAX_DELAY);
+//	lcd_event.btn.button = BTN_ENTER;
+//	xQueueSend(xLCDQueueHandle, &lcd_event, portMAX_DELAY);
 
 //
 //	btn_event.button = BTN_DOWN;
@@ -1035,17 +1106,17 @@ void InputTask(void *argument)
 //		}
 //		osDelay(20);
 
-//		lcd_event.btn.button = BTN_ENTER;
-//		xQueueSend(xLCDQueueHandle, &lcd_event, portMAX_DELAY);
-//		osDelay(5000);
-//
-//		lcd_event.btn.button = BTN_ESC;
-//		xQueueSend(xLCDQueueHandle, &lcd_event, portMAX_DELAY);
-//		osDelay(5000);
-//
-//		lcd_event.btn.button = BTN_DOWN;
-//		xQueueSend(xLCDQueueHandle, &lcd_event, portMAX_DELAY);
-//		osDelay(5000);
+		lcd_event.btn.button = BTN_ENTER;
+		xQueueSend(xLCDQueueHandle, &lcd_event, portMAX_DELAY);
+		osDelay(5000);
+
+		lcd_event.btn.button = BTN_ESC;
+		xQueueSend(xLCDQueueHandle, &lcd_event, portMAX_DELAY);
+		osDelay(5000);
+
+		lcd_event.btn.button = BTN_DOWN;
+		xQueueSend(xLCDQueueHandle, &lcd_event, portMAX_DELAY);
+		osDelay(5000);
 
 		osDelay(10);
 	}

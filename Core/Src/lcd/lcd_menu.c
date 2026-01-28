@@ -28,21 +28,19 @@
 //
 //extern QueueHandle_t audioQueue;
 
-uint32_t lastInteractionTick = 0;
-#define INACTIVITY_TIMEOUT_MS 	20000
-#define BACKLIGHT_TIMEOUT_MS 	10000
 //
-bool isPlayAudioFile = false;
-bool isIdle = false;
-bool isBacklightOn = true;
+static bool isPlayAudioFile = false;
+static bool isIdle = false;
+static bool isBacklightOn = false;
 
 #define MAX_MENU_POOL 40
 
+static uint32_t lastInteractionTick = 0;
 static Menu menuPool[MAX_MENU_POOL];
 uint8_t menuPoolIndex = 0;
 
 extern osMessageQueueId_t xAudioQueueHandle;
-
+extern RTC_HandleTypeDef hrtc;
 
 #define MAX_FILENAME_LEN 64
 
@@ -138,8 +136,8 @@ static void MenuInitLanguage(void);
 static void PrepareSinuseItems(void);
 ///////////////////////////////////////////////////////////////////
 
-//static void BLK_ON()  { HAL_GPIO_WritePin(LCD_LED_GPIO_Port, LCD_LED_Pin, GPIO_PIN_SET); }
-//static void BLK_OFF() { HAL_GPIO_WritePin(LCD_LED_GPIO_Port, LCD_LED_Pin, GPIO_PIN_RESET); }
+static void BLK_ON()  { HAL_GPIO_WritePin(LCD_LED_GPIO_Port, LCD_LED_Pin, GPIO_PIN_SET); }
+static void BLK_OFF() { HAL_GPIO_WritePin(LCD_LED_GPIO_Port, LCD_LED_Pin, GPIO_PIN_RESET); }
 static void handle_button_up(void);
 static void handle_button_down(void);
 static void handle_button_enter(void);
@@ -438,6 +436,8 @@ void Menu_Init(void)
 //    currentMenu = passwordMenu;
 
 
+	BLK_ON();
+	isBacklightOn = true;
 }
 
 
@@ -478,9 +478,6 @@ void MenuDrawImage(Menu *m)
 
 bool PlayMessageProgress(const uint8_t value)
 {
-	//lastInteractionTick = osKernelGetTickCount();
-
-
 	if (isPlayAudioFile == false) return false;
 
 	MenuDrawProgress(value);
@@ -860,29 +857,28 @@ void sinusPostAction(void)
 
 void menu_handle_button(ButtonEvent_t event)
 {
-//	char msg[64];
-	lastInteractionTick = osKernelGetTickCount();
-
 	if (!currentMenu) return;
+
+	lastInteractionTick = 0;
 
 	if (event.action == BA_RELEASED) return;
 
-//	if (!isBacklightOn)
-//	{
-//		BLK_ON();
-//		isBacklightOn = true;
-//		return;
-//	}
+	if (!isBacklightOn)
+	{
+		BLK_ON();
+		isBacklightOn = true;
+		return;
+	}
 
 	if (hot_key_handle_button(event)) return;
 
-	if (isIdle)
-	{
+//	if (isIdle)
+//	{
 //		if(isResetPasswordAfterIdle){
 //			Password_Reset(false);
 //		}
 
-		isIdle = false;
+//		isIdle = false;
 
 //		if (Password_IsCorrect())
 //		{
@@ -897,8 +893,8 @@ void menu_handle_button(ButtonEvent_t event)
 //		currentMenu->currentSelection = 0;
 //		DrawMenuScreen(true);
 
-		return;
-	}
+//		return;
+//	}
 
 	if (currentMenu->buttonHandler) {
 	    currentMenu->buttonHandler(event);
@@ -1007,9 +1003,7 @@ void alarmInfoMenu_HandleButtonPress(ButtonEvent_t event)
 			if (currentMenu->parent != NULL) {
 				currentMenu = currentMenu->parent;
 
-				if (currentMenu->type == MENU_TYPE_IDLE){
-					isIdle = true;
-				}
+				isIdle = currentMenu->type == MENU_TYPE_IDLE;
 				DrawMenuScreen(true);
 			}
 //			if(player.is_playing)
@@ -1036,9 +1030,7 @@ void sinusInfoMenu_HandleButtonPress(ButtonEvent_t event)
 			if (currentMenu->parent != NULL) {
 				currentMenu = currentMenu->parent;
 
-				if (currentMenu->type == MENU_TYPE_IDLE){
-					isIdle = true;
-				}
+				isIdle = currentMenu->type == MENU_TYPE_IDLE;
 				DrawMenuScreen(true);
 			}
 //			if(player.is_playing)
@@ -1467,21 +1459,40 @@ void DrawStatusBar()
 
 void UpdateDateTime()
 {
-	//LCD_FillRectangle(TIME_X_POS, TIME_Y_POS, 235, TIME_HEIGHT, COLOR_BLACK);
-	hx8357_write_alignedX_string(0, TIME_Y_POS, "DD/MM/YY hh:mm", &Font_7x10, COLOR_YELLOW, COLOR_BLACK, ALIGN_RIGHT);
-	return;
+	if (!isBacklightOn) return;
 
-//	uint16_t year = time_rtc.year;
-//	if (time_rtc.year > 9999)
-//	{
-//		year = 9999;
-//	}
-//
-//	snprintf(timeStr, sizeof(timeStr), "%02d/%02d/%04d %02d:%02d:%02d",
-//										time_rtc.date, time_rtc.month, year,
-//										time_rtc.hour,time_rtc.minute, time_rtc.second);
-//
-//	LCD_WriteString(TIME_X_POS, TIME_Y_POS, timeStr, Font_7x10, COLOR_WHITE, COLOR_BLACK);
+	lastInteractionTick++;
+
+	if (!isIdle && lastInteractionTick >= INACTIVITY_TIMEOUT_MS)
+	{
+		isIdle = true;
+
+		currentMenu = idleMenu;
+		DrawMenuScreen(true);
+		lastInteractionTick = 0;
+	}
+	else if (isIdle && isBacklightOn && (lastInteractionTick >= BACKLIGHT_TIMEOUT_MS))
+	{
+		BLK_OFF();
+		isBacklightOn = false;
+		lastInteractionTick = 0;
+		return;
+	}
+
+	char clock_str[64];
+	RTC_TimeTypeDef sTime = {0};
+	RTC_DateTypeDef sDate = {0};
+
+	HAL_RTC_GetTime(&hrtc, &sTime, RTC_FORMAT_BIN);
+	HAL_RTC_GetDate(&hrtc, &sDate, RTC_FORMAT_BIN);
+
+	snprintf(clock_str, sizeof(clock_str), "%02d/%02d/%02d %02d:%02d:%02d",
+			sDate.Date, sDate.Month, sDate.Year,
+			sTime.Hours, sTime.Minutes, sTime.Seconds);
+
+	//LCD_FillRectangle(TIME_X_POS, TIME_Y_POS, 235, TIME_HEIGHT, COLOR_BLACK);
+	hx8357_write_alignedX_string(0, TIME_Y_POS, clock_str, &Font_7x10, COLOR_YELLOW, COLOR_BLACK, ALIGN_RIGHT);
+	return;
 }
 
 void UpdateProgressBar(uint8_t value)
@@ -1489,26 +1500,6 @@ void UpdateProgressBar(uint8_t value)
 	if(!player.is_playing || (currentMenu != sinusInfoMenu && currentMenu != alarmInfoMenu)) return;
 	MenuDrawProgress(value);
 }
-
-void SetIdleMenu(void)
-{
-	if (!isIdle || isBacklightOn)
-	{
-		uint32_t now = osKernelGetTickCount();
-
-		if (now - lastInteractionTick >= INACTIVITY_TIMEOUT_MS) {
-			isIdle = true;
-
-			DrawMenuScreen(true);
-			lastInteractionTick = now;
-		}
-//		else if (isIdle && isBacklightOn && (now - lastInteractionTick >= BACKLIGHT_TIMEOUT_MS)) {
-//			BLK_OFF();
-//			isBacklightOn = false;
-//		}
-	}
-}
-
 
 //void ShowUartCommand(void)
 //{
