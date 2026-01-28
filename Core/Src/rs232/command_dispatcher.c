@@ -8,12 +8,14 @@
 #include <string.h>
 #include <stdio.h>
 #include "audio_types.h"
+#include "lcd_menu.h"
 
 // Extern UART handler for debug output (optional)
 extern UART_HandleTypeDef huart2;
 
 extern Audio_Player_t player;
 extern osMessageQueueId_t xAudioQueueHandle;
+extern osMessageQueueId_t xLCDQueueHandle;
 
 // Buffer for debug messages
 #if defined(USE_DEBUG_COMMAND_DISPATCHER)
@@ -391,3 +393,25 @@ void handle_unknown_command(void)
     LCD_WriteString(LCD_USART_TEXT_X, LCD_USART_TEXT_Y, "ERR:UNKNOWN", LCD_USART_TEXT_FONT, COLOR_YELLOW, COLOR_BLACK);
 #endif
 }
+
+void handle_enter_command(void)
+{
+	LCDTaskEvent_t lcd_event = { .event = LCD_EVENT_BTN, .btn = { .action = BA_PRESSED } };
+	lcd_event.btn.button = BTN_ENTER;
+	xQueueSendFromISR(xLCDQueueHandle, &lcd_event, NULL);
+}
+
+void handle_up_command(void)
+{
+	LCDTaskEvent_t lcd_event = { .event = LCD_EVENT_BTN, .btn = { .action = BA_PRESSED } };
+	lcd_event.btn.button = BTN_UP;
+	xQueueSendFromISR(xLCDQueueHandle, &lcd_event, NULL);
+}
+
+void handle_down_command(void)
+{
+	LCDTaskEvent_t lcd_event = { .event = LCD_EVENT_BTN, .btn = { .action = BA_PRESSED } };
+	lcd_event.btn.button = BTN_DOWN;
+	xQueueSendFromISR(xLCDQueueHandle, &lcd_event, NULL);
+}
+

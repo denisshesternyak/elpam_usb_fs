@@ -44,6 +44,9 @@ static rs232_cmd_handler_t handler_reset = NULL;
 static rs232_volume_handler_t handler_volume_up = NULL;
 static rs232_volume_handler_t handler_volume_down = NULL;
 static rs232_cmd_handler_t handler_unknown = NULL;
+static rs232_cmd_handler_t handler_enter = NULL;
+static rs232_cmd_handler_t handler_up = NULL;
+static rs232_cmd_handler_t handler_down = NULL;
 
 static void rs232_uart_rx_callback(void);
 static void call_or_default(rs232_cmd_handler_t h);
@@ -131,6 +134,11 @@ static void process_command(char *cmd)
     else if (strncmp(cmd, "*REPORT", 7) == 0) { call_or_default(handler_report); }
     else if (strncmp(cmd, "*_VOICE", 7) == 0) { call_or_default(handler_remote_pa); }
     else if (strncmp(cmd, "*RESET_", 7) == 0) { call_or_default(handler_reset); }
+
+    else if (strncmp(cmd, "*ENTER_", 7) == 0) { call_or_default(handler_enter); }
+	else if (strncmp(cmd, "*UP____", 7) == 0) { call_or_default(handler_up); }
+	else if (strncmp(cmd, "*DOWN__", 7) == 0) { call_or_default(handler_down); }
+
     else if (strncmp(cmd, "*VOL", 4) == 0)
     {
     	int d1 = (cmd[4] == ' ') ? 0 : (cmd[4] - '0');
@@ -192,3 +200,7 @@ void rs232_register_reset(rs232_cmd_handler_t h)           { handler_reset = h; 
 void rs232_register_volume_up(rs232_volume_handler_t h)    { handler_volume_up = h; }
 void rs232_register_volume_down(rs232_volume_handler_t h)  { handler_volume_down = h; }
 void rs232_register_unknown(rs232_cmd_handler_t h)         { handler_unknown = h; }
+
+void rs232_register_enter(rs232_cmd_handler_t h)			{ handler_enter = h; }
+void rs232_register_up(rs232_cmd_handler_t h)				{ handler_up = h; }
+void rs232_register_down(rs232_cmd_handler_t h)				{ handler_down = h; }

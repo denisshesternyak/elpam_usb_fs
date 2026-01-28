@@ -974,6 +974,11 @@ void UART_Receive_Task(void *argument)
 	rs232_register_report(system_fill_report);
 	rs232_register_unknown(handle_unknown_command);
 
+	rs232_register_enter(handle_enter_command);
+	rs232_register_up(handle_up_command);
+	rs232_register_down(handle_down_command);
+
+
 	system_status_init();
 
   /* Infinite loop */
@@ -1098,17 +1103,17 @@ void InputTask(void *argument)
 //		}
 //		osDelay(20);
 
-		lcd_event.btn.button = BTN_ENTER;
-		xQueueSend(xLCDQueueHandle, &lcd_event, portMAX_DELAY);
-		osDelay(5000);
-
-		lcd_event.btn.button = BTN_ESC;
-		xQueueSend(xLCDQueueHandle, &lcd_event, portMAX_DELAY);
-		osDelay(5000);
-
-		lcd_event.btn.button = BTN_DOWN;
-		xQueueSend(xLCDQueueHandle, &lcd_event, portMAX_DELAY);
-		osDelay(5000);
+//		lcd_event.btn.button = BTN_ENTER;
+//		xQueueSend(xLCDQueueHandle, &lcd_event, portMAX_DELAY);
+//		osDelay(5000);
+//
+//		lcd_event.btn.button = BTN_ESC;
+//		xQueueSend(xLCDQueueHandle, &lcd_event, portMAX_DELAY);
+//		osDelay(5000);
+//
+//		lcd_event.btn.button = BTN_DOWN;
+//		xQueueSend(xLCDQueueHandle, &lcd_event, portMAX_DELAY);
+//		osDelay(5000);
 
 		osDelay(10);
 	}

@@ -33,7 +33,8 @@ typedef enum {
 	MENU_TYPE_REPORT,
 	MENU_TYPE_TEST_BAT,
 	MENU_TYPE_TEST_AMP,
-	MENU_TYPE_TEST_DRIV
+	MENU_TYPE_TEST_DRIV,
+	MENU_TYPE_CLOCK
 } MenuType;
 
 typedef enum {
@@ -84,6 +85,7 @@ void menu_handle_button(ButtonEvent_t event);
 bool hot_key_handle_button(ButtonEvent_t event);
 
 void HandleButtonPress(ButtonEvent_t event);
+void clockMenu_HandleButtonPress(ButtonEvent_t event);
 void languageMenu_HandleButtonPress(ButtonEvent_t event);
 //void passwordMenu_HandleButtonPress(ButtonEvent_t event);
 void alarmInfoMenu_HandleButtonPress(ButtonEvent_t event);
@@ -99,6 +101,8 @@ void MenuDrawImage(Menu *m);
 void ClearMenu(Menu* menu);
 void MenuLoadSDCardMessages(void);
 void MenuLoadSDCardSirens(void);
+void Draw_MENU_TYPE_CLOCK(void);
+
 //void MenuShowMessages(void);
 //void ShowUartCommand(void);
 

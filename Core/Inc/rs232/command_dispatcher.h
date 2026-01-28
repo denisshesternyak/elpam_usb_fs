@@ -27,4 +27,8 @@ void system_fill_report(void);
 
 void handle_unknown_command(void);
 
+void handle_enter_command(void);
+void handle_up_command(void);
+void handle_down_command(void);
+
 #endif /* INC_RS232_COMMAND_DISPATCHER_H_ */

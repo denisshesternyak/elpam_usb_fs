@@ -43,6 +43,15 @@ extern osMessageQueueId_t xAudioQueueHandle;
 extern RTC_HandleTypeDef hrtc;
 
 #define MAX_FILENAME_LEN 64
+#define CLOCK_MAX_SYMBOLS	6
+
+typedef struct {
+    uint8_t current_symbol;
+    int8_t  change_value;
+} ClockEdit_t;
+
+ClockEdit_t clock;
+
 
 char messageFilenames[MAX_MENU_ITEMS][MAX_FILENAME_LEN];
 const char* selectedFile = NULL;
@@ -63,6 +72,7 @@ Menu* apmplifiresTestMunu = NULL;
 Menu* driversTestMenu = NULL;
 Menu* alarmInfoMenu = NULL;
 Menu* maintenanceMenu = NULL;
+Menu* clockMenu = NULL;
 Menu* languageMenu = NULL;
 Menu* sinusMenu = NULL;
 Menu* sinusInfoMenu = NULL;
@@ -134,6 +144,8 @@ void MenuLoadSDCardSirens(void);
 void MenuLoadSDCardMessages(void);
 static void MenuInitLanguage(void);
 static void PrepareSinuseItems(void);
+static void PrepareClock(void);
+
 ///////////////////////////////////////////////////////////////////
 
 static void BLK_ON()  { HAL_GPIO_WritePin(LCD_LED_GPIO_Port, LCD_LED_Pin, GPIO_PIN_SET); }
@@ -203,6 +215,7 @@ void Menu_Init(void)
 	driversTestMenu = &menuPool[menuPoolIndex++];
 	reportMenu = &menuPool[menuPoolIndex++];
 	maintenanceMenu = &menuPool[menuPoolIndex++];
+	clockMenu = &menuPool[menuPoolIndex++];
 	languageMenu = &menuPool[menuPoolIndex++];
 	sinusMenu = &menuPool[menuPoolIndex++];
 	sinusInfoMenu = &menuPool[menuPoolIndex++];
@@ -394,9 +407,18 @@ void Menu_Init(void)
 	maintenanceMenu->currentSelection = 0;
 	maintenanceMenu->scrollOffset = 0;
 	maintenanceMenu->buttonHandler = HandleButtonPress;
-	maintenanceMenu->items[0] = (MenuItem){ .name = { "1. Time & Date", "1. Time & Date" },     .prepareAction = NULL, .postAction = NULL, .submenu = NULL    };
+	maintenanceMenu->items[0] = (MenuItem){ .name = { "1. Time and Date", "1. Time & Date" },     .prepareAction = &PrepareClock, .postAction = NULL, .submenu = clockMenu    };
 	maintenanceMenu->items[1] = (MenuItem){ .name = { "2. Language select", "2. Language select" }, .prepareAction = &MenuInitLanguage, .postAction = NULL, .submenu = languageMenu    };
 	maintenanceMenu->itemCount = 2;
+
+	clockMenu->parent = maintenanceMenu;
+	clockMenu->screenText[LANG_EN] = "### Time and Date ###";
+	clockMenu->screenText[LANG_HE] = "### -Time and Date- ###";
+	clockMenu->type = MENU_TYPE_CLOCK;
+	clockMenu->currentSelection = 0;
+	clockMenu->itemCount = 0;
+	clockMenu->scrollOffset = 0;
+	clockMenu->buttonHandler = clockMenu_HandleButtonPress;
 
 	languageMenu->parent = maintenanceMenu;
 	languageMenu->screenText[LANG_EN] = "### Language ###";
@@ -412,8 +434,8 @@ void Menu_Init(void)
 	BLK_ON();
 	isBacklightOn = true;
 
-	PrepareSinuseItems();
-	currentMenu = sinusMenu;
+//	PrepareSinuseItems();
+	currentMenu = maintenanceMenu;
 
 	DrawStatusBar();
 	DrawMenuScreen(true);
@@ -752,6 +774,12 @@ static void PrepareSinuseItems(void)
     currentMenu = sinusInfoMenu;
 }
 
+static void PrepareClock(void)
+{
+	clock.change_value = 0;
+	clock.current_symbol = 0;
+}
+
 void MenuInitLanguage(void)
 {
 	if (!languageMenu) return;
@@ -1075,6 +1103,32 @@ void sinusInfoMenu_HandleButtonPress(ButtonEvent_t event)
 //
 //}
 
+void clockMenu_HandleButtonPress(ButtonEvent_t event)
+{
+	if (!clockMenu) return;
+	char msg[64];
+
+	switch(event.button)
+	{
+		case BTN_ENTER:
+			clock.current_symbol++;
+			if (clock.current_symbol >= CLOCK_MAX_SYMBOLS) clock.current_symbol = 0;
+			Draw_MENU_TYPE_CLOCK();
+			return;
+		case BTN_UP:
+			clock.change_value = 1;
+			Draw_MENU_TYPE_CLOCK();
+			return;
+		case BTN_DOWN:
+			clock.change_value = -1;
+			Draw_MENU_TYPE_CLOCK();
+			return;
+		default:
+			break;
+	}
+	HandleButtonPress(event);
+}
+
 void languageMenu_HandleButtonPress(ButtonEvent_t event)
 {
 	if (!languageMenu || languageMenu->itemCount == 0) return;
@@ -1274,6 +1328,118 @@ void Draw_MENU_TYPE_MESSAGE_PLAY(void)
 	osDelay(3);
 }
 
+void Draw_MENU_TYPE_CLOCK(void)
+{
+	RTC_TimeTypeDef sTime = {0};
+	RTC_DateTypeDef sDate = {0};
+
+	HAL_RTC_GetTime(&hrtc, &sTime, RTC_FORMAT_BIN);
+	HAL_RTC_GetDate(&hrtc, &sDate, RTC_FORMAT_BIN);
+
+	if (clock.change_value != 0)
+	{
+		if(clock.current_symbol == 0)
+		{
+			int8_t data = sDate.Date;
+			data += clock.change_value;
+
+			if (data > 31) sDate.Date = 1;
+			else if (data < 1) sDate.Date = 31;
+			else sDate.Date = data;
+		}
+		if(clock.current_symbol == 1)
+		{
+			int8_t data = sDate.Month;
+			data += clock.change_value;
+
+			if (data > 12) sDate.Month = 1;
+			else if (data < 1) sDate.Month = 12;
+			else sDate.Month = data;
+		}
+		if(clock.current_symbol == 2)
+		{
+			int8_t data = sDate.Year;
+			data += clock.change_value;
+
+			if (data > 99) sDate.Year = 0;
+			else if (data < 0) sDate.Year = 99;
+			else sDate.Year = data;
+		}
+
+		if(clock.current_symbol == 3)
+		{
+			int8_t data = sTime.Hours;
+			data += clock.change_value;
+
+			if (data > 23) sTime.Hours = 0;
+			else if (data < 0) sTime.Hours = 23;
+			else sTime.Hours = data;
+		}
+
+		if(clock.current_symbol == 4)
+		{
+			int8_t data = sTime.Minutes;
+			data += clock.change_value;
+
+			if (data > 59) sTime.Minutes = 0;
+			else if (data < 0) sTime.Minutes = 59;
+			else sTime.Minutes = data;
+		}
+		if(clock.current_symbol == 5)
+		{
+			int8_t data = sTime.Seconds;
+			data += clock.change_value;
+
+			if (data > 59) sTime.Seconds = 0;
+			else if (data < 0) sTime.Seconds = 59;
+			else sTime.Seconds = data;
+		}
+
+		HAL_RTC_SetTime(&hrtc, &sTime, RTC_FORMAT_BIN);
+		HAL_RTC_SetDate(&hrtc, &sDate, RTC_FORMAT_BIN);
+		clock.change_value = 0;
+	}
+
+	FontDef* font = &Font_16x26;
+	const uint8_t fontW = font->width;
+	const uint16_t baseX = 99;
+	const uint16_t y     = 153;
+
+	char buf[32];
+	snprintf(buf, sizeof(buf), "%02d/%02d/%02d  %02d:%02d:%02d",
+			 sDate.Date, sDate.Month, sDate.Year,
+			 sTime.Hours, sTime.Minutes, sTime.Seconds);
+
+	Print_Msg(buf);
+	Print_Msg("\r\n");
+
+	hx8357_write_alignedX_string(baseX, y, buf, font, COLOR_YELLOW, COLOR_BLACK, ALIGN_LEFT);
+
+	uint16_t field_color   = COLOR_YELLOW;
+	uint16_t field_bg      = COLOR_BLUE;
+	uint16_t field_offset  = 0;
+
+	const uint8_t pos_in_str[CLOCK_MAX_SYMBOLS]   = {0,3,6,10,13,16};
+
+	if (clock.current_symbol < CLOCK_MAX_SYMBOLS)
+	{
+		field_offset = pos_in_str[clock.current_symbol] * fontW;
+
+		char field_str[4];
+		switch (clock.current_symbol)
+		{
+			case 0: snprintf(field_str, sizeof(field_str), "%02d", sDate.Date);    break;
+			case 1: snprintf(field_str, sizeof(field_str), "%02d", sDate.Month);   break;
+			case 2: snprintf(field_str, sizeof(field_str), "%02d", sDate.Year);    break;
+			case 3: snprintf(field_str, sizeof(field_str), "%02d", sTime.Hours);   break;
+			case 4: snprintf(field_str, sizeof(field_str), "%02d", sTime.Minutes); break;
+			case 5: snprintf(field_str, sizeof(field_str), "%02d", sTime.Seconds); break;
+		}
+
+		hx8357_write_alignedX_string(baseX + field_offset, y, field_str, font, field_color, field_bg, ALIGN_LEFT);
+	}
+}
+
 void Draw_MENU_TYPE_LIST()
 {
 	uint8_t old_selection = currentMenu->oldSelection;
@@ -1386,6 +1552,10 @@ void DrawMenuScreen(bool forceFullRedraw)
 		{
 			Draw_MENU_TYPE_LIST();
 		}
+        else if(currentMenu->type == MENU_TYPE_CLOCK)
+        {
+        	Draw_MENU_TYPE_CLOCK();
+        }
        prevMenu = currentMenu;
     }
     else if (currentMenu->type == MENU_TYPE_LIST)
@@ -1465,23 +1635,23 @@ void UpdateDateTime()
 {
 	if (!isBacklightOn) return;
 
-	lastInteractionTick++;
-
-	if (!isIdle && lastInteractionTick >= INACTIVITY_TIMEOUT_MS)
-	{
-		isIdle = true;
-
-		currentMenu = idleMenu;
-		DrawMenuScreen(true);
-		lastInteractionTick = 0;
-	}
-	else if (isIdle && isBacklightOn && (lastInteractionTick >= BACKLIGHT_TIMEOUT_MS))
-	{
-		BLK_OFF();
-		isBacklightOn = false;
-		lastInteractionTick = 0;
-		return;
-	}
+//	lastInteractionTick++;
+//
+//	if (!isIdle && lastInteractionTick >= INACTIVITY_TIMEOUT_MS)
+//	{
+//		isIdle = true;
+//
+//		currentMenu = idleMenu;
+//		DrawMenuScreen(true);
+//		lastInteractionTick = 0;
+//	}
+//	else if (isIdle && isBacklightOn && (lastInteractionTick >= BACKLIGHT_TIMEOUT_MS))
+//	{
+//		BLK_OFF();
+//		isBacklightOn = false;
+//		lastInteractionTick = 0;
+//		return;
+//	}
 
 	char clock_str[64];
 	RTC_TimeTypeDef sTime = {0};
