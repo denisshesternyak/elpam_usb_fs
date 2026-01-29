@@ -30,7 +30,6 @@
 
 //
 static bool isPlayAudioFile = false;
-static bool isIdle = false;
 static bool isBacklightOn = false;
 
 #define MAX_MENU_POOL 40
@@ -48,6 +47,8 @@ extern RTC_HandleTypeDef hrtc;
 typedef struct {
     uint8_t current_symbol;
     int8_t  change_value;
+	RTC_TimeTypeDef sTime;
+	RTC_DateTypeDef sDate;
 } ClockEdit_t;
 
 ClockEdit_t clock;
@@ -70,7 +71,7 @@ Menu* messagePlayMenu = NULL;
 Menu* batteriesTestMenu = NULL;
 Menu* apmplifiresTestMunu = NULL;
 Menu* driversTestMenu = NULL;
-Menu* alarmInfoMenu = NULL;
+Menu* alarm_info_menu = NULL;
 Menu* maintenanceMenu = NULL;
 Menu* clockMenu = NULL;
 Menu* languageMenu = NULL;
@@ -140,11 +141,12 @@ void RunSilentTest(void);
 void RunBatteriesTest(void);
 void RunAmplifiresTest(void);
 void RunDriversTest(void);
+void run_clock(void);
+void prepare_clock(void);
 void MenuLoadSDCardSirens(void);
 void MenuLoadSDCardMessages(void);
 static void MenuInitLanguage(void);
 static void PrepareSinuseItems(void);
-static void PrepareClock(void);
 
 ///////////////////////////////////////////////////////////////////
 
@@ -154,6 +156,14 @@ static void handle_button_up(void);
 static void handle_button_down(void);
 static void handle_button_enter(void);
 static void handle_button_esc(void);
+
+void clear_position(Menu* m)
+{
+	m->scrollOffset = 0;
+	m->currentSelection = 0;
+	m->oldSelection = 0;
+	m->oldOffset = 0;
+}
 
 void _basic_init_menu(Menu* m)
 {
@@ -205,7 +215,7 @@ void Menu_Init(void)
 	idleMenu = &menuPool[menuPoolIndex++];
     rootMenu = &menuPool[menuPoolIndex++];
     sirenMenu = &menuPool[menuPoolIndex++];
-    alarmInfoMenu = &menuPool[menuPoolIndex++];
+    alarm_info_menu = &menuPool[menuPoolIndex++];
 	messagesMenu = &menuPool[menuPoolIndex++];
 	messagePlayMenu = &menuPool[menuPoolIndex++];
 	announcementMenu = &menuPool[menuPoolIndex++];
@@ -233,7 +243,7 @@ void Menu_Init(void)
 	idleMenu->screenText[LANG_HE] = "### -Fault indication- ###";
 	idleMenu->textFilename  = NULL;
 	idleMenu->itemCount = 0;
-	idleMenu->buttonHandler = HandleButtonPress;
+	idleMenu->buttonHandler = idle_menu_handler;
 
 //	///////////////////////////////////////////////
     rootMenu->parent = idleMenu;
@@ -247,7 +257,7 @@ void Menu_Init(void)
     rootMenu->items[0] = (MenuItem){ .name = { "1. Siren", "-Siren- .1" }, .prepareAction = &MenuLoadSDCardSirens, .postAction = NULL, .submenu = sirenMenu  };
     rootMenu->items[1] = (MenuItem){ .name = { "2. Messages", "2. הודעות" }, .prepareAction = &MenuLoadSDCardMessages, .postAction = NULL, .submenu = messagesMenu  };
     rootMenu->items[2] = (MenuItem){ .name = { "3. Announcement", "3. הכרזה" }, .prepareAction = NULL, .postAction = NULL, .submenu = announcementMenu    };
-    rootMenu->items[3] = (MenuItem){ .name = { "4. Test", "4. בדיקה" }, .prepareAction = NULL,  .postAction = NULL,.submenu = testMenu    };
+    rootMenu->items[3] = (MenuItem){ .name = { "4. Test", "4. בדיקה" }, .prepareAction = NULL,  .postAction = NULL, .submenu = testMenu    };
     rootMenu->items[4] = (MenuItem){ .name = { "5. Report", "5. דוח" }, .prepareAction = NULL,  .postAction = NULL, .submenu = reportMenu    };
     rootMenu->items[5] = (MenuItem){ .name = { "6. Maintenance", "6. תחזוקה" }, .prepareAction = NULL, .postAction = NULL, .submenu = maintenanceMenu  };
 	rootMenu->itemCount = 6;
@@ -263,14 +273,14 @@ void Menu_Init(void)
     sirenMenu->screenText[LANG_HE] = "### -Siren- ###";
     sirenMenu->buttonHandler = HandleButtonPress;
 
-    alarmInfoMenu->parent = sirenMenu;
-    alarmInfoMenu->type = MENU_TYPE_SIREN_INFO;
-    alarmInfoMenu->screenText[LANG_EN] = "### Alarm info ###";
-    alarmInfoMenu->screenText[LANG_HE] = "### -Alarm info- ###";
-    alarmInfoMenu->currentSelection = 0;
-    alarmInfoMenu->scrollOffset = 0;
-    alarmInfoMenu->itemCount = 0;
-    alarmInfoMenu->buttonHandler = alarmInfoMenu_HandleButtonPress;
+    alarm_info_menu->parent = sirenMenu;
+    alarm_info_menu->type = MENU_TYPE_SIREN_INFO;
+    alarm_info_menu->screenText[LANG_EN] = "### Alarm info ###";
+    alarm_info_menu->screenText[LANG_HE] = "### -Alarm info- ###";
+    alarm_info_menu->currentSelection = 0;
+    alarm_info_menu->scrollOffset = 0;
+    alarm_info_menu->itemCount = 0;
+    alarm_info_menu->buttonHandler = alarm_info_menu_handler;
 
 //    //-----------------------------------------------------------------------------------------------------------
 	messagesMenu->parent = rootMenu;
@@ -321,11 +331,11 @@ void Menu_Init(void)
 	testMenu->currentSelection = 0;
 	testMenu->scrollOffset = 0;
 	testMenu->buttonHandler = HandleButtonPress;
-	testMenu->items[0] = (MenuItem){ .name = { "1. Silent Test", "" },     .postAction = &RunSilentTest, .submenu = NULL    };
-	testMenu->items[1] = (MenuItem){ .name = { "2. Batteries Test", "" },  .postAction = &RunBatteriesTest, .submenu = NULL    };
-	testMenu->items[2] = (MenuItem){ .name = { "3. Amplifiers Test", "" }, .postAction = &RunAmplifiresTest,   .submenu = NULL    };
-	testMenu->items[3] = (MenuItem){ .name = { "4. Drivers Test", "" },    .postAction = &RunDriversTest, .submenu = NULL  };
-	testMenu->items[4] = (MenuItem){ .name = { "5. Sinus Test", "" }, .prepareAction = &PrepareSinuseItems, .postAction = NULL, .submenu = sinusMenu  };
+	testMenu->items[0] = (MenuItem){ .name = { "1. Silent Test", "-Silent Test- .1" },     .postAction = &RunSilentTest, .submenu = NULL    };
+	testMenu->items[1] = (MenuItem){ .name = { "2. Batteries Test", "-Batteries Test- .2" },  .postAction = &RunBatteriesTest, .submenu = batteriesTestMenu    };
+	testMenu->items[2] = (MenuItem){ .name = { "3. Amplifiers Test", "-Amplifiers Test- .3" }, .postAction = &RunAmplifiresTest,   .submenu = apmplifiresTestMunu    };
+	testMenu->items[3] = (MenuItem){ .name = { "4. Drivers Test", "-Drivers Test- .4" },    .postAction = &RunDriversTest, .submenu = driversTestMenu  };
+	testMenu->items[4] = (MenuItem){ .name = { "5. Sinus Test", "-Sinus Test- .5" }, .prepareAction = &PrepareSinuseItems, .postAction = NULL, .submenu = sinusMenu  };
 	testMenu->itemCount = 5;
 
 //	//---------------------------------------------------------------
@@ -378,13 +388,7 @@ void Menu_Init(void)
 	sinusInfoMenu->currentSelection = 0;
 	sinusInfoMenu->scrollOffset = 0;
 	sinusInfoMenu->itemCount = 0;
-	sinusInfoMenu->buttonHandler = sinusInfoMenu_HandleButtonPress;
-
-	testMenu->items[0].submenu =  NULL; // ,,,,
-	testMenu->items[1].submenu = batteriesTestMenu;
-	testMenu->items[2].submenu = apmplifiresTestMunu;
-	testMenu->items[3].submenu = driversTestMenu;
-	testMenu->buttonHandler = HandleButtonPress;
+	sinusInfoMenu->buttonHandler = sinus_info_menu_handler;
 
 //	////////////////////////////////////////////////////////
 	reportMenu->parent = rootMenu;
@@ -407,7 +411,7 @@ void Menu_Init(void)
 	maintenanceMenu->currentSelection = 0;
 	maintenanceMenu->scrollOffset = 0;
 	maintenanceMenu->buttonHandler = HandleButtonPress;
-	maintenanceMenu->items[0] = (MenuItem){ .name = { "1. Time and Date", "1. Time & Date" },     .prepareAction = &PrepareClock, .postAction = NULL, .submenu = clockMenu    };
+	maintenanceMenu->items[0] = (MenuItem){ .name = { "1. Time and Date", "1. Time & Date" },     .prepareAction = &prepare_clock, .postAction = &run_clock, .submenu = NULL    };
 	maintenanceMenu->items[1] = (MenuItem){ .name = { "2. Language select", "2. Language select" }, .prepareAction = &MenuInitLanguage, .postAction = NULL, .submenu = languageMenu    };
 	maintenanceMenu->itemCount = 2;
 
@@ -435,16 +439,17 @@ void Menu_Init(void)
 	isBacklightOn = true;
 
 //	PrepareSinuseItems();
-	currentMenu = maintenanceMenu;
+	currentMenu = testMenu;
 
 	DrawStatusBar();
+	update_date_time();
 	DrawMenuScreen(true);
 
     // testing
 //	currentMenu = idleMenu;
 
     //currentMenu = sirenMenu;
-    //currentMenu = alarmInfoMenu;
+    //currentMenu = alarm_info_menu;
    // currentMenu = messagesMenu; //???
     //currentMenu->action();
 //      currentMenu = messagePlayMenu;
@@ -582,7 +587,7 @@ void MenuShowMessages(void)
 void RunSilentTest(void)
 {
 	currentMenu = batteriesTestMenu;
-	currentMenu->currentSelection = 0;
+	clear_position(currentMenu);
 	DrawMenuScreen(true);
 	RunBatteriesTest();
 
@@ -592,7 +597,7 @@ void RunSilentTest(void)
 	  }
 
 	currentMenu = apmplifiresTestMunu;
-	currentMenu->currentSelection = 0;
+	clear_position(currentMenu);
 	DrawMenuScreen(true);
 	RunAmplifiresTest();
 
@@ -602,7 +607,7 @@ void RunSilentTest(void)
 	}
 
 	currentMenu = driversTestMenu;
-	currentMenu->currentSelection = 0;
+	clear_position(currentMenu);
 	DrawMenuScreen(true);
 	RunDriversTest();
 
@@ -613,7 +618,7 @@ void RunSilentTest(void)
 
 
 	currentMenu = testMenu; //driversTestMenu->parent;
-	currentMenu->currentSelection = 0;
+	clear_position(currentMenu);
 	DrawMenuScreen(true);
 }
 
@@ -645,6 +650,20 @@ void RunDriversTest(void)
 
 }
 
+void prepare_clock(void)
+{
+	HAL_RTC_GetTime(&hrtc, &clock.sTime, RTC_FORMAT_BIN);
+	HAL_RTC_GetDate(&hrtc, &clock.sDate, RTC_FORMAT_BIN);
+}
+
+void run_clock(void)
+{
+	clock.change_value = 0;
+	clock.current_symbol = 0;
+	currentMenu = clockMenu;
+	DrawMenuScreen(true);
+}
+
 void MenuLoadSDCardSirens(void)
 {
 	if (!sirenMenu) return;
@@ -673,20 +692,27 @@ void MenuLoadSDCardSirens(void)
 
 	for (uint8_t i = 0; i < count && i < MAX_MENU_ITEMS; ++i)
 	{
-	   strncpy(messageFilenames[i], list[i], MAX_FILENAME_LEN);
+		strncpy(messageFilenames[i], list[i], MAX_FILENAME_LEN);
 
-	   sirenMenu->items[i].name[LANG_EN] = messageFilenames[i];
-	   sirenMenu->items[i].name[LANG_HE] = messageFilenames[i];
-	   //sirenMenu->items[i].prepareAction = &sirenPrepareAction;
-	   //sirenMenu->items[i].postAction = &sirenPostAction;
-	   sirenMenu->items[i].submenu = alarmInfoMenu;
-	   sirenMenu->items[i].filepath = messageFilenames[i];
+		MenuItem* item = &sirenMenu->items[i];
+		item->current_menu = alarm_info_menu;
+		item->name[LANG_EN] = messageFilenames[i];
+		item->name[LANG_HE] = messageFilenames[i];
+		item->postAction = &sirenPostAction;
+		item->filepath = messageFilenames[i];
+
+//	   sirenMenu->items[i].name[LANG_EN] = messageFilenames[i];
+//	   sirenMenu->items[i].name[LANG_HE] = messageFilenames[i];
+//	   //sirenMenu->items[i].prepareAction = &sirenPrepareAction;
+//	   //sirenMenu->items[i].postAction = &sirenPostAction;
+//	   sirenMenu->items[i].submenu = alarm_info_menu;
+//	   sirenMenu->items[i].filepath = messageFilenames[i];
 	}
 
 	sirenMenu->itemCount = count;
 	sirenMenu->currentSelection = 0;
 	sirenMenu->scrollOffset = 0;
-	currentMenu = alarmInfoMenu;
+//	currentMenu = alarm_info_menu;
 }
 
 void MenuLoadSDCardMessages(void)
@@ -720,18 +746,25 @@ void MenuLoadSDCardMessages(void)
     {
         strncpy(messageFilenames[i], dummyFilenames[i], MAX_FILENAME_LEN);
 
-        messagesMenu->items[i].name[LANG_EN] = messageFilenames[i];
-        messagesMenu->items[i].name[LANG_HE] = messageFilenames[i];
-//        messagesMenu->items[i].prepareAction = &PlayMessageStart;
-//        messagesMenu->items[i].postAction = &PlayMessageStartPost;
-//        messagesMenu->items[i].submenu = messagePlayMenu;
-        messagesMenu->items[i].filepath = messageFilenames[i];
+        MenuItem* item = &messagesMenu->items[i];
+		item->current_menu = alarm_info_menu;
+		item->name[LANG_EN] = messageFilenames[i];
+		item->name[LANG_HE] = messageFilenames[i];
+		item->postAction = &sirenPostAction;
+		item->filepath = messageFilenames[i];
+
+//        messagesMenu->items[i].name[LANG_EN] = messageFilenames[i];
+//        messagesMenu->items[i].name[LANG_HE] = messageFilenames[i];
+////        messagesMenu->items[i].prepareAction = &PlayMessageStart;
+////        messagesMenu->items[i].postAction = &PlayMessageStartPost;
+////        messagesMenu->items[i].submenu = messagePlayMenu;
+//        messagesMenu->items[i].filepath = messageFilenames[i];
     }
 
     messagesMenu->itemCount = count;
     messagesMenu->currentSelection = 0;
     messagesMenu->scrollOffset = 0;
-    currentMenu = messagePlayMenu;
+//    currentMenu = messagePlayMenu;
 }
 
 static void PrepareSinuseItems(void)
@@ -756,28 +789,35 @@ static void PrepareSinuseItems(void)
 
     for (uint8_t i = 0; i < count && i < MAX_MENU_ITEMS; ++i)
     {
-    	sprintf(messageFilenames[i], "%d. %s", i+1, sinus_info[i][0]);
-        sinusMenu->items[i].name[LANG_EN] = messageFilenames[i];
+    	if(GetLanguage() == LANG_EN)
+    	{
+    		sprintf(messageFilenames[i], "%d. %s", i+1, sinus_info[i][0]);
+    	}
+    	else if(GetLanguage() == LANG_EN)
+    	{
+        	sprintf(messageFilenames[i], "%s .%d", sinus_info[i][1], i+1);
+    	}
 
-    	sprintf(messageFilenames[i], "%s .%d", sinus_info[i][1], i+1);
-        sinusMenu->items[i].name[LANG_HE] = messageFilenames[i];
+    	MenuItem* item = &sinusMenu->items[i];
+    	item->current_menu = sinusInfoMenu;
+    	item->name[LANG_EN] = messageFilenames[i];
+    	item->name[LANG_HE] = messageFilenames[i];
+    	item->postAction = &sirenPostAction;
+    	item->filepath = sinus_info[i][GetLanguage()];
 
-        sinusMenu->items[i].prepareAction = &sirenPrepareAction;
-//        sinusMenu->items[i].postAction = &sirenPostAction;
-        sinusMenu->items[i].submenu = sinusInfoMenu;
-        sinusMenu->items[i].filepath = sinus_info[i][GetLanguage()];
+//        sinusMenu->items[i].name[LANG_EN] = messageFilenames[i];
+//        sinusMenu->items[i].name[LANG_HE] = messageFilenames[i];
+//
+////        sinusMenu->items[i].prepareAction = &sirenPrepareAction;
+//        sinusMenu->items[i].postAction = &sinusPostAction;
+////        sinusMenu->items[i].submenu = sinusInfoMenu;
+//        sinusMenu->items[i].filepath = sinus_info[i][GetLanguage()];
     }
 
 	sinusMenu->itemCount = count;
 	sinusMenu->currentSelection = 0;
 	sinusMenu->scrollOffset = 0;
-    currentMenu = sinusInfoMenu;
-}
-
-static void PrepareClock(void)
-{
-	clock.change_value = 0;
-	clock.current_symbol = 0;
+//    currentMenu = sinusInfoMenu;
 }
 
 void MenuInitLanguage(void)
@@ -795,15 +835,15 @@ void MenuInitLanguage(void)
 		languageMenu->items[i].name[LANG_EN] = messageFilenames[i];
 		languageMenu->items[i].name[LANG_HE] = messageFilenames[i];
 		//sirenMenu->items[i].prepareAction = &sirenPrepareAction;
-		//sirenMenu->items[i].postAction = &sirenPostAction;
-		//sirenMenu->items[i].submenu = alarmInfoMenu;
+//		sirenMenu->items[i].postAction = &sirenPostAction;
+		//sirenMenu->items[i].submenu = alarm_info_menu;
 		languageMenu->items[i].filepath = messageFilenames[i];
 	}
 
 	languageMenu->itemCount = LANG_COUNT;
 //	languageMenu->currentSelection = 0;
 //	languageMenu->scrollOffset = 0;
-	//currentMenu = alarmInfoMenu;
+	//currentMenu = alarm_info_menu;
 }
 
 void test_count_up_menu()
@@ -839,61 +879,47 @@ void test_count_up_menu()
 
 void sirenPrepareAction(void)
 {
+//	if (!currentMenu || currentMenu->currentSelection >= currentMenu->itemCount)
+//		return;
+//
+//	const char* filepath = currentMenu->items[currentMenu->currentSelection].filepath;
+//
+//	if (!filepath || !alarm_info_menu)
+//		return;
+//
+//	currentMenu->textFilename = filepath;
+//	MenuResetProgressBar();
+}
+
+void sirenPostAction(void)
+{
 	if (!currentMenu || currentMenu->currentSelection >= currentMenu->itemCount)
 		return;
 
-	const char* filepath = currentMenu->items[currentMenu->currentSelection].filepath;
+	MenuItem* item = &currentMenu->items[currentMenu->currentSelection];
 
-	if (!filepath || !alarmInfoMenu)
-		return;
+	if (!item || !item->filepath || !item->current_menu) return;
 
-	currentMenu->textFilename = filepath;
+	currentMenu = item->current_menu;
+	clear_position(currentMenu);
+
+	DrawMenuScreen(true);
+
+	hx8357_write_alignedX_string(0, SIREN_Y_POS, item->filepath, &Font_11x18, COLOR_MAGENTA, COLOR_BLACK, ALIGN_CENTER);
+
+	MenuDrawImage(currentMenu);
+
 	MenuResetProgressBar();
-}
+	MenuDrawProgress(0);
 
-//void sirenPostAction(void)
-//{
-//	isPlayAudioFile = true;
-//	xQueueSend(audioQueue, &alarmInfoMenu->textFilename, 0);
-//}
-
-void sinusPrepareAction(void)
-{
-	if (!currentMenu || currentMenu->currentSelection >= currentMenu->itemCount)
-		return;
-
-	const char* filepath = currentMenu->items[currentMenu->currentSelection].filepath;
-
-	if (!filepath || !alarmInfoMenu)
-		return;
-
-	currentMenu->textFilename = filepath;
-}
-
-void sinusPostAction(void)
-{
-	isPlayAudioFile = true;
-//	Print_Msg(alarmInfoMenu->textFilename);
-
-//	if(player.is_arming && !player.is_playing)
-//	{
-//		player.type_input = AUDIO_SIN;
-//		player.current_sin = (SinTask_t)currentMenu->currentSelection;
-//		player.priority = AUDIO_PRIORITY_LOW;
-//		player.audio_state = AUDIO_START;
-//	    xQueueSend(xAudioQueueHandle, &player.audio_state, portMAX_DELAY);
-//	}
-
-//	xQueueSend(audioQueue, &alarmInfoMenu->textFilename, 0);
+	osDelay(3);
 }
 
 void menu_handle_button(ButtonEvent_t event)
 {
-	if (!currentMenu) return;
+	if (!currentMenu || (event.button == BTN_NONE) || (event.action == BA_RELEASED)) return;
 
 	lastInteractionTick = 0;
-
-	if (event.action == BA_RELEASED) return;
 
 	if (!isBacklightOn)
 	{
@@ -904,13 +930,11 @@ void menu_handle_button(ButtonEvent_t event)
 
 	if (hot_key_handle_button(event)) return;
 
-//	if (isIdle)
+//	if (currentMenu == idleMenu)
 //	{
 //		if(isResetPasswordAfterIdle){
 //			Password_Reset(false);
 //		}
-
-//		isIdle = false;
 
 //		if (Password_IsCorrect())
 //		{
@@ -940,24 +964,24 @@ bool hot_key_handle_button(ButtonEvent_t event)
     {
 	case BTN_TEST:
 		currentMenu = testMenu;
-		currentMenu->currentSelection = 0;
+		clear_position(currentMenu);
 		DrawMenuScreen(true);
 		return true;
 	case BTN_ANNOUNCEMENT:
 		currentMenu = announcementMenu;
-		currentMenu->currentSelection = 0;
+		clear_position(currentMenu);
 		DrawMenuScreen(true);
 		return true;
 	case BTN_MESSAGE:
 		MenuLoadSDCardMessages();
 		currentMenu = messagesMenu;
-		currentMenu->currentSelection = 0;
+		clear_position(currentMenu);
 		DrawMenuScreen(true);
 		return true;
 	case BTN_ALARM:
 		MenuLoadSDCardSirens();
 		currentMenu = sirenMenu;
-		currentMenu->currentSelection = 0;
+		clear_position(currentMenu);
 		DrawMenuScreen(true);
 		return true;
 	default:
@@ -1025,52 +1049,51 @@ void HandleButtonPress(ButtonEvent_t event)
 //	}
 //}
 //
-void alarmInfoMenu_HandleButtonPress(ButtonEvent_t event)
+
+void idle_menu_handler(ButtonEvent_t event)
 {
-	if (!alarmInfoMenu) return;
+	if (!rootMenu) return;
+
+	switch (event.button)
+    {
+	case BTN_ENTER:
+		currentMenu = rootMenu;
+		clear_position(currentMenu);
+		DrawMenuScreen(true);
+		break;
+	default:
+		break;
+    }
+}
+
+void alarm_info_menu_handler(ButtonEvent_t event)
+{
+	if (!alarm_info_menu) return;
 
 	switch(event.button)
 	{
 		case BTN_ESC:
-			if (currentMenu->parent != NULL) {
-				currentMenu = currentMenu->parent;
-
-				isIdle = currentMenu->type == MENU_TYPE_IDLE;
-				DrawMenuScreen(true);
-			}
-//			if(player.is_playing)
-//			{
-//				player.audio_state = AUDIO_STOP;
-//				player.priority = AUDIO_PRIORITY_LOW;
-//				xQueueSend(xAudioQueueHandle, &player.audio_state, portMAX_DELAY);
-//			}
+			if (alarm_info_menu->parent == NULL) return;
+			currentMenu = alarm_info_menu->parent;
+			DrawMenuScreen(true);
 			break;
 
 		default:
-				return;
+			break;
 	}
-
 }
 
-void sinusInfoMenu_HandleButtonPress(ButtonEvent_t event)
+void sinus_info_menu_handler(ButtonEvent_t event)
 {
 	if (!sinusInfoMenu) return;
 
 	switch(event.button)
 	{
 		case BTN_ESC:
-			if (currentMenu->parent != NULL) {
-				currentMenu = currentMenu->parent;
-
-				isIdle = currentMenu->type == MENU_TYPE_IDLE;
+			if (sinusInfoMenu->parent != NULL) {
+				currentMenu = sinusInfoMenu->parent;
 				DrawMenuScreen(true);
 			}
-//			if(player.is_playing)
-//			{
-//				player.audio_state = AUDIO_STOP;
-//				player.priority = AUDIO_PRIORITY_LOW;
-//				xQueueSend(xAudioQueueHandle, &player.audio_state, portMAX_DELAY);
-//			}
 			break;
 
 		default:
@@ -1106,7 +1129,6 @@ void sinusInfoMenu_HandleButtonPress(ButtonEvent_t event)
 void clockMenu_HandleButtonPress(ButtonEvent_t event)
 {
 	if (!clockMenu) return;
-	char msg[64];
 
 	switch(event.button)
 	{
@@ -1330,73 +1352,70 @@ void Draw_MENU_TYPE_MESSAGE_PLAY(void)
 
 void Draw_MENU_TYPE_CLOCK(void)
 {
-	RTC_TimeTypeDef sTime = {0};
-	RTC_DateTypeDef sDate = {0};
-
-	HAL_RTC_GetTime(&hrtc, &sTime, RTC_FORMAT_BIN);
-	HAL_RTC_GetDate(&hrtc, &sDate, RTC_FORMAT_BIN);
+	RTC_TimeTypeDef* sTime = &clock.sTime;
+	RTC_DateTypeDef* sDate = &clock.sDate;
 
 	if (clock.change_value != 0)
 	{
 		if(clock.current_symbol == 0)
 		{
-			int8_t data = sDate.Date;
+			int8_t data = sDate->Date;
 			data += clock.change_value;
 
-			if (data > 31) sDate.Date = 1;
-			else if (data < 1) sDate.Date = 31;
-			else sDate.Date = data;
+			if (data > 31) sDate->Date = 1;
+			else if (data < 1) sDate->Date = 31;
+			else sDate->Date = data;
 		}
 		if(clock.current_symbol == 1)
 		{
-			int8_t data = sDate.Month;
+			int8_t data = sDate->Month;
 			data += clock.change_value;
 
-			if (data > 12) sDate.Month = 1;
-			else if (data < 1) sDate.Month = 12;
-			else sDate.Month = data;
+			if (data > 12) sDate->Month = 1;
+			else if (data < 1) sDate->Month = 12;
+			else sDate->Month = data;
 		}
 		if(clock.current_symbol == 2)
 		{
-			int8_t data = sDate.Year;
+			int8_t data = sDate->Year;
 			data += clock.change_value;
 
-			if (data > 99) sDate.Year = 0;
-			else if (data < 0) sDate.Year = 99;
-			else sDate.Year = data;
+			if (data > 99) sDate->Year = 0;
+			else if (data < 0) sDate->Year = 99;
+			else sDate->Year = data;
 		}
 
 		if(clock.current_symbol == 3)
 		{
-			int8_t data = sTime.Hours;
+			int8_t data = sTime->Hours;
 			data += clock.change_value;
 
-			if (data > 23) sTime.Hours = 0;
-			else if (data < 0) sTime.Hours = 23;
-			else sTime.Hours = data;
+			if (data > 23) sTime->Hours = 0;
+			else if (data < 0) sTime->Hours = 23;
+			else sTime->Hours = data;
 		}
 
 		if(clock.current_symbol == 4)
 		{
-			int8_t data = sTime.Minutes;
+			int8_t data = sTime->Minutes;
 			data += clock.change_value;
 
-			if (data > 59) sTime.Minutes = 0;
-			else if (data < 0) sTime.Minutes = 59;
-			else sTime.Minutes = data;
+			if (data > 59) sTime->Minutes = 0;
+			else if (data < 0) sTime->Minutes = 59;
+			else sTime->Minutes = data;
 		}
 		if(clock.current_symbol == 5)
 		{
-			int8_t data = sTime.Seconds;
+			int8_t data = sTime->Seconds;
 			data += clock.change_value;
 
-			if (data > 59) sTime.Seconds = 0;
-			else if (data < 0) sTime.Seconds = 59;
-			else sTime.Seconds = data;
+			if (data > 59) sTime->Seconds = 0;
+			else if (data < 0) sTime->Seconds = 59;
+			else sTime->Seconds = data;
 		}
 
-		HAL_RTC_SetTime(&hrtc, &sTime, RTC_FORMAT_BIN);
-		HAL_RTC_SetDate(&hrtc, &sDate, RTC_FORMAT_BIN);
+		HAL_RTC_SetTime(&hrtc, sTime, RTC_FORMAT_BIN);
+		HAL_RTC_SetDate(&hrtc, sDate, RTC_FORMAT_BIN);
 		clock.change_value = 0;
 	}
 
@@ -1407,8 +1426,8 @@ void Draw_MENU_TYPE_CLOCK(void)
 
 	char buf[32];
 	snprintf(buf, sizeof(buf), "%02d/%02d/%02d  %02d:%02d:%02d",
-			 sDate.Date, sDate.Month, sDate.Year,
-			 sTime.Hours, sTime.Minutes, sTime.Seconds);
+			 sDate->Date, sDate->Month, sDate->Year,
+			 sTime->Hours, sTime->Minutes, sTime->Seconds);
 
 	Print_Msg(buf);
 	Print_Msg("\r\n");
@@ -1428,12 +1447,12 @@ void Draw_MENU_TYPE_CLOCK(void)
 		char field_str[4];
 		switch (clock.current_symbol)
 		{
-			case 0: snprintf(field_str, sizeof(field_str), "%02d", sDate.Date);    break;
-			case 1: snprintf(field_str, sizeof(field_str), "%02d", sDate.Month);   break;
-			case 2: snprintf(field_str, sizeof(field_str), "%02d", sDate.Year);    break;
-			case 3: snprintf(field_str, sizeof(field_str), "%02d", sTime.Hours);   break;
-			case 4: snprintf(field_str, sizeof(field_str), "%02d", sTime.Minutes); break;
-			case 5: snprintf(field_str, sizeof(field_str), "%02d", sTime.Seconds); break;
+			case 0: snprintf(field_str, sizeof(field_str), "%02d", sDate->Date);    break;
+			case 1: snprintf(field_str, sizeof(field_str), "%02d", sDate->Month);   break;
+			case 2: snprintf(field_str, sizeof(field_str), "%02d", sDate->Year);    break;
+			case 3: snprintf(field_str, sizeof(field_str), "%02d", sTime->Hours);   break;
+			case 4: snprintf(field_str, sizeof(field_str), "%02d", sTime->Minutes); break;
+			case 5: snprintf(field_str, sizeof(field_str), "%02d", sTime->Seconds); break;
 		}
 
 		hx8357_write_alignedX_string(baseX + field_offset, y, field_str, font, field_color, field_bg, ALIGN_LEFT);
@@ -1511,86 +1530,60 @@ void DrawMenuScreen(bool forceFullRedraw)
     	if (text) {
     		hx8357_write_alignedX_string(0, TITLE_MENU_Y_POS, text, &Font_11x18, COLOR_WHITE, bg_color, ALIGN_CENTER);
     	}
-
-        if (currentMenu->type == MENU_TYPE_IDLE)
-        {
-			Draw_MENU_TYPE_IDLE();
-        }
-//        else if (currentMenu->type == MENU_TYPE_PASSWORD)
-//        {
-//        	 Draw_MENU_TYPE_PASSWORD();
-//        }
-        else if (currentMenu->type == MENU_TYPE_ANNOUNCEMENT)
-        {
-			Draw_MENU_TYPE_ANNOUNCEMENT();
-        }
-        else if (currentMenu->type == MENU_TYPE_SIREN_INFO)
-        {
-			Draw_MENU_TYPE_SIREN_INFO();
-        }
-        else if (currentMenu->type == MENU_TYPE_REPORT)
-        {
-			Draw_MENU_TYPE_REPORT();
-        }
-        else if (currentMenu->type == MENU_TYPE_TEST_BAT)
-        {
-			Draw_MENU_TYPE_TEST_BAT();
-        }
-        else if (currentMenu->type == MENU_TYPE_TEST_DRIV)
-		{
-			Draw_MENU_TYPE_TEST_DRIV();
-		}
-        else if (currentMenu->type == MENU_TYPE_TEST_AMP)
-		{
-			Draw_MENU_TYPE_TEST_AMP();
-		}
-		else if (currentMenu->type == MENU_TYPE_MESSAGE_PLAY)
-		{
-			Draw_MENU_TYPE_MESSAGE_PLAY();
-		}
-        else if (currentMenu->type == MENU_TYPE_LIST)
-		{
-			Draw_MENU_TYPE_LIST();
-		}
-        else if(currentMenu->type == MENU_TYPE_CLOCK)
-        {
-        	Draw_MENU_TYPE_CLOCK();
-        }
-       prevMenu = currentMenu;
     }
-    else if (currentMenu->type == MENU_TYPE_LIST)
-    {
+
+	if (currentMenu->type == MENU_TYPE_IDLE)
+	{
+		Draw_MENU_TYPE_IDLE();
+	}
+//	else if (currentMenu->type == MENU_TYPE_PASSWORD)
+//	{
+//		 Draw_MENU_TYPE_PASSWORD();
+//	}
+	else if (currentMenu->type == MENU_TYPE_ANNOUNCEMENT)
+	{
+		Draw_MENU_TYPE_ANNOUNCEMENT();
+	}
+	else if (currentMenu->type == MENU_TYPE_SIREN_INFO)
+	{
+		Draw_MENU_TYPE_SIREN_INFO();
+	}
+	else if (currentMenu->type == MENU_TYPE_REPORT)
+	{
+		Draw_MENU_TYPE_REPORT();
+	}
+	else if (currentMenu->type == MENU_TYPE_TEST_BAT)
+	{
+		Draw_MENU_TYPE_TEST_BAT();
+	}
+	else if (currentMenu->type == MENU_TYPE_TEST_DRIV)
+	{
+		Draw_MENU_TYPE_TEST_DRIV();
+	}
+	else if (currentMenu->type == MENU_TYPE_TEST_AMP)
+	{
+		Draw_MENU_TYPE_TEST_AMP();
+	}
+	else if (currentMenu->type == MENU_TYPE_MESSAGE_PLAY)
+	{
+		Draw_MENU_TYPE_MESSAGE_PLAY();
+	}
+	else if (currentMenu->type == MENU_TYPE_LIST)
+	{
 		Draw_MENU_TYPE_LIST();
+	}
+	else if(currentMenu->type == MENU_TYPE_CLOCK)
+	{
+		Draw_MENU_TYPE_CLOCK();
+	}
 
-//        if (prevSelection != currentMenu->currentSelection)
-//        {
-//            uint8_t start = currentMenu->scrollOffset;
-//
-//            if (prevSelection >= start && prevSelection < start + MAX_VISIBLE_ITEMS)
-//            {
-//                 uint8_t visualIndex = prevSelection - start;
-//                 //DisplayMenuItem(visualIndex, &currentMenu->items[prevSelection], false);
-//                 DisplayMenuItem(visualIndex, &currentMenu->items[prevSelection], false, false);
-//            }
-//
-//            if (currentMenu->currentSelection >= start && currentMenu->currentSelection < start + MAX_VISIBLE_ITEMS)
-//            {
-//                 uint8_t visualIndex = currentMenu->currentSelection - start;
-//                 //DisplayMenuItem(visualIndex, &currentMenu->items[currentMenu->currentSelection], true);
-//                 DisplayMenuItem(visualIndex, &currentMenu->items[currentMenu->currentSelection], true, false);
-//            }
-//            osDelay(5);
-//            prevSelection = currentMenu->currentSelection;
-//        }
-    }
+	prevMenu = currentMenu;
 
     osDelay(1);
 
 #ifdef DEBUG_PRINT_BUTTON_STATE_2
    // DrawDebugInfo(&lastButtonEvent);
 #endif
-
-    osDelay(1);
 }
 
 //static char debugInfo[50];
@@ -1622,8 +1615,6 @@ void DrawStatusBar()
 	hx8357_write_alignedX_string(0, LOGO_Y_POS, "EES-3000", &Font_11x18, COLOR_WHITE, COLOR_BLACK, ALIGN_LEFT);
 	//hx8357_write_string(LOGO_X_POS, LOGO_Y_POS, "EES-3000", &Font_11x18, COLOR_WHITE, COLOR_BLACK);
 
-	UpdateDateTime();
-
 	snprintf(serialStr, sizeof(serialStr), "Serial: %s", SERIAL_NUMBER);
 	hx8357_write_alignedX_string(0, SERIAL_Y_POS, serialStr, &Font_7x10, COLOR_YELLOW, COLOR_BLACK, ALIGN_RIGHT);
 	//hx8357_write_string(SERIAL_X_POS, SERIAL_Y_POS, serialStr, &Font_7x10, COLOR_YELLOW, COLOR_BLACK);
@@ -1631,27 +1622,25 @@ void DrawStatusBar()
 	hx8357_fill_rect(0, STATUS_BAR_LINE_Y_POS-1, hx8357_get_width(), 1, COLOR_GRAY);
 }
 
-void UpdateDateTime()
+void update_date_time()
 {
 	if (!isBacklightOn) return;
 
-//	lastInteractionTick++;
-//
-//	if (!isIdle && lastInteractionTick >= INACTIVITY_TIMEOUT_MS)
-//	{
-//		isIdle = true;
-//
-//		currentMenu = idleMenu;
-//		DrawMenuScreen(true);
-//		lastInteractionTick = 0;
-//	}
-//	else if (isIdle && isBacklightOn && (lastInteractionTick >= BACKLIGHT_TIMEOUT_MS))
-//	{
-//		BLK_OFF();
-//		isBacklightOn = false;
-//		lastInteractionTick = 0;
-//		return;
-//	}
+	lastInteractionTick++;
+
+	if (currentMenu != idleMenu && lastInteractionTick >= INACTIVITY_TIMEOUT_MS)
+	{
+		currentMenu = idleMenu;
+		DrawMenuScreen(true);
+		lastInteractionTick = 0;
+	}
+	else if (currentMenu == idleMenu && isBacklightOn && (lastInteractionTick >= BACKLIGHT_TIMEOUT_MS))
+	{
+		BLK_OFF();
+		isBacklightOn = false;
+		lastInteractionTick = 0;
+		return;
+	}
 
 	char clock_str[64];
 	RTC_TimeTypeDef sTime = {0};
@@ -1669,9 +1658,9 @@ void UpdateDateTime()
 	return;
 }
 
-void UpdateProgressBar(uint8_t value)
+void update_progress_bar(uint8_t value)
 {
-	if(!player.is_playing || (currentMenu != sinusInfoMenu && currentMenu != alarmInfoMenu)) return;
+	if(!player.is_playing || (currentMenu != sinusInfoMenu && currentMenu != alarm_info_menu)) return;
 	MenuDrawProgress(value);
 }
 
@@ -1687,56 +1676,43 @@ static void handle_button_up(void)
 {
 	if (!currentMenu || currentMenu->itemCount == 0) return;
 
-	if (currentMenu->type == MENU_TYPE_LIST)
+	if (currentMenu->currentSelection == 0)
 	{
-		if (currentMenu->currentSelection == 0)
-		{
-			currentMenu->currentSelection = currentMenu->itemCount-1;
+		currentMenu->currentSelection = currentMenu->itemCount-1;
+		if(currentMenu->itemCount > MAX_VISIBLE_ITEMS)
 			currentMenu->scrollOffset = currentMenu->itemCount-MAX_VISIBLE_ITEMS;
-		}
-		else
-		{
-			currentMenu->currentSelection--;
-
-			if (currentMenu->currentSelection < currentMenu->itemCount-MAX_VISIBLE_ITEMS+1 &&
-				currentMenu->scrollOffset > 0)
-				currentMenu->scrollOffset--;
-		}
-
-		DrawMenuScreen(false);
 	}
-	else if (currentMenu->type == MENU_TYPE_ANNOUNCEMENT)
+	else
 	{
-		// Decrease volume announcement
+		currentMenu->currentSelection--;
+
+		if (currentMenu->currentSelection < currentMenu->itemCount-MAX_VISIBLE_ITEMS+1 &&
+			currentMenu->scrollOffset > 0)
+			currentMenu->scrollOffset--;
 	}
+
+	DrawMenuScreen(false);
 }
 
 static void handle_button_down(void)
 {
 	if (!currentMenu || currentMenu->itemCount == 0) return;
 
-	if (currentMenu->type == MENU_TYPE_LIST)
+	if (currentMenu->currentSelection >= currentMenu->itemCount - 1)
 	{
-		if (currentMenu->currentSelection >= currentMenu->itemCount - 1)
-		{
-			currentMenu->currentSelection = 0;
-			currentMenu->scrollOffset = 0;
-		}
-		else
-		{
-			currentMenu->currentSelection++;
-
-			if (currentMenu->currentSelection > MAX_VISIBLE_ITEMS-2 &&
-				currentMenu->currentSelection != currentMenu->itemCount - 1)
-				currentMenu->scrollOffset++;
-		}
-
-		DrawMenuScreen(false);
+		currentMenu->currentSelection = 0;
+		currentMenu->scrollOffset = 0;
 	}
-	else if (currentMenu->type == MENU_TYPE_ANNOUNCEMENT)
+	else
 	{
-		// Increase volume announcement
+		currentMenu->currentSelection++;
+
+		if (currentMenu->currentSelection > MAX_VISIBLE_ITEMS-2 &&
+			currentMenu->currentSelection != currentMenu->itemCount - 1)
+			currentMenu->scrollOffset++;
 	}
+
+	DrawMenuScreen(false);
 }
 
 static void handle_button_enter(void)
@@ -1752,8 +1728,7 @@ static void handle_button_enter(void)
 
 	if (item->submenu) {
 		currentMenu = item->submenu;
-		currentMenu->scrollOffset = 0;
-		currentMenu->currentSelection = 0;
+		clear_position(currentMenu);
 		DrawMenuScreen(true);
 	}
 
@@ -1772,8 +1747,6 @@ static void handle_button_esc(void)
 	}
 
 	currentMenu = currentMenu->parent;
-
-	isIdle = currentMenu->type == MENU_TYPE_IDLE;
 
 	DrawMenuScreen(true);
 }

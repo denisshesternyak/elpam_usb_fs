@@ -654,8 +654,7 @@ static void MX_RTC_Init(void)
   }
 
   /* USER CODE BEGIN Check_RTC_BKUP */
-  HAL_RTCEx_DeactivateWakeUpTimer(&hrtc);
-  __HAL_RTC_WAKEUPTIMER_CLEAR_FLAG(&hrtc, RTC_FLAG_WUTF);
+
   /* USER CODE END Check_RTC_BKUP */
 
   /** Initialize RTC and set the Time and Date
@@ -669,9 +668,9 @@ static void MX_RTC_Init(void)
   {
     Error_Handler();
   }
-  sDate.WeekDay = RTC_WEEKDAY_WEDNESDAY;
+  sDate.WeekDay = RTC_WEEKDAY_MONDAY;
   sDate.Month = RTC_MONTH_JANUARY;
-  sDate.Date = 28;
+  sDate.Date = 1;
   sDate.Year = 26;
 
   if (HAL_RTC_SetDate(&hrtc, &sDate, RTC_FORMAT_BIN) != HAL_OK)
@@ -686,7 +685,22 @@ static void MX_RTC_Init(void)
     Error_Handler();
   }
   /* USER CODE BEGIN RTC_Init 2 */
+  uint32_t saved_magic = HAL_RTCEx_BKUPRead(&hrtc, RTC_BKP_DR0);
 
+  bool rtc_was_initialized = (saved_magic == 0xA5A5A5A5);
+
+  if (!rtc_was_initialized)
+  {
+	  RTC_TimeTypeDef sTime = { .Hours = 0, .Minutes = 0, .Seconds = 0 };
+	  RTC_DateTypeDef sDate = { .WeekDay = RTC_WEEKDAY_MONDAY, .Month = RTC_MONTH_JANUARY, .Date = 1, .Year = 26 };
+
+	  HAL_RTC_SetTime(&hrtc, &sTime, RTC_FORMAT_BIN);
+	  HAL_RTC_SetDate(&hrtc, &sDate, RTC_FORMAT_BIN);
+
+	  HAL_RTCEx_BKUPWrite(&hrtc, RTC_BKP_DR0, 0xA5A5A5A5);
+  }
+  //HAL_RTCEx_DeactivateWakeUpTimer(&hrtc);
+  __HAL_RTC_WAKEUPTIMER_CLEAR_FLAG(&hrtc, RTC_FLAG_WUTF);
   /* USER CODE END RTC_Init 2 */
 
 }
@@ -932,9 +946,9 @@ void StartDefaultTask(void *argument)
   /* USER CODE BEGIN 5 */
     osDelay(1000);
 
-	Mount_SD("/");
-	Scan_SD("/");
-	Unmount_SD("/");
+//	Mount_SD("/");
+//	Scan_SD("/");
+//	Unmount_SD("/");
   /* Infinite loop */
   for(;;)
   {
@@ -977,7 +991,13 @@ void UART_Receive_Task(void *argument)
 	rs232_register_enter(handle_enter_command);
 	rs232_register_up(handle_up_command);
 	rs232_register_down(handle_down_command);
-
+	rs232_register_esc(handle_esc_command);
+	rs232_register_cnlbtn(handle_cancel_command);
+	rs232_register_test(handle_test_command);
+	rs232_register_announc(handle_announc_command);
+	rs232_register_message(handle_message_command);
+	rs232_register_almbtn(handle_alarm_command);
+	rs232_register_armbtn(handle_arm_command);
 
 	system_status_init();
 
@@ -1041,16 +1061,13 @@ void LCDStartTask(void *argument)
 			case LCD_EVENT_IDLE:
 				break;
 			case LCD_EVENT_BTN:
-				if ((lcd_event.btn.button != BTN_NONE) && (lcd_event.btn.action == BA_PRESSED))
-				{
-					menu_handle_button(lcd_event.btn);
-				}
+				menu_handle_button(lcd_event.btn);
 				break;
 			case LCD_EVENT_PROGRESS:
-				UpdateProgressBar(lcd_event.value);
+				update_progress_bar(lcd_event.value);
 				break;
 			case LCD_EVENT_RTC:
-				UpdateDateTime();
+				update_date_time();
 				break;
 			}
 		}

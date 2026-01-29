@@ -30,5 +30,12 @@ void handle_unknown_command(void);
 void handle_enter_command(void);
 void handle_up_command(void);
 void handle_down_command(void);
+void handle_esc_command(void);
+void handle_cancel_command(void);
+void handle_test_command(void);
+void handle_announc_command(void);
+void handle_message_command(void);
+void handle_alarm_command(void);
+void handle_arm_command(void);
 
 #endif /* INC_RS232_COMMAND_DISPATCHER_H_ */

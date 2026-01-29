@@ -59,6 +59,7 @@ typedef struct MenuItem {
     MenuAction postAction;
     struct Menu* submenu;
     const char* filepath;
+    struct Menu* current_menu;
 } MenuItem;
 
 
@@ -88,13 +89,15 @@ void HandleButtonPress(ButtonEvent_t event);
 void clockMenu_HandleButtonPress(ButtonEvent_t event);
 void languageMenu_HandleButtonPress(ButtonEvent_t event);
 //void passwordMenu_HandleButtonPress(ButtonEvent_t event);
-void alarmInfoMenu_HandleButtonPress(ButtonEvent_t event);
-void sinusInfoMenu_HandleButtonPress(ButtonEvent_t event);
+void sinus_info_menu_handler(ButtonEvent_t event);
+void alarm_info_menu_handler(ButtonEvent_t event);
+void idle_menu_handler(ButtonEvent_t event);
 
 void Menu_Init(void);
 
 void DrawStatusBar(void);
-void UpdateDateTime(void);
+void update_date_time(void);
+void update_progress_bar(uint8_t value);
 void DrawMenuScreen(bool forceFullRedraw);
 void DisplayMenuItem(uint8_t index, const MenuItem* item, bool selected, bool dummy);
 void MenuDrawImage(Menu *m);
@@ -134,6 +137,5 @@ void PlayMessageEnd(void);
 //void DrawDebugInfo(const ButtonEvent_t* event);
 
 void test_count_up_menu();
-void UpdateProgressBar(uint8_t value);
 
 #endif /* INC_SCREENS_LCD_MENU_H_ */

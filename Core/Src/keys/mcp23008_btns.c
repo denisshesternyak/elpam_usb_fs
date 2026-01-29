@@ -56,16 +56,16 @@ const char* ButtonActionToString(ButtonAction_t ba)
 
 void mcp23008_btns_init(void)
 {
-    char msg[64];
-    Print_Msg("mcp23008_btns_init\r\n");
+//    char msg[64];
+//    Print_Msg("mcp23008_btns_init\r\n");
 
     mcp23008_init_keyboard();
 
-    sprintf(msg, "0x00, 0x06, 0x09: 0x%02x 0x%02x 0x%02x\r\n", mcp23008_read_reg(0x00), mcp23008_read_reg(0x06), mcp23008_read_reg(0x09));
-    Print_Msg(msg);
-
-    sprintf(msg, "Read columns 0x%02x\r\n", mcp23008_read_columns());
-    Print_Msg(msg);
+//    sprintf(msg, "0x00, 0x06, 0x09: 0x%02x 0x%02x 0x%02x\r\n", mcp23008_read_reg(0x00), mcp23008_read_reg(0x06), mcp23008_read_reg(0x09));
+//    Print_Msg(msg);
+//
+//    sprintf(msg, "Read columns 0x%02x\r\n", mcp23008_read_columns());
+//    Print_Msg(msg);
 }
 
 bool mcp23008_keys_poll(ButtonEvent_t *out_event)

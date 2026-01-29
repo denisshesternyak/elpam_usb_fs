@@ -35,9 +35,16 @@ void rs232_register_reset(rs232_cmd_handler_t handler);
 void rs232_register_volume_up(rs232_volume_handler_t handler);
 void rs232_register_volume_down(rs232_volume_handler_t handler);
 void rs232_register_unknown(rs232_cmd_handler_t handler);
+
 void rs232_register_enter(rs232_cmd_handler_t handler);
 void rs232_register_up(rs232_cmd_handler_t handler);
 void rs232_register_down(rs232_cmd_handler_t handler);
-
+void rs232_register_esc(rs232_cmd_handler_t handler);
+void rs232_register_cnlbtn(rs232_cmd_handler_t handler);
+void rs232_register_test(rs232_cmd_handler_t handler);
+void rs232_register_announc(rs232_cmd_handler_t handler);
+void rs232_register_message(rs232_cmd_handler_t handler);
+void rs232_register_almbtn(rs232_cmd_handler_t handler);
+void rs232_register_armbtn(rs232_cmd_handler_t handler);
 
 #endif /* INC_RS232_RS232_H_ */

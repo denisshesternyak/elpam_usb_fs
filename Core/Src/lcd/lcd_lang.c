@@ -1,6 +1,6 @@
 #include "lcd_lang.h"
 
-static Language currentLanguage = LANG_HE;
+static Language currentLanguage = LANG_EN;
 
 const char* LanguageToString(Language lang)
 {

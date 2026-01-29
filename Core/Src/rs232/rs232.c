@@ -48,6 +48,14 @@ static rs232_cmd_handler_t handler_enter = NULL;
 static rs232_cmd_handler_t handler_up = NULL;
 static rs232_cmd_handler_t handler_down = NULL;
 
+static rs232_cmd_handler_t handler_esc = NULL;
+static rs232_cmd_handler_t handler_cnlbtn = NULL;
+static rs232_cmd_handler_t handler_test = NULL;
+static rs232_cmd_handler_t handler_announc = NULL;
+static rs232_cmd_handler_t handler_message = NULL;
+static rs232_cmd_handler_t handler_almbtn = NULL;
+static rs232_cmd_handler_t handle_armbtn = NULL;
+
 static void rs232_uart_rx_callback(void);
 static void call_or_default(rs232_cmd_handler_t h);
 static void call_or_default_unknown(void);
@@ -138,6 +146,13 @@ static void process_command(char *cmd)
     else if (strncmp(cmd, "*ENTER_", 7) == 0) { call_or_default(handler_enter); }
 	else if (strncmp(cmd, "*UP____", 7) == 0) { call_or_default(handler_up); }
 	else if (strncmp(cmd, "*DOWN__", 7) == 0) { call_or_default(handler_down); }
+    else if (strncmp(cmd, "*ESC___", 7) == 0) { call_or_default(handler_esc); }
+	else if (strncmp(cmd, "*CNLBTN", 7) == 0) { call_or_default(handler_cnlbtn); }
+	else if (strncmp(cmd, "*TEST__", 7) == 0) { call_or_default(handler_test); }
+    else if (strncmp(cmd, "*ANNOUN", 7) == 0) { call_or_default(handler_announc); }
+	else if (strncmp(cmd, "*MESSAG", 7) == 0) { call_or_default(handler_message); }
+	else if (strncmp(cmd, "*ALMBTN", 7) == 0) { call_or_default(handler_almbtn); }
+	else if (strncmp(cmd, "*ARMBTN", 7) == 0) { call_or_default(handle_armbtn); }
 
     else if (strncmp(cmd, "*VOL", 4) == 0)
     {
@@ -204,3 +219,11 @@ void rs232_register_unknown(rs232_cmd_handler_t h)         { handler_unknown = h
 void rs232_register_enter(rs232_cmd_handler_t h)			{ handler_enter = h; }
 void rs232_register_up(rs232_cmd_handler_t h)				{ handler_up = h; }
 void rs232_register_down(rs232_cmd_handler_t h)				{ handler_down = h; }
+void rs232_register_esc(rs232_cmd_handler_t h)				{ handler_esc = h; }
+void rs232_register_cnlbtn(rs232_cmd_handler_t h)			{ handler_cnlbtn = h; }
+void rs232_register_test(rs232_cmd_handler_t h)				{ handler_test = h; }
+void rs232_register_announc(rs232_cmd_handler_t h)			{ handler_announc = h; }
+void rs232_register_message(rs232_cmd_handler_t h)			{ handler_message = h; }
+void rs232_register_almbtn(rs232_cmd_handler_t h)			{ handler_almbtn = h; }
+void rs232_register_armbtn(rs232_cmd_handler_t h)			{ handle_armbtn = h; }
+

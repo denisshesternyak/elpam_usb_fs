@@ -415,3 +415,51 @@ void handle_down_command(void)
 	xQueueSendFromISR(xLCDQueueHandle, &lcd_event, NULL);
 }
 
+void handle_esc_command(void)
+{
+	LCDTaskEvent_t lcd_event = { .event = LCD_EVENT_BTN, .btn = { .action = BA_PRESSED } };
+	lcd_event.btn.button = BTN_ESC;
+	xQueueSendFromISR(xLCDQueueHandle, &lcd_event, NULL);
+}
+
+void handle_cancel_command(void)
+{
+	LCDTaskEvent_t lcd_event = { .event = LCD_EVENT_BTN, .btn = { .action = BA_PRESSED } };
+	lcd_event.btn.button = BTN_CXL;
+	xQueueSendFromISR(xLCDQueueHandle, &lcd_event, NULL);
+}
+
+void handle_test_command(void)
+{
+	LCDTaskEvent_t lcd_event = { .event = LCD_EVENT_BTN, .btn = { .action = BA_PRESSED } };
+	lcd_event.btn.button = BTN_TEST;
+	xQueueSendFromISR(xLCDQueueHandle, &lcd_event, NULL);
+}
+
+void handle_announc_command(void)
+{
+	LCDTaskEvent_t lcd_event = { .event = LCD_EVENT_BTN, .btn = { .action = BA_PRESSED } };
+	lcd_event.btn.button = BTN_ANNOUNCEMENT;
+	xQueueSendFromISR(xLCDQueueHandle, &lcd_event, NULL);
+}
+
+void handle_message_command(void)
+{
+	LCDTaskEvent_t lcd_event = { .event = LCD_EVENT_BTN, .btn = { .action = BA_PRESSED } };
+	lcd_event.btn.button = BTN_MESSAGE;
+	xQueueSendFromISR(xLCDQueueHandle, &lcd_event, NULL);
+}
+
+void handle_alarm_command(void)
+{
+	LCDTaskEvent_t lcd_event = { .event = LCD_EVENT_BTN, .btn = { .action = BA_PRESSED } };
+	lcd_event.btn.button = BTN_ALARM;
+	xQueueSendFromISR(xLCDQueueHandle, &lcd_event, NULL);
+}
+
+void handle_arm_command(void)
+{
+	LCDTaskEvent_t lcd_event = { .event = LCD_EVENT_BTN, .btn = { .action = BA_PRESSED } };
+	lcd_event.btn.button = BTN_ARM;
+	xQueueSendFromISR(xLCDQueueHandle, &lcd_event, NULL);
+}
