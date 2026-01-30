@@ -6,7 +6,6 @@
 #include <stdint.h>
 
 #define CMD_LENGTH 		7	// Command length — 7 characters
-#define ARMING_TIME  	10000
 #define ACTIVATION_CMD_TIMEOUT  	100
 
 

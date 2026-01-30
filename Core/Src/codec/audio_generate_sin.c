@@ -112,7 +112,7 @@ void audio_generate_sine(uint8_t *buffer, uint32_t samples_per_channel)
 				}
 			    player.duration = 100;
                 inc_data.total_samples_generated = 0;
-        		player.audio_state = AUDIO_STOP;
+        		player.is_prepare_stoped = true;
 				return;
             }
         }

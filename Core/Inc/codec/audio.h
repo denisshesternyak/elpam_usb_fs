@@ -6,7 +6,11 @@
 #include "audio_types.h"
 #include "defines.h"
 
-#define CNVR_VOL(vol) 	((MIN_VOLUME_CODEC + ((vol) - MIN_VOLUME) * 55 / 42))
+#define ARMING_TIME  			10U
+#define ANNOUNCEMENT_TIME  		180U
+#define COUNT_PROGRESS  		10U
+
+#define CNVR_VOL(vol) 			((MIN_VOLUME_CODEC + ((vol) - MIN_VOLUME) * 55 / 42))
 
 void audio_init(void);
 void audio_process(AudioEvent_t event);

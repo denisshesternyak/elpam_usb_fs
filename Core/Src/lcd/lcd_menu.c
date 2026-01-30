@@ -41,8 +41,8 @@ uint8_t menuPoolIndex = 0;
 extern osMessageQueueId_t xAudioQueueHandle;
 extern RTC_HandleTypeDef hrtc;
 
-#define MAX_FILENAME_LEN 64
-#define CLOCK_MAX_SYMBOLS	6
+#define MAX_FILENAME_LEN 		64
+#define CLOCK_MAX_SYMBOLS		6
 
 typedef struct {
     uint8_t current_symbol;
@@ -700,19 +700,11 @@ void MenuLoadSDCardSirens(void)
 		item->name[LANG_HE] = messageFilenames[i];
 		item->postAction = &sirenPostAction;
 		item->filepath = messageFilenames[i];
-
-//	   sirenMenu->items[i].name[LANG_EN] = messageFilenames[i];
-//	   sirenMenu->items[i].name[LANG_HE] = messageFilenames[i];
-//	   //sirenMenu->items[i].prepareAction = &sirenPrepareAction;
-//	   //sirenMenu->items[i].postAction = &sirenPostAction;
-//	   sirenMenu->items[i].submenu = alarm_info_menu;
-//	   sirenMenu->items[i].filepath = messageFilenames[i];
 	}
 
 	sirenMenu->itemCount = count;
 	sirenMenu->currentSelection = 0;
 	sirenMenu->scrollOffset = 0;
-//	currentMenu = alarm_info_menu;
 }
 
 void MenuLoadSDCardMessages(void)
@@ -752,19 +744,11 @@ void MenuLoadSDCardMessages(void)
 		item->name[LANG_HE] = messageFilenames[i];
 		item->postAction = &sirenPostAction;
 		item->filepath = messageFilenames[i];
-
-//        messagesMenu->items[i].name[LANG_EN] = messageFilenames[i];
-//        messagesMenu->items[i].name[LANG_HE] = messageFilenames[i];
-////        messagesMenu->items[i].prepareAction = &PlayMessageStart;
-////        messagesMenu->items[i].postAction = &PlayMessageStartPost;
-////        messagesMenu->items[i].submenu = messagePlayMenu;
-//        messagesMenu->items[i].filepath = messageFilenames[i];
     }
 
     messagesMenu->itemCount = count;
     messagesMenu->currentSelection = 0;
     messagesMenu->scrollOffset = 0;
-//    currentMenu = messagePlayMenu;
 }
 
 static void PrepareSinuseItems(void)
@@ -804,20 +788,11 @@ static void PrepareSinuseItems(void)
     	item->name[LANG_HE] = messageFilenames[i];
     	item->postAction = &sirenPostAction;
     	item->filepath = sinus_info[i][GetLanguage()];
-
-//        sinusMenu->items[i].name[LANG_EN] = messageFilenames[i];
-//        sinusMenu->items[i].name[LANG_HE] = messageFilenames[i];
-//
-////        sinusMenu->items[i].prepareAction = &sirenPrepareAction;
-//        sinusMenu->items[i].postAction = &sinusPostAction;
-////        sinusMenu->items[i].submenu = sinusInfoMenu;
-//        sinusMenu->items[i].filepath = sinus_info[i][GetLanguage()];
     }
 
 	sinusMenu->itemCount = count;
 	sinusMenu->currentSelection = 0;
 	sinusMenu->scrollOffset = 0;
-//    currentMenu = sinusInfoMenu;
 }
 
 void MenuInitLanguage(void)
@@ -968,6 +943,9 @@ bool hot_key_handle_button(ButtonEvent_t event)
 		DrawMenuScreen(true);
 		return true;
 	case BTN_ANNOUNCEMENT:
+		if (AUDIO_PRIORITY_LOW < player.current_priority) return true;
+		player.last_time_announcement = 0;
+		player.is_announcement = true;
 		currentMenu = announcementMenu;
 		clear_position(currentMenu);
 		DrawMenuScreen(true);
@@ -983,6 +961,16 @@ bool hot_key_handle_button(ButtonEvent_t event)
 		currentMenu = sirenMenu;
 		clear_position(currentMenu);
 		DrawMenuScreen(true);
+		return true;
+	case BTN_ARM:
+	    player.last_time_arming = 0;
+	    player.is_arming = true;
+		return true;
+	case BTN_CXL:
+		if (AUDIO_PRIORITY_LOW < player.current_priority) return true;
+		player.priority = AUDIO_PRIORITY_LOW;
+		player.audio_state = AUDIO_STOP;
+		xQueueSend(xAudioQueueHandle, &player.audio_state, portMAX_DELAY);
 		return true;
 	default:
 		return false;

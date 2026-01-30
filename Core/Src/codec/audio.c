@@ -29,6 +29,7 @@ static void audio_start_playback(void);
 static void audio_play_playback();
 static void audio_stop_playback(void);
 static void audio_pause_playback(void);
+static void audio_idle(void);
 
 //static void audio_start_record(void);
 //static void audio_stop_record(void);
@@ -66,7 +67,6 @@ void audio_init(void)
 {
     memset(&player, 0, sizeof(player));
     player.new_volume = MAX_VOLUME;//DEF_VALUE_VOLUME;
-	player.count_progree = 12;
 
     audio_init_sin_table();
 
@@ -90,6 +90,7 @@ void audio_process(AudioEvent_t event)
 	switch(event)
 	{
 	case AUDIO_IDLE:
+		audio_idle();
 		break;
 	case AUDIO_START:
 		audio_start_playback();
@@ -106,7 +107,24 @@ void audio_process(AudioEvent_t event)
 	}
 }
 
-void audio_start_playback(void)
+static void audio_idle(void)
+{
+	if (player.is_arming)
+	{
+		player.last_time_arming++;
+		player.is_arming = player.last_time_arming < ARMING_TIME;
+		if(!player.is_arming) Print_Msg("ARM time's up\r\n");
+	}
+
+	if (player.is_announcement)
+	{
+		player.last_time_announcement++;
+		player.is_announcement = player.last_time_announcement < ANNOUNCEMENT_TIME;
+		if(!player.is_announcement) Print_Msg("ANNOUNCEMENT time's up\r\n");
+	}
+}
+
+static void audio_start_playback(void)
 {
 	Print_Msg("AUDIO_START\r\n");
 
@@ -152,20 +170,28 @@ void audio_start_playback(void)
     HAL_I2S_Transmit_DMA(&hi2s2, (uint16_t*)dma_buffer, AUDIO_HALF_BUFFER_SIZE);
 
     player.is_playing = true;
+    player.is_stoped = false;
+    player.is_prepare_stoped = false;
     player.audio_state = AUDIO_PLAY;
-    xQueueSend(xAudioQueueHandle, &player.audio_state, portMAX_DELAY);
+//    xQueueSend(xAudioQueueHandle, &player.audio_state, portMAX_DELAY);
 
 	LCDTaskEvent_t lcd_event = { .event = LCD_EVENT_PROGRESS, .value = 0 };
     xQueueSend(xLCDQueueHandle, &lcd_event, portMAX_DELAY);
 }
 
-void audio_play_playback()
+static void audio_play_playback()
 {
 //	Print_Msg("AUDIO_PLAY\r\n");
 
 //	if (!player.is_playing || player.buff_state == BUFFER_IDLE) return;
 
 //	UINT br;
+	if(player.is_prepare_stoped)
+	{
+		player.is_stoped = true;
+		return;
+	}
+
 	uint32_t offset = (player.buff_state == BUFFER_HALF) ? 0 : AUDIO_HALF_BUFFER_SIZE;
 	uint8_t *buf_ptr = dma_buffer + offset;
 
@@ -187,22 +213,19 @@ void audio_play_playback()
 	}
 
 	static uint8_t update_progree = 0;
-	if((update_progree++ > player.count_progree) || player.audio_state == AUDIO_STOP)
+	if((update_progree++ > COUNT_PROGRESS) || player.is_prepare_stoped)
 	{
 		update_progree = 0;
-//		char msg[64];
-//		sprintf(msg, "audio %d\r\n", player.duration);
-//		Print_Msg(msg);
-
 		LCDTaskEvent_t lcd_event = { .event = LCD_EVENT_PROGRESS, .value = player.duration };
 	    xQueueSend(xLCDQueueHandle, &lcd_event, portMAX_DELAY);
 	}
 
 	player.buff_state = BUFFER_IDLE;
-	xQueueSend(xAudioQueueHandle, &player.audio_state, portMAX_DELAY);
+	player.audio_state = AUDIO_PLAY;
+//	xQueueSend(xAudioQueueHandle, &player.audio_state, portMAX_DELAY);
 }
 
-void audio_stop_playback(void)
+static void audio_stop_playback(void)
 {
 	Print_Msg("AUDIO_STOP\r\n");
 //	uint32_t duration = HAL_GetTick() - start_play;
@@ -212,6 +235,7 @@ void audio_stop_playback(void)
 	if (player.priority < player.current_priority) return;
 
 	player.is_playing = false;
+	player.is_stoped = false;
     player.audio_state = AUDIO_IDLE;
 	player.buff_state = BUFFER_IDLE;
 	player.current_priority = AUDIO_PRIORITY_IDLE;
@@ -226,7 +250,7 @@ void audio_stop_playback(void)
 //    audiofs_close_file();
 }
 
-void audio_pause_playback(void)
+static void audio_pause_playback(void)
 {
 
 }
@@ -238,6 +262,9 @@ void HAL_I2S_TxHalfCpltCallback(I2S_HandleTypeDef *hi2s)
 		if (player.is_playing)
 		{
 			player.buff_state = BUFFER_HALF;
+			if(player.is_stoped)
+				player.audio_state = AUDIO_STOP;
+
 			xQueueSendFromISR(xAudioQueueHandle, &player.audio_state, NULL);
 		}
 	}
@@ -250,6 +277,9 @@ void HAL_I2S_TxCpltCallback(I2S_HandleTypeDef *hi2s)
 		if (player.is_playing)
 		{
 			player.buff_state = BUFFER_FULL;
+			if(player.is_stoped)
+				player.audio_state = AUDIO_STOP;
+
 			xQueueSendFromISR(xAudioQueueHandle, &player.audio_state, NULL);
 		}
 	}

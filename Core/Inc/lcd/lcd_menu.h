@@ -11,7 +11,7 @@
 #include <stdbool.h>
 
 #define MAX_MENU_ITEMS 			25
-#define INACTIVITY_TIMEOUT_MS 	20
+#define INACTIVITY_TIMEOUT_MS 	60
 #define BACKLIGHT_TIMEOUT_MS 	10
 
 typedef struct {

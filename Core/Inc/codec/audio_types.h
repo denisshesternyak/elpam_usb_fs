@@ -96,18 +96,22 @@ typedef struct
 //    uint32_t bytes_read;
 //    uint32_t current_file_pos;
 
-    uint32_t start_time_arming;
+    uint32_t last_time_arming;
+    uint32_t last_time_announcement;
 
     volatile bool is_playing;
     volatile bool is_paused;
+    volatile bool is_stoped;
+    volatile bool is_prepare_stoped;
+
 //    volatile bool end_of_file;
 //    volatile bool file_opened;
     volatile bool is_arming;
+    volatile bool is_announcement;
 
     char current_filename[32];
     uint8_t current_volume;
     uint8_t new_volume;
-    uint8_t count_progree;
     uint8_t duration;
 } Audio_Player_t;
 
