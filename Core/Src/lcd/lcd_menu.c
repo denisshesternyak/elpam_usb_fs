@@ -192,9 +192,8 @@ static void clear_menu(Menu* menu)
     if (!menu) return;
     if (menu->type != MENU_TYPE_LIST) return;
 
+    clear_position(menu);
     menu->itemCount = 0;
-    menu->currentSelection = 0;
-    menu->scrollOffset = 0;
 
     for (int i = 0; i < MAX_MENU_ITEMS; ++i)
     {
@@ -392,7 +391,7 @@ void menu_init(void)
 	testMenu->items[4] = (MenuItem){ .name = {
 			get_test_menu_items_str(STR_TEST_ITEM_SINUS_TEST, LANG_EN),
 			get_test_menu_items_str(STR_TEST_ITEM_SINUS_TEST, LANG_HE) },
-			.postAction = &prepare_sinuse_items,
+			.prepareAction = &prepare_sinuse_items,
 			.submenu = sinusMenu };
 	testMenu->itemCount = TEST_MENU_ITEM_COUNT;
 
@@ -1155,38 +1154,6 @@ void languageMenu_handle_button_press(ButtonEvent_t event)
 //        }
 //    }
 //}
-//
-//#define DEBUG_PRINT_BUTTON_STATE
-
-static void display_menu_item(uint8_t visualIndex, uint8_t index, const MenuItem* item, bool selected, bool dummy)
-{
-	//const Menu* submenu = item->submenu;
-
-	uint16_t y_pos = MENU_BASE_Y + (visualIndex * MENU_ITEM_HEIGHT);
-    uint16_t text_color = selected ? COLOR_WHITE : COLOR_GREEN;
-    uint16_t bg_color   = selected ? COLOR_BLUE  : COLOR_BLACK;
-
-    hx8357_fill_rect(MENU_BASE_X , y_pos,  hx8357_get_width() - (MENU_BASE_X*2), MENU_ITEM_HEIGHT, bg_color);
-
-    char upd_text[MAX_FILENAME_LEN];
-    Alignment align;
-    Language lang = GetLanguage();
-    const char* text = (dummy) ? "..." : item->name[GetLanguage()];
-
-    if (currentMenu == languageMenu || currentMenu == maintenanceMenu || lang == LANG_EN)
-    {
-    	sprintf(upd_text, "%d. %s", index+1, text);
-    	align = ALIGN_LEFT;
-    }
-	else if(lang == LANG_HE)
-	{
-		sprintf(upd_text, "%s .%d", text, index+1);
-    	align = ALIGN_RIGHT;
-	}
-
-    hx8357_write_alignedX_string(MENU_BASE_X, y_pos, upd_text, &Font_11x18, text_color, bg_color, align);
-}
-//#define DEBUG_PRINT_BUTTON_STATE_2
 
 void Draw_MENU_TYPE_IDLE()
 {
@@ -1361,6 +1328,33 @@ void draw_menu_clock(void)
 
 		hx8357_write_alignedX_string(baseX + field_offset, y, field_str, font, field_color, field_bg, ALIGN_LEFT);
 	}
+}
+
+static void display_menu_item(uint8_t visualIndex, uint8_t index, const MenuItem* item, bool selected, bool dummy)
+{
+	uint16_t y_pos = MENU_BASE_Y + (visualIndex * MENU_ITEM_HEIGHT);
+    uint16_t text_color = selected ? COLOR_WHITE : COLOR_GREEN;
+    uint16_t bg_color   = selected ? COLOR_BLUE  : COLOR_BLACK;
+
+    hx8357_fill_rect(MENU_BASE_X , y_pos,  hx8357_get_width() - (MENU_BASE_X*2), MENU_ITEM_HEIGHT, bg_color);
+
+    char upd_text[MAX_FILENAME_LEN];
+    Alignment align;
+    Language lang = GetLanguage();
+    const char* text = (dummy) ? "..." : item->name[GetLanguage()];
+
+    if (currentMenu == languageMenu || currentMenu == maintenanceMenu || lang == LANG_EN)
+    {
+    	sprintf(upd_text, "%d. %s", index+1, text);
+    	align = ALIGN_LEFT;
+    }
+	else if(lang == LANG_HE)
+	{
+		sprintf(upd_text, "%s .%d", text, index+1);
+    	align = ALIGN_RIGHT;
+	}
+
+    hx8357_write_alignedX_string(MENU_BASE_X, y_pos, upd_text, &Font_11x18, text_color, bg_color, align);
 }
 
 void Draw_MENU_TYPE_LIST()
