@@ -6,6 +6,8 @@
 //#include "lcd_display.h"
 #include <mcp23008_btns.h>
 #include "lcd_lang.h"
+#include "lcd_strings_menu.h"
+
 //#include "ds3231.h"
 //#include "lcd_widget_volume_indicator.h"
 #include <stdbool.h>
@@ -58,8 +60,7 @@ typedef struct MenuItem {
     MenuAction prepareAction;
     MenuAction postAction;
     struct Menu* submenu;
-    const char* filepath;
-    struct Menu* current_menu;
+    struct Menu* menu;
 } MenuItem;
 
 
@@ -81,37 +82,14 @@ typedef struct Menu {
 
 //void _basic_init_menu(Menu* m);
 
+void menu_init(void);
 void menu_handle_button(ButtonEvent_t event);
-
-bool hot_key_handle_button(ButtonEvent_t event);
-
-void HandleButtonPress(ButtonEvent_t event);
-void clockMenu_HandleButtonPress(ButtonEvent_t event);
-void languageMenu_HandleButtonPress(ButtonEvent_t event);
-//void passwordMenu_HandleButtonPress(ButtonEvent_t event);
-void sinus_info_menu_handler(ButtonEvent_t event);
-void alarm_info_menu_handler(ButtonEvent_t event);
-void idle_menu_handler(ButtonEvent_t event);
-
-void Menu_Init(void);
-
-void DrawStatusBar(void);
 void update_date_time(void);
 void update_progress_bar(uint8_t value);
-void DrawMenuScreen(bool forceFullRedraw);
-void DisplayMenuItem(uint8_t index, const MenuItem* item, bool selected, bool dummy);
-void MenuDrawImage(Menu *m);
-void ClearMenu(Menu* menu);
-void MenuLoadSDCardMessages(void);
-void MenuLoadSDCardSirens(void);
-void Draw_MENU_TYPE_CLOCK(void);
 
 //void MenuShowMessages(void);
 //void ShowUartCommand(void);
 
-
-void sirenPrepareAction(void);
-void sirenPostAction(void);
 //
 ////---------------------------------------------
 //// MENU_TYPE_ANNOUNCEMENT
@@ -135,7 +113,5 @@ void PlayMessageEnd(void);
 //const char* ButtonToString(Button_t btn) ;
 //const char* ButtonActionToString(ButtonAction_t ba);
 //void DrawDebugInfo(const ButtonEvent_t* event);
-
-void test_count_up_menu();
 
 #endif /* INC_SCREENS_LCD_MENU_H_ */

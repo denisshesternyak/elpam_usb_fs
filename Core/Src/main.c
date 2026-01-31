@@ -1050,7 +1050,7 @@ void LCDStartTask(void *argument)
 {
   /* USER CODE BEGIN LCDStartTask */
 	hx8357_init();
-	Menu_Init();
+	menu_init();
 
 	LCDTaskEvent_t lcd_event;
 
@@ -1091,7 +1091,7 @@ void InputTask(void *argument)
 	mcp23008_btns_init();
 	osDelay(5000);
 
-	LCDTaskEvent_t lcd_event = { .event = LCD_EVENT_BTN, .btn = { .action = BA_PRESSED } };
+//	LCDTaskEvent_t lcd_event = { .event = LCD_EVENT_BTN, .btn = { .action = BA_PRESSED } };
 
 //	lcd_event.btn.button = BTN_ENTER;
 //	xQueueSend(xLCDQueueHandle, &lcd_event, portMAX_DELAY);
