@@ -74,7 +74,7 @@ typedef struct Menu {
     uint8_t currentSelection;
     uint8_t oldSelection;
 	const char* screenText[LANG_COUNT];
-	char* textFilename;
+	const char* textFilename;
 	MenuImage* imageData;
 
 	MenuButtonHandler buttonHandler;

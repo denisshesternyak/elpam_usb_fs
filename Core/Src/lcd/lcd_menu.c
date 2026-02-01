@@ -353,7 +353,6 @@ void menu_init(void)
 	announcementMenu->type = MENU_TYPE_ANNOUNCEMENT;
 	announcementMenu->screenText[LANG_EN] = get_menu_header_str(STR_HEADER_ANNOUNCEMENT, LANG_EN);
 	announcementMenu->screenText[LANG_HE] = get_menu_header_str(STR_HEADER_ANNOUNCEMENT, LANG_HE);
-	announcementMenu->textFilename = NULL;
 	announcementMenu->imageData = &menu_microfon_img;
 //	announcementMenu->buttonHandler = VolumeControlButtonHandler;
 	announcementMenu->buttonHandler = handle_button_press;
@@ -774,7 +773,9 @@ void menu_init_language(void)
 
 static void siren_post_action(void)
 {
-	if (!currentMenu || currentMenu->currentSelection >= currentMenu->itemCount)
+	if (!currentMenu ||
+			currentMenu->currentSelection >= currentMenu->itemCount ||
+			AUDIO_PRIORITY_LOW < player.current_priority)
 		return;
 
 	MenuItem* item = &currentMenu->items[currentMenu->currentSelection];
@@ -784,16 +785,21 @@ static void siren_post_action(void)
 	currentMenu = item->menu;
 	clear_position(currentMenu);
 
-	draw_menuScreen(true);
+	currentMenu->textFilename = item->name[GetLanguage()];
 
-	hx8357_write_alignedX_string(0, SIREN_Y_POS, item->name[GetLanguage()], &Font_11x18, COLOR_MAGENTA, COLOR_BLACK, ALIGN_CENTER);
-
-	menu_draw_image(currentMenu);
+	char msg[64];
+	sprintf(msg, "%d %s %d\r\n", currentMenu==sinusInfoMenu, currentMenu->textFilename, currentMenu->type);
+	Print_Msg(msg);
 
 	MenuResetProgressBar();
-	MenuDrawProgress(0);
 
-	osDelay(3);
+	draw_menuScreen(true);
+
+	player.type_input = AUDIO_SIN;
+	player.current_sin = (SinTask_t)currentMenu->currentSelection;
+	player.audio_state = AUDIO_START;
+	player.priority = AUDIO_PRIORITY_LOW;
+	xQueueSend(xAudioQueueHandle, &player.audio_state, portMAX_DELAY);
 }
 
 void menu_handle_button(ButtonEvent_t event)
@@ -849,7 +855,7 @@ bool hot_key_handle_button(ButtonEvent_t event)
 		draw_menuScreen(true);
 		return true;
 	case BTN_ANNOUNCEMENT:
-		if (AUDIO_PRIORITY_LOW < player.current_priority) return true;
+		if (player.current_priority < AUDIO_PRIORITY_LOW) return true;
 		player.last_time_announcement = 0;
 		player.is_announcement = true;
 		currentMenu = announcementMenu;
@@ -988,8 +994,11 @@ void sinus_info_menu_handler(ButtonEvent_t event)
 				currentMenu = sinusInfoMenu->parent;
 				draw_menuScreen(true);
 			}
+			if (AUDIO_PRIORITY_LOW < player.current_priority) return;
+			player.priority = AUDIO_PRIORITY_LOW;
+			player.audio_state = AUDIO_STOP;
+			xQueueSend(xAudioQueueHandle, &player.audio_state, portMAX_DELAY);
 			break;
-
 		default:
 				return;
 	}
@@ -1179,12 +1188,6 @@ void Draw_MENU_TYPE_SIREN_INFO(void)
 	}
 
 	menu_draw_image(currentMenu);
-
-	isPlayAudioFile = true;
-
-//	char msg[64];
-//	sprintf(msg, "-- %s\r\n", currentMenu->parent->textFilename);
-//	Print_Msg(msg);
 
 	MenuDrawProgress(0);
 
@@ -1524,7 +1527,7 @@ void update_date_time()
 {
 	if (!isBacklightOn) return;
 
-	lastInteractionTick++;
+	if (!player.is_playing) lastInteractionTick++;
 
 	if (currentMenu != idleMenu && lastInteractionTick >= INACTIVITY_TIMEOUT_MS)
 	{
