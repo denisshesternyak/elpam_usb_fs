@@ -66,7 +66,8 @@ static void audio_idle(void);
 void audio_init(void)
 {
     memset(&player, 0, sizeof(player));
-    player.new_volume = MAX_VOLUME;//DEF_VALUE_VOLUME;
+    player.new_volume = MAX_VOLUME;
+//    player.new_volume = DEF_VALUE_VOLUME;
 
     audio_init_sin_table();
 
@@ -227,12 +228,19 @@ static void audio_play_playback()
 
 static void audio_stop_playback(void)
 {
-	Print_Msg("AUDIO_STOP\r\n");
+//	Print_Msg("AUDIO_STOP\r\n");
+
 //	uint32_t duration = HAL_GetTick() - start_play;
 //	sprintf(msg, "Playback time %lus %lums\r\n", duration/1000, duration%1000);
 //	Print_Msg(msg);
 
-	if (player.priority < player.current_priority) return;
+//	char msg[64];
+//	sprintf(msg, "AUDIO_STOP %d\r\n", player.is_playing);
+//	Print_Msg(msg);
+
+	if (!player.is_playing || player.priority < player.current_priority) return;
+
+	Print_Msg("AUDIO_STOP\r\n");
 
 	player.is_playing = false;
 	player.is_stoped = false;

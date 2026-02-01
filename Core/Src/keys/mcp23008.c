@@ -25,9 +25,9 @@ static void mcp23008_delay(uint32_t delay)
 
 void mcp23008_init_keyboard()
 {
-	mcp23008_write_cmd(MCP23008_DDR_A, 0x10);
-	mcp23008_write_cmd(MCP23008_PUR_A,  0x10);
-	mcp23008_write_cmd(MCP23008_GPIO_A,  0x01);
+	mcp23008_write_cmd(MCP23008_DDR_A, 0xF0);
+	mcp23008_write_cmd(MCP23008_PUR_A,  0xF0);
+	mcp23008_write_cmd(MCP23008_GPIO_A,  0x0F);
 }
 
 void mcp23008_set_row(uint8_t row_num)

@@ -427,7 +427,8 @@ void menu_init(void)
 	sinusInfoMenu->type = MENU_TYPE_SIREN_INFO;
 	sinusInfoMenu->screenText[LANG_EN] = get_menu_header_str(STR_HEADER_SINUS_INFO, LANG_EN);
     sinusInfoMenu->screenText[LANG_HE] = get_menu_header_str(STR_HEADER_SINUS_INFO, LANG_HE);
-	sinusInfoMenu->buttonHandler = sinus_info_menu_handler;
+//	sinusInfoMenu->buttonHandler = sinus_info_menu_handler;
+	sinusInfoMenu->buttonHandler = handle_button_press;
 
 //	////////////////////////////////////////////////////////
 	reportMenu->parent = rootMenu;
@@ -782,293 +783,24 @@ static void siren_post_action(void)
 
 	if (!item || !item->menu) return;
 
+	player.type_input = AUDIO_SIN;
+	player.current_sin = (SinTask_t)currentMenu->currentSelection;
+	player.audio_state = AUDIO_START;
+	player.priority = AUDIO_PRIORITY_LOW;
+	xQueueSend(xAudioQueueHandle, &player.audio_state, portMAX_DELAY);
+
 	currentMenu = item->menu;
 	clear_position(currentMenu);
 
 	currentMenu->textFilename = item->name[GetLanguage()];
 
 	char msg[64];
-	sprintf(msg, "%d %s %d\r\n", currentMenu==sinusInfoMenu, currentMenu->textFilename, currentMenu->type);
+	sprintf(msg, "%d %s\r\n", player.current_sin, currentMenu->textFilename);
 	Print_Msg(msg);
 
 	MenuResetProgressBar();
 
 	draw_menuScreen(true);
-
-	player.type_input = AUDIO_SIN;
-	player.current_sin = (SinTask_t)currentMenu->currentSelection;
-	player.audio_state = AUDIO_START;
-	player.priority = AUDIO_PRIORITY_LOW;
-	xQueueSend(xAudioQueueHandle, &player.audio_state, portMAX_DELAY);
-}
-
-void menu_handle_button(ButtonEvent_t event)
-{
-	if (!currentMenu || (event.button == BTN_NONE) || (event.action == BA_RELEASED)) return;
-
-	lastInteractionTick = 0;
-
-	if (!isBacklightOn)
-	{
-		BLK_ON();
-		isBacklightOn = true;
-		return;
-	}
-
-	if (hot_key_handle_button(event)) return;
-
-//	if (currentMenu == idleMenu)
-//	{
-//		if(isResetPasswordAfterIdle){
-//			Password_Reset(false);
-//		}
-
-//		if (Password_IsCorrect())
-//		{
-//			currentMenu = rootMenu;
-//		}
-//		else
-//		{
-//			Password_Reset(false);
-//			currentMenu = passwordMenu;
-//		}
-//		currentMenu = rootMenu;
-//		currentMenu->currentSelection = 0;
-//		draw_menuScreen(true);
-
-//		return;
-//	}
-
-	if (currentMenu->buttonHandler) {
-	    currentMenu->buttonHandler(event);
-	    return;
-	}
-}
-
-bool hot_key_handle_button(ButtonEvent_t event)
-{
-	switch (event.button)
-    {
-	case BTN_TEST:
-		currentMenu = testMenu;
-		clear_position(currentMenu);
-		draw_menuScreen(true);
-		return true;
-	case BTN_ANNOUNCEMENT:
-		if (player.current_priority < AUDIO_PRIORITY_LOW) return true;
-		player.last_time_announcement = 0;
-		player.is_announcement = true;
-		currentMenu = announcementMenu;
-		clear_position(currentMenu);
-		draw_menuScreen(true);
-		return true;
-	case BTN_MESSAGE:
-		MenuLoadSDCardMessages();
-		currentMenu = messagesMenu;
-		clear_position(currentMenu);
-		draw_menuScreen(true);
-		return true;
-	case BTN_ALARM:
-		MenuLoadSDCardSirens();
-		currentMenu = sirenMenu;
-		clear_position(currentMenu);
-		draw_menuScreen(true);
-		return true;
-	case BTN_ARM:
-	    player.last_time_arming = 0;
-	    player.is_arming = true;
-		return true;
-	case BTN_CXL:
-		if (AUDIO_PRIORITY_LOW < player.current_priority) return true;
-		player.priority = AUDIO_PRIORITY_LOW;
-		player.audio_state = AUDIO_STOP;
-		xQueueSend(xAudioQueueHandle, &player.audio_state, portMAX_DELAY);
-		return true;
-	default:
-		return false;
-	}
-}
-
-void handle_button_press(ButtonEvent_t event)
-{
-	if (!currentMenu) return;
-
-    switch(event.button)
-    {
-        case BTN_UP:
-        	button_up_handler();
-        	break;
-        case BTN_DOWN:
-        	button_down_handler();
-        	break;
-        case BTN_ENTER:
-        	button_enter_handler();
-        	break;
-        case BTN_ESC:
-        	button_esc_handler();
-        	break;
-        default:
-        	return;
-    }
-}
-
-//void passwordMenu_handle_button_press(ButtonEvent_t event)
-//{
-//	if ((!passwordMenu) && (currentMenu != passwordMenu)) return;
-//
-//	switch(event.button)
-//	{
-//		//case BTN__BACK:	 Password_Reset(true);      break;
-//		case BTN_ESC:
-//				Password_Backspace();  break;
-//		case BTN_ENTER:
-//						Password_Enter();
-//						if (Password_IsCorrect())
-//						{
-//							currentMenu = rootMenu;
-//							draw_menuScreen(true);
-//						}
-//						break;
-//
-//		case BTN_A:
-//						Password_AddChar('1'); break;
-//		case BTN_B:
-//					Password_AddChar('1'); break;
-//
-//		case BTN_1:          Password_AddChar('1'); break;
-//		case BTN_2:          Password_AddChar('2'); break;
-//		case BTN_3:          Password_AddChar('3'); break;
-//		case BTN_4:          Password_AddChar('4'); break;
-//		case BTN_5:          Password_AddChar('5'); break;
-//		case BTN_6:          Password_AddChar('6'); break;
-//		case BTN_7:          Password_AddChar('7'); break;
-//		case BTN_8:          Password_AddChar('8'); break;
-//		case BTN_9:          Password_AddChar('9'); break;
-//		case BTN_0:          Password_AddChar('0'); break;
-//
-//	}
-//}
-//
-
-void idle_menu_handler(ButtonEvent_t event)
-{
-	if (!rootMenu) return;
-
-	switch (event.button)
-    {
-	case BTN_ENTER:
-		currentMenu = rootMenu;
-		clear_position(currentMenu);
-		draw_menuScreen(true);
-		break;
-	default:
-		break;
-    }
-}
-
-void alarm_info_menu_handler(ButtonEvent_t event)
-{
-	if (!alarm_info_menu) return;
-
-	switch(event.button)
-	{
-		case BTN_ESC:
-			if (alarm_info_menu->parent == NULL) return;
-			currentMenu = alarm_info_menu->parent;
-			draw_menuScreen(true);
-			break;
-
-		default:
-			break;
-	}
-}
-
-void sinus_info_menu_handler(ButtonEvent_t event)
-{
-	if (!sinusInfoMenu) return;
-
-	switch(event.button)
-	{
-		case BTN_ESC:
-			if (sinusInfoMenu->parent != NULL) {
-				currentMenu = sinusInfoMenu->parent;
-				draw_menuScreen(true);
-			}
-			if (AUDIO_PRIORITY_LOW < player.current_priority) return;
-			player.priority = AUDIO_PRIORITY_LOW;
-			player.audio_state = AUDIO_STOP;
-			xQueueSend(xAudioQueueHandle, &player.audio_state, portMAX_DELAY);
-			break;
-		default:
-				return;
-	}
-
-}
-//void VolumeControlButtonHandler(ButtonEvent_t event)
-//{
-//	 if (!currentMenu) return;
-//
-//	switch (event.button)
-//	{
-//		case BTN_UP:
-//			IncreaseVolume(); // VOLUME +
-//			break;
-//		case BTN_DOWN:
-//			DecreaseVolume(); // VOLUME -
-//			break;
-//		case BTN_ENTER:
-//			break;
-//		case BTN_ESC:
-//			currentMenu = currentMenu->parent;
-//			draw_menuScreen(true);
-//			break;
-//
-//		default:
-//			return;
-//	}
-//
-//}
-
-void clockMenu_handle_button_press(ButtonEvent_t event)
-{
-	if (!clockMenu) return;
-
-	switch(event.button)
-	{
-		case BTN_ENTER:
-			clock.current_symbol++;
-			if (clock.current_symbol >= CLOCK_MAX_SYMBOLS) clock.current_symbol = 0;
-			draw_menu_clock();
-			return;
-		case BTN_UP:
-			clock.change_value = 1;
-			draw_menu_clock();
-			return;
-		case BTN_DOWN:
-			clock.change_value = -1;
-			draw_menu_clock();
-			return;
-		default:
-			break;
-	}
-	handle_button_press(event);
-}
-
-void languageMenu_handle_button_press(ButtonEvent_t event)
-{
-	if (!languageMenu || languageMenu->itemCount == 0) return;
-
-	switch(event.button)
-	{
-		case BTN_ENTER:
-			SetLanguage((Language)languageMenu->currentSelection);
-			menu_init_language();
-			draw_menuScreen(false);
-			return;
-		default:
-			break;
-	}
-	handle_button_press(event);
 }
 
  void IncreaseVolume(void)
@@ -1182,9 +914,9 @@ void Draw_MENU_TYPE_ANNOUNCEMENT(void)
 
 void Draw_MENU_TYPE_SIREN_INFO(void)
 {
-	if (currentMenu->parent->textFilename)
+	if (currentMenu->textFilename)
 	{
-		hx8357_write_alignedX_string(0, SIREN_Y_POS, currentMenu->parent->textFilename, &Font_11x18, COLOR_MAGENTA, COLOR_BLACK, ALIGN_CENTER);
+		hx8357_write_alignedX_string(0, SIREN_Y_POS, currentMenu->textFilename, &Font_11x18, COLOR_MAGENTA, COLOR_BLACK, ALIGN_CENTER);
 	}
 
 	menu_draw_image(currentMenu);
@@ -1514,11 +1246,9 @@ void draw_status_bar()
 	char serialStr[20];
 	hx8357_fill_rect(0, 0, hx8357_get_width(), STATUS_BAR_LINE_Y_POS, COLOR_BLACK);
 	hx8357_write_alignedX_string(0, LOGO_Y_POS, "EES-3000", &Font_11x18, COLOR_WHITE, COLOR_BLACK, ALIGN_LEFT);
-	//hx8357_write_string(LOGO_X_POS, LOGO_Y_POS, "EES-3000", &Font_11x18, COLOR_WHITE, COLOR_BLACK);
 
 	snprintf(serialStr, sizeof(serialStr), "Serial: %s", SERIAL_NUMBER);
 	hx8357_write_alignedX_string(0, SERIAL_Y_POS, serialStr, &Font_7x10, COLOR_YELLOW, COLOR_BLACK, ALIGN_RIGHT);
-	//hx8357_write_string(SERIAL_X_POS, SERIAL_Y_POS, serialStr, &Font_7x10, COLOR_YELLOW, COLOR_BLACK);
 
 	hx8357_fill_rect(0, STATUS_BAR_LINE_Y_POS-1, hx8357_get_width(), 1, COLOR_GRAY);
 }
@@ -1554,7 +1284,6 @@ void update_date_time()
 			sDate.Date, sDate.Month, sDate.Year,
 			sTime.Hours, sTime.Minutes, sTime.Seconds);
 
-	//LCD_FillRectangle(TIME_X_POS, TIME_Y_POS, 235, TIME_HEIGHT, COLOR_BLACK);
 	hx8357_write_alignedX_string(0, TIME_Y_POS, clock_str, &Font_7x10, COLOR_YELLOW, COLOR_BLACK, ALIGN_RIGHT);
 	return;
 }
@@ -1571,6 +1300,96 @@ void update_progress_bar(uint8_t value)
 //	LCD_WriteString(LOGO_X_POS, LOGO_Y_POS, "EES-3000", &Font_7x10, COLOR_WHITE, COLOR_BLACK);
 //
 //}
+
+void menu_handle_button(ButtonEvent_t event)
+{
+	if (!currentMenu || (event.button == BTN_NONE) || (event.action == BA_RELEASED)) return;
+
+	lastInteractionTick = 0;
+
+	if (!isBacklightOn)
+	{
+		BLK_ON();
+		isBacklightOn = true;
+		return;
+	}
+
+	if (hot_key_handle_button(event)) return;
+
+	if (currentMenu->buttonHandler) {
+	    currentMenu->buttonHandler(event);
+	    return;
+	}
+}
+
+bool hot_key_handle_button(ButtonEvent_t event)
+{
+	switch (event.button)
+    {
+	case BTN_TEST:
+		currentMenu = testMenu;
+		clear_position(currentMenu);
+		draw_menuScreen(true);
+		return true;
+	case BTN_ANNOUNCEMENT:
+		if (player.current_priority < AUDIO_PRIORITY_LOW) return true;
+		player.last_time_announcement = 0;
+		player.is_announcement = true;
+		currentMenu = announcementMenu;
+		clear_position(currentMenu);
+		draw_menuScreen(true);
+		return true;
+	case BTN_MESSAGE:
+		MenuLoadSDCardMessages();
+		currentMenu = messagesMenu;
+		clear_position(currentMenu);
+		draw_menuScreen(true);
+		return true;
+	case BTN_ALARM:
+		MenuLoadSDCardSirens();
+		currentMenu = sirenMenu;
+		clear_position(currentMenu);
+		draw_menuScreen(true);
+		return true;
+	case BTN_ARM:
+	    player.last_time_arming = 0;
+	    player.is_arming = true;
+		return true;
+	case BTN_CXL:
+		if (!player.is_playing ||
+			AUDIO_PRIORITY_LOW < player.current_priority) return true;
+
+		player.priority = AUDIO_PRIORITY_LOW;
+		player.audio_state = AUDIO_STOP;
+		xQueueSend(xAudioQueueHandle, &player.audio_state, portMAX_DELAY);
+		return true;
+	default:
+		return false;
+	}
+}
+
+void handle_button_press(ButtonEvent_t event)
+{
+	if (!currentMenu) return;
+
+    switch(event.button)
+    {
+        case BTN_UP:
+        	button_up_handler();
+        	break;
+        case BTN_DOWN:
+        	button_down_handler();
+        	break;
+        case BTN_ENTER:
+        	button_enter_handler();
+        	break;
+        case BTN_ESC:
+        	button_esc_handler();
+        	break;
+        default:
+        	return;
+    }
+}
 
 
 static void button_up_handler(void)
@@ -1640,16 +1459,175 @@ static void button_enter_handler(void)
 
 static void button_esc_handler(void)
 {
-	if (!currentMenu->parent) return;
-
-	if (currentMenu->type == MENU_TYPE_MESSAGE_PLAY && isPlayAudioFile)
+	if(player.is_playing)
 	{
-		isPlayAudioFile = false;
+		if (AUDIO_PRIORITY_LOW < player.current_priority) return;
+		player.priority = AUDIO_PRIORITY_LOW;
+		player.audio_state = AUDIO_STOP;
+		xQueueSend(xAudioQueueHandle, &player.audio_state, portMAX_DELAY);
 	}
+
+	if (!currentMenu->parent) return;
 
 	currentMenu = currentMenu->parent;
 
 	draw_menuScreen(true);
+}
+
+//void passwordMenu_handle_button_press(ButtonEvent_t event)
+//{
+//	if ((!passwordMenu) && (currentMenu != passwordMenu)) return;
+//
+//	switch(event.button)
+//	{
+//		//case BTN__BACK:	 Password_Reset(true);      break;
+//		case BTN_ESC:
+//				Password_Backspace();  break;
+//		case BTN_ENTER:
+//						Password_Enter();
+//						if (Password_IsCorrect())
+//						{
+//							currentMenu = rootMenu;
+//							draw_menuScreen(true);
+//						}
+//						break;
+//
+//		case BTN_A:
+//						Password_AddChar('1'); break;
+//		case BTN_B:
+//					Password_AddChar('1'); break;
+//
+//		case BTN_1:          Password_AddChar('1'); break;
+//		case BTN_2:          Password_AddChar('2'); break;
+//		case BTN_3:          Password_AddChar('3'); break;
+//		case BTN_4:          Password_AddChar('4'); break;
+//		case BTN_5:          Password_AddChar('5'); break;
+//		case BTN_6:          Password_AddChar('6'); break;
+//		case BTN_7:          Password_AddChar('7'); break;
+//		case BTN_8:          Password_AddChar('8'); break;
+//		case BTN_9:          Password_AddChar('9'); break;
+//		case BTN_0:          Password_AddChar('0'); break;
+//
+//	}
+//}
+//
+
+void idle_menu_handler(ButtonEvent_t event)
+{
+	if (!rootMenu) return;
+
+	switch (event.button)
+    {
+	case BTN_ENTER:
+		currentMenu = rootMenu;
+		clear_position(currentMenu);
+		draw_menuScreen(true);
+		break;
+	default:
+		break;
+    }
+}
+
+void alarm_info_menu_handler(ButtonEvent_t event)
+{
+	if (!alarm_info_menu) return;
+
+	switch(event.button)
+	{
+		case BTN_ESC:
+			if (alarm_info_menu->parent == NULL) return;
+			currentMenu = alarm_info_menu->parent;
+			draw_menuScreen(true);
+			break;
+
+		default:
+			break;
+	}
+}
+
+//void sinus_info_menu_handler(ButtonEvent_t event)
+//{
+//	if (!sinusInfoMenu) return;
+//
+//	switch(event.button)
+//	{
+//		case BTN_ESC:
+//			if (sinusInfoMenu->parent != NULL) {
+//				currentMenu = sinusInfoMenu->parent;
+//				draw_menuScreen(true);
+//			}
+//			break;
+//		default:
+//				return;
+//	}
+//
+//}
+
+//void VolumeControlButtonHandler(ButtonEvent_t event)
+//{
+//	 if (!currentMenu) return;
+//
+//	switch (event.button)
+//	{
+//		case BTN_UP:
+//			IncreaseVolume(); // VOLUME +
+//			break;
+//		case BTN_DOWN:
+//			DecreaseVolume(); // VOLUME -
+//			break;
+//		case BTN_ENTER:
+//			break;
+//		case BTN_ESC:
+//			currentMenu = currentMenu->parent;
+//			draw_menuScreen(true);
+//			break;
+//
+//		default:
+//			return;
+//	}
+//
+//}
+
+void clockMenu_handle_button_press(ButtonEvent_t event)
+{
+	if (!clockMenu) return;
+
+	switch(event.button)
+	{
+		case BTN_ENTER:
+			clock.current_symbol++;
+			if (clock.current_symbol >= CLOCK_MAX_SYMBOLS) clock.current_symbol = 0;
+			draw_menu_clock();
+			return;
+		case BTN_UP:
+			clock.change_value = 1;
+			draw_menu_clock();
+			return;
+		case BTN_DOWN:
+			clock.change_value = -1;
+			draw_menu_clock();
+			return;
+		default:
+			break;
+	}
+	handle_button_press(event);
+}
+
+void languageMenu_handle_button_press(ButtonEvent_t event)
+{
+	if (!languageMenu || languageMenu->itemCount == 0) return;
+
+	switch(event.button)
+	{
+		case BTN_ENTER:
+			SetLanguage((Language)languageMenu->currentSelection);
+			menu_init_language();
+			draw_menuScreen(false);
+			return;
+		default:
+			break;
+	}
+	handle_button_press(event);
 }
 
 

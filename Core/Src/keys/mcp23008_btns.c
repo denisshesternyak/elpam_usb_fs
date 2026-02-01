@@ -1,46 +1,26 @@
 #include <mcp23008_btns.h>
 #include "mcp23008.h"
 
-//      Col0  Col1  Col2  Col3
-// Row0:  0     1     2     3
-// Row1:  4     5     6     7
-// Row2:  8     9    10    11
-// Row3: 12    13    14    15
-static const Button_t bit_to_button_map[NUM_KEYS] = {
-	BTN_B,       // 0
-	BTN_UP,      // 1
-	BTN_DOWN,    // 2
-	BTN_RIGHT,   // 3
-
-	BTN_A,       // 4
-	BTN_LEFT,    // 5
-	BTN_ENTER,  // 6
-	BTN_ESC,    // 7
-
-	BTN_NONE,    // 8
-	BTN_NONE,    // 9
-	BTN_NONE,    // 10
-	BTN_NONE,    // 11
-
-	BTN_NONE,    // 12
-	BTN_NONE,    // 13
-	BTN_NONE,    // 14
-	BTN_NONE     // 15
-};
-
 const char* ButtonToString(Button_t btn)
 {
     switch(btn) {
-        case BTN_UP:     return "BTN_UP";
-        case BTN_DOWN:   return "BTN_DOWN";
-        case BTN_LEFT:   return "BTN_LEFT";
-        case BTN_RIGHT:  return "BTN_RIGHT";
-        case BTN_ENTER: return "BTN_ENTER";
-        case BTN_ESC:   return "BTN_ESC";
-        case BTN_A:      return "BTN_A";
-        case BTN_B:      return "BTN_B";
-        case BTN_NONE:   return "BTN_NONE";
-        default:         return "UNKNOWN_BUTTON";
+
+        case BTN_UP:     		return "BTN_UP";
+        case BTN_DOWN:   		return "BTN_DOWN";
+        case BTN_LEFT:   		return "BTN_LEFT";
+        case BTN_RIGHT:  		return "BTN_RIGHT";
+        case BTN_ENTER: 		return "BTN_ENTER";
+        case BTN_ESC:   		return "BTN_ESC";
+        case BTN_A:      		return "BTN_A";
+        case BTN_B:      		return "BTN_B";
+        case BTN_TEST:      	return "BTN_TEST";
+        case BTN_ANNOUNCEMENT:  return "BTN_ANNOUNCEMENT";
+        case BTN_MESSAGE:      	return "BTN_MESSAGE";
+        case BTN_ALARM:      	return "BTN_ALARM";
+        case BTN_CXL:      		return "BTN_CXL";
+        case BTN_ARM:      		return "BTN_ARM";
+        case BTN_NONE:   		return "BTN_NONE";
+        default:         		return "UNKNOWN_BUTTON";
     }
 }
 
@@ -58,6 +38,9 @@ void mcp23008_btns_init(void)
 {
 //    char msg[64];
 //    Print_Msg("mcp23008_btns_init\r\n");
+//
+//    sprintf(msg, "0x00, 0x06, 0x09: 0x%02x 0x%02x 0x%02x\r\n", mcp23008_read_reg(0x00), mcp23008_read_reg(0x06), mcp23008_read_reg(0x09));
+//    Print_Msg(msg);
 
     mcp23008_init_keyboard();
 
@@ -91,21 +74,24 @@ bool mcp23008_keys_poll(ButtonEvent_t *out_event)
 
 	if (last_stable_key != 0xFF)
 	{
-		Button_t btn = bit_to_button_map[last_stable_key];
+		Button_t btn = (Button_t) last_stable_key;
 		if (btn != BTN_NONE)
 		{
-			out_event->button = bit_to_button_map[last_stable_key];
-			out_event->action =  BUTTON_RELEASED;
+			out_event->button = btn;
+			out_event->action =  BA_RELEASED;
 		}
 	}
 
 	if (current_key != 0xFF)
 	{
-		Button_t btn = bit_to_button_map[current_key];
+		Button_t btn = (Button_t) current_key;
 		if (btn != BTN_NONE)
 		{
-			out_event->button = bit_to_button_map[current_key];
-			out_event->action = BUTTON_PRESSED;
+			char msg[64];
+			sprintf(msg, "--btn: %d\r\n", btn);
+			Print_Msg(msg);
+			out_event->button = btn;
+			out_event->action = BA_PRESSED;
 			last_stable_key = current_key;
 			last_change_time = now;
 			return true;

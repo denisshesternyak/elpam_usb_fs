@@ -80,7 +80,7 @@ const osThreadAttr_t defaultTask_attributes = {
 osThreadId_t UART_Receive_TaHandle;
 const osThreadAttr_t UART_Receive_Ta_attributes = {
   .name = "UART_Receive_Ta",
-  .stack_size = 128 * 4,
+  .stack_size = 512 * 4,
   .priority = (osPriority_t) osPriorityNormal,
 };
 /* Definitions for AudioPlaybackTa */
@@ -101,7 +101,7 @@ const osThreadAttr_t LCDTask_attributes = {
 osThreadId_t InputTask_NameHandle;
 const osThreadAttr_t InputTask_Name_attributes = {
   .name = "InputTask_Name",
-  .stack_size = 128 * 4,
+  .stack_size = 512 * 4,
   .priority = (osPriority_t) osPriorityLow,
 };
 /* Definitions for xLCDQueue */
@@ -205,7 +205,6 @@ int main(void)
   HAL_Init();
 
   /* USER CODE BEGIN Init */
-
   /* USER CODE END Init */
 
   /* Configure the system clock */
@@ -820,7 +819,7 @@ static void MX_USART2_UART_Init(void)
 
   /* USER CODE END USART2_Init 1 */
   huart2.Instance = USART2;
-  huart2.Init.BaudRate = 115200;
+  huart2.Init.BaudRate = 1200;
   huart2.Init.WordLength = UART_WORDLENGTH_8B;
   huart2.Init.StopBits = UART_STOPBITS_1;
   huart2.Init.Parity = UART_PARITY_NONE;
@@ -1059,6 +1058,7 @@ void LCDStartTask(void *argument)
 	{
 		if (xQueueReceive(xLCDQueueHandle, &lcd_event, portMAX_DELAY))
 		{
+
 			switch(lcd_event.event)
 			{
 			case LCD_EVENT_IDLE:
@@ -1089,53 +1089,26 @@ void InputTask(void *argument)
 {
   /* USER CODE BEGIN InputTask */
 	mcp23008_btns_init();
-	osDelay(5000);
+	char msg[64];
 
-//	LCDTaskEvent_t lcd_event = { .event = LCD_EVENT_BTN, .btn = { .action = BA_PRESSED } };
-
-//	lcd_event.btn.button = BTN_ENTER;
-//	xQueueSend(xLCDQueueHandle, &lcd_event, portMAX_DELAY);
-
-//
-//	btn_event.button = BTN_DOWN;
-//	xQueueSend(xLCDQueueHandle, &lcd_event, portMAX_DELAY);
-//	osDelay(5000);
-//
-//	btn_event.button = BTN_ENTER;
-//	xQueueSend(xLCDQueueHandle, &lcd_event, portMAX_DELAY);
-//	osDelay(5000);
-//
-//	btn_event.button = BTN_ESC;
-//	xQueueSend(xLCDQueueHandle, &lcd_event, portMAX_DELAY);
-//	osDelay(5000);
+	LCDTaskEvent_t lcd_event = { .event = LCD_EVENT_BTN };
 
   /* Infinite loop */
 	for(;;)
 	{
-//		if (mcp23008_keys_poll(&btn_event))
-//		{
-//			//DrawDebugInfo(&btn_event);
-//
-//			if ((btn_event.button != BTN_NONE) && (btn_event.action == BA_PRESSED))
-//			{
-//				xQueueSend(xLCDQueueHandle, &event, portMAX_DELAY);
-//			}
-//		}
-//		osDelay(20);
+		if (mcp23008_keys_poll(&lcd_event.btn))
+		{
+			//DrawDebugInfo(&btn_event);
 
-//		lcd_event.btn.button = BTN_ENTER;
-//		xQueueSend(xLCDQueueHandle, &lcd_event, portMAX_DELAY);
-//		osDelay(5000);
-//
-//		lcd_event.btn.button = BTN_ESC;
-//		xQueueSend(xLCDQueueHandle, &lcd_event, portMAX_DELAY);
-//		osDelay(5000);
-//
-//		lcd_event.btn.button = BTN_DOWN;
-//		xQueueSend(xLCDQueueHandle, &lcd_event, portMAX_DELAY);
-//		osDelay(5000);
+//			sprintf(msg, "BTN: %s, %s\r\n", ButtonToString(lcd_event.btn.button), ButtonActionToString(lcd_event.btn.action));
+//			Print_Msg(msg);
 
-		osDelay(10);
+			if ((lcd_event.btn.button != BTN_NONE) && (lcd_event.btn.action == BA_PRESSED))
+			{
+				xQueueSend(xLCDQueueHandle, &lcd_event, portMAX_DELAY);
+			}
+		}
+		osDelay(20);
 	}
   /* USER CODE END InputTask */
 }

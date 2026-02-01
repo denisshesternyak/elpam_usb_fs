@@ -7,6 +7,11 @@
 #define NUM_KEYS 		16
 #define DEBOUNCE_MS 	20
 
+//      Col0  Col1  Col2  Col3
+// Row0:  0     1     2     3
+// Row1:  4     5     6     7
+// Row2:  8     9    10    11
+// Row3: 12    13    14    15
 typedef enum {
     BTN_UP,
     BTN_DOWN,
