@@ -794,10 +794,6 @@ static void siren_post_action(void)
 
 	currentMenu->textFilename = item->name[GetLanguage()];
 
-	char msg[64];
-	sprintf(msg, "%d %s\r\n", player.current_sin, currentMenu->textFilename);
-	Print_Msg(msg);
-
 	MenuResetProgressBar();
 
 	draw_menuScreen(true);

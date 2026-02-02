@@ -28,13 +28,10 @@ void audio_reset(void)
 
 void audio_init_playback(void)
 {
-//	const char *msg = "audio_init_playback\r\n";
-//	Print_Msg(msg);
-
-	HAL_Delay(10);
+	osDelay(10);
 	audio_write_cmd(AIC32X4_PSEL, 0x00);			// Page 0
 	audio_write_cmd(AIC32X4_RESET, 0x01);			// Software reset
-	HAL_Delay(50);
+	osDelay(50);
 
     audio_write_cmd(AIC32X4_PSEL, 0x00);			// Page 0
     audio_write_cmd(AIC32X4_CLKMUX, 0x00);			// CODEC_CLKIN = MCLK directly (no PLL)
@@ -59,9 +56,17 @@ void audio_init_playback(void)
 	audio_write_cmd(AIC32X4_RPLAYBACK, 0x00);		// Playback Configuration Register 2
 	audio_write_cmd(AIC32X4_HPLGAIN, 0x00);   		// HPL gain 0 dB
 	audio_write_cmd(AIC32X4_HPRGAIN, 0x00);			// HPR gain 0 dB
-	audio_write_cmd(AIC32X4_OUTPWRCTL, 0x30); 		// Power up HPL and HPR drivers
+//	audio_write_cmd(AIC32X4_OUTPWRCTL, 0x30); 		// Power up HPL and HPR drivers
 
-    HAL_Delay(2500);								// Wait for soft stepping (2.5 sec in TI example)
+	audio_write_cmd(AIC32X4_LOLROUTE, 0x08); 		// LDAC → LOL
+	audio_write_cmd(AIC32X4_LORROUTE, 0x08);   		// RDAC → LOR
+	audio_write_cmd(AIC32X4_LOLGAIN, 0x00);   		// LOL gain 0 dB, driver is not muted
+	audio_write_cmd(AIC32X4_LORGAIN, 0x00);			// LOR gain 0 dB, driver is not muted
+//	audio_write_cmd(AIC32X4_OUTPWRCTL, 0x0C); 		// Power up LOL and LOR drivers
+
+	audio_write_cmd(AIC32X4_OUTPWRCTL, 0x3C); 		// Power up HPL/HPR and LOL/LOR drivers
+
+    osDelay(2500);								// Wait for soft stepping (2.5 sec in TI example)
 
     audio_write_cmd(AIC32X4_PSEL, 0x00);			// Page 0
     // 0xC8 -28dB,
@@ -82,7 +87,7 @@ void audio_init_record(void)
     audio_write_cmd(AIC32X4_AOSR, 0x80);     		// AOSR = 128
     audio_write_cmd(AIC32X4_ADCSPB, 0x01);  		// PRB_R1 for ADC (default recording)
 
-    audio_write_cmd(AIC32X4_PSEL, 0x01);			// Page 0
+    audio_write_cmd(AIC32X4_PSEL, 0x01);			// Page 1
     audio_write_cmd(AIC32X4_PWRCFG, 0x08);    		// Disable weak AVDD connection
     audio_write_cmd(AIC32X4_LDOCTL, 0x00);   		// Master analog power control (LDO off if external supply)
     audio_write_cmd(AIC32X4_CMMODE, 0x00);			// Input common mode 0.9 V
@@ -106,6 +111,20 @@ void audio_init_record(void)
 void audio_send_volume(uint8_t lvl)
 {
     audio_write_cmd(AIC32X4_PSEL, 0x00);			// Page 0
-	audio_write_cmd(AIC32X4_LDACVOL, lvl); 		// Left DAC Channel Digital Volume
-	audio_write_cmd(AIC32X4_RDACVOL, lvl); 		// Right DAC Channel Digital Volume
+	audio_write_cmd(AIC32X4_LDACVOL, lvl); 			// Left DAC Channel Digital Volume
+	audio_write_cmd(AIC32X4_RDACVOL, lvl); 			// Right DAC Channel Digital Volume
+}
+
+void audio_enable_HP(void)
+{
+    audio_write_cmd(AIC32X4_PSEL, 0x01);			// Page 1
+	audio_write_cmd(AIC32X4_OUTPWRCTL, 0x30); 		// Power up HPL and HPR drivers
+	osDelay(2);
+}
+
+void audio_enable_LO(void)
+{
+    audio_write_cmd(AIC32X4_PSEL, 0x01);			// Page 1
+	audio_write_cmd(AIC32X4_OUTPWRCTL, 0x0C); 		// Power up LOL and LOR drivers
+	osDelay(2);
 }

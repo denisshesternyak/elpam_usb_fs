@@ -87,9 +87,6 @@ bool mcp23008_keys_poll(ButtonEvent_t *out_event)
 		Button_t btn = (Button_t) current_key;
 		if (btn != BTN_NONE)
 		{
-			char msg[64];
-			sprintf(msg, "--btn: %d\r\n", btn);
-			Print_Msg(msg);
 			out_event->button = btn;
 			out_event->action = BA_PRESSED;
 			last_stable_key = current_key;

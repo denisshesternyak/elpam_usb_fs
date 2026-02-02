@@ -153,7 +153,7 @@ void init_generation(SinTask_t sinus)
 		init_cycle_tone(PHASE_INC_250, PHASE_INC_425, 0, 2000, 116000);
 		break;
 	case SINUS_ABC_120S:
-		init_cycle_tone(PHASE_INC_250, PHASE_INC_425, PHASE_INC_300, 500, 89000);
+		init_cycle_tone(PHASE_INC_250, PHASE_INC_500, PHASE_INC_300, 500, 89000);
 		break;
 	default:
 		set_increment(PHASE_INC_100, PHASE_INC_100);
