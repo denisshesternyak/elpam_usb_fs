@@ -9,5 +9,7 @@ void audio_init_record(void);
 void audio_send_volume(uint8_t lvl);
 void audio_enable_HP(void);
 void audio_enable_LO(void);
+void audio_unmute(void);
+void audio_mute(void);
 
 #endif /* INC_CODEC_AUDIO_CMD_H_ */

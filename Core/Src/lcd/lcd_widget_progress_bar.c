@@ -26,7 +26,8 @@ void MenuDrawProgress(uint8_t progressPercent)
     const uint16_t innerH = height - (outline*2);
 	const uint16_t bar_w = (innerW * progressPercent) / 100;
 
-	hx8357_draw_rect(x, y, width, height, outline, COLOR_WHITE, COLOR_BLACK);
+	if(progressPercent == 0)
+		hx8357_draw_rect(x, y, width, height, outline, COLOR_WHITE, COLOR_BLACK);
 
     snprintf(text, sizeof(text), "%d%%", progressPercent);
 

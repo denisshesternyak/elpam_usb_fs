@@ -70,10 +70,10 @@ void audio_init_playback(void)
 
     audio_write_cmd(AIC32X4_PSEL, 0x00);			// Page 0
     // 0xC8 -28dB,
-    audio_write_cmd(AIC32X4_LDACVOL, 0x00); 		// Left DAC Channel Digital Volume 0.0dB
-    audio_write_cmd(AIC32X4_RDACVOL, 0x00); 		// Right DAC Channel Digital Volume 0.0dB
+    audio_write_cmd(AIC32X4_LDACVOL, 0x81); 		// Left DAC Channel Digital Volume -63.5dB
+    audio_write_cmd(AIC32X4_RDACVOL, 0x81); 		// Right DAC Channel Digital Volume -63.5dB
     audio_write_cmd(AIC32X4_DACSETUP, 0xD6); 		// LDAC + RDAC powered, soft step 1/fs
-    audio_write_cmd(AIC32X4_DACMUTE, 0x00); 		// Unmute both DACs, gain 0 dB
+    audio_write_cmd(AIC32X4_DACMUTE, 0x0C); 		// Mute both DACs, gain 0 dB
 }
 
 void audio_init_record(void)
@@ -128,3 +128,16 @@ void audio_enable_LO(void)
 	audio_write_cmd(AIC32X4_OUTPWRCTL, 0x0C); 		// Power up LOL and LOR drivers
 	osDelay(2);
 }
+
+void audio_unmute(void)
+{
+    audio_write_cmd(AIC32X4_PSEL, 0x00);			// Page 0
+    audio_write_cmd(AIC32X4_DACMUTE, 0x00); 		// Unute both DACs
+}
+
+void audio_mute(void)
+{
+    audio_write_cmd(AIC32X4_PSEL, 0x00);			// Page 0
+    audio_write_cmd(AIC32X4_DACMUTE, 0x0C); 		// Mute both DACs
+}
+

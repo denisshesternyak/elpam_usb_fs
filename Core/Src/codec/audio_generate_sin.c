@@ -42,6 +42,27 @@ void audio_generate_sine(uint8_t *buffer, uint32_t samples_per_channel)
 		int16_t sample_left = sin_table[index_ch1];
 		int16_t sample_right = sin_table[index_ch2];
 
+        inc_data.ramp_counter++;
+        inc_data.total_samples_generated++;
+
+        if(inc_data.total_samples_generated < FADE_IN_SAMPLE)
+        {
+        	uint32_t count = (uint32_t)(inc_data.total_samples_generated * FADE_IN_STEP >> 10);
+        	if(count > 32767) count = 32767;
+
+        	sample_left = (count * sample_left) >> 15;
+        	sample_right = (count * sample_right) >> 15;
+        }
+        else if (inc_data.total_samples_generated > inc_data.duration - FADE_IN_SAMPLE)
+        {
+        	uint64_t fade_out = inc_data.duration - inc_data.total_samples_generated;
+        	uint32_t count = (uint32_t)(fade_out * FADE_IN_STEP >> 10);
+        	if(count > 32767) count = 32767;
+
+			sample_left = (count * sample_left) >> 15;
+			sample_right = (count * sample_right) >> 15;
+        }
+
 		uint32_t buffer_idx = i * 4;
 
 		buffer[buffer_idx]     = sample_left & 0xFF;        	// Left LSB
@@ -68,8 +89,6 @@ void audio_generate_sine(uint8_t *buffer, uint32_t samples_per_channel)
         phase_inc_ch1 = inc_data.current_inc;
         phase_inc_ch2 = inc_data.current_inc;
 
-        inc_data.ramp_counter++;
-        inc_data.total_samples_generated++;
 
         uint64_t samples_per_ramp = (inc_data.current_step == 1 && !inc_data.stable_middle) ? cycle_ramp : ending_ramp;
 
@@ -111,7 +130,7 @@ void audio_generate_sine(uint8_t *buffer, uint32_t samples_per_channel)
 					memset(buffer + buffer_idx + 4, 0, bytes_to_clear);
 				}
 			    player.duration = 100;
-                inc_data.total_samples_generated = 0;
+//                inc_data.total_samples_generated = 0;
         		player.is_prepare_stoped = true;
 				return;
             }

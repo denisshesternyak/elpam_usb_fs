@@ -34,8 +34,6 @@ static void audio_idle(void);
 //static void audio_start_record(void);
 //static void audio_stop_record(void);
 
-//static void audio_playback_duration(void);
-
 //static bool audio_get_track_name();
 //
 //static bool audio_get_track_name(void)
@@ -84,10 +82,6 @@ void audio_init(void)
 
 void audio_process(AudioEvent_t event)
 {
-//	char msg[64];
-//	sprintf(msg, "audio_process: %d\r\n", event);
-//	Print_Msg(msg);
-
 	switch(event)
 	{
 	case AUDIO_IDLE:
@@ -127,14 +121,12 @@ static void audio_idle(void)
 
 static void audio_start_playback(void)
 {
-	Print_Msg("AUDIO_START\r\n");
+//	Print_Msg("AUDIO_START\r\n");
 
 	if (player.priority < player.current_priority) return;
 	else if (player.priority > player.current_priority && player.is_playing)
 	{
 		HAL_I2S_DMAStop(&hi2s2);
-//		hi2s2.Init.MCLKOutput = I2S_MCLKOUTPUT_DISABLE;
-//		HAL_I2S_Init(&hi2s2);
 	}
 
 	player.current_priority = player.priority;
@@ -162,19 +154,17 @@ static void audio_start_playback(void)
 		break;
 	}
 
-	if(player.new_volume != player.current_volume) audio_set_volume(player.new_volume);
-
-//    start_play = HAL_GetTick();
-
 	hi2s2.Init.MCLKOutput = I2S_MCLKOUTPUT_ENABLE;
 	HAL_I2S_Init(&hi2s2);
     HAL_I2S_Transmit_DMA(&hi2s2, (uint16_t*)dma_buffer, AUDIO_HALF_BUFFER_SIZE);
+
+	audio_unmute();
+	if(player.new_volume != player.current_volume) audio_set_volume(player.new_volume);
 
     player.is_playing = true;
     player.is_stoped = false;
     player.is_prepare_stoped = false;
     player.audio_state = AUDIO_PLAY;
-//    xQueueSend(xAudioQueueHandle, &player.audio_state, portMAX_DELAY);
 
 	LCDTaskEvent_t lcd_event = { .event = LCD_EVENT_PROGRESS, .value = 0 };
     xQueueSend(xLCDQueueHandle, &lcd_event, portMAX_DELAY);
@@ -187,6 +177,15 @@ static void audio_play_playback()
 //	if (!player.is_playing || player.buff_state == BUFFER_IDLE) return;
 
 //	UINT br;
+
+	static uint8_t update_progree = 0;
+	if((update_progree++ > COUNT_PROGRESS) || player.is_prepare_stoped)
+	{
+		update_progree = 0;
+		LCDTaskEvent_t lcd_event = { .event = LCD_EVENT_PROGRESS, .value = player.duration };
+	    xQueueSend(xLCDQueueHandle, &lcd_event, portMAX_DELAY);
+	}
+
 	if(player.is_prepare_stoped)
 	{
 		player.is_stoped = true;
@@ -199,7 +198,6 @@ static void audio_play_playback()
 	switch(player.type_input)
 	{
 	case AUDIO_SIN:
-//		audio_playback_duration();
 		audio_generate_sine(buf_ptr, AUDIO_STEREO_PAIRS_HALF);
 		break;
 	case AUDIO_SD:
@@ -213,37 +211,24 @@ static void audio_play_playback()
 		break;
 	}
 
-	static uint8_t update_progree = 0;
-	if((update_progree++ > COUNT_PROGRESS) || player.is_prepare_stoped)
-	{
-		update_progree = 0;
-		LCDTaskEvent_t lcd_event = { .event = LCD_EVENT_PROGRESS, .value = player.duration };
-	    xQueueSend(xLCDQueueHandle, &lcd_event, portMAX_DELAY);
-	}
-
 	player.buff_state = BUFFER_IDLE;
 	player.audio_state = AUDIO_PLAY;
-//	xQueueSend(xAudioQueueHandle, &player.audio_state, portMAX_DELAY);
 }
 
 static void audio_stop_playback(void)
 {
 //	Print_Msg("AUDIO_STOP\r\n");
 
-//	uint32_t duration = HAL_GetTick() - start_play;
-//	sprintf(msg, "Playback time %lus %lums\r\n", duration/1000, duration%1000);
-//	Print_Msg(msg);
-
-//	char msg[64];
-//	sprintf(msg, "AUDIO_STOP %d\r\n", player.is_playing);
-//	Print_Msg(msg);
-
 	if (!player.is_playing || player.priority < player.current_priority) return;
 
-	Print_Msg("AUDIO_STOP\r\n");
+	if (player.is_stoped)
+	{
+		LCDTaskEvent_t lcd_event = { .event = LCD_EVENT_BTN, .btn = { .button = BTN_ESC, .action = BA_PRESSED } };
+		xQueueSend(xLCDQueueHandle, &lcd_event, portMAX_DELAY);
+	}
 
 	player.is_playing = false;
-	player.is_stoped = false;
+	player.is_stoped = true;
     player.audio_state = AUDIO_IDLE;
 	player.buff_state = BUFFER_IDLE;
 	player.current_priority = AUDIO_PRIORITY_IDLE;
@@ -255,6 +240,8 @@ static void audio_stop_playback(void)
     hi2s2.Init.MCLKOutput = I2S_MCLKOUTPUT_DISABLE;
     HAL_I2S_Init(&hi2s2);
 
+	audio_mute();
+
 //    audiofs_close_file();
 }
 
@@ -265,32 +252,26 @@ static void audio_pause_playback(void)
 
 void HAL_I2S_TxHalfCpltCallback(I2S_HandleTypeDef *hi2s)
 {
-	if (hi2s->Instance == SPI2)
-	{
-		if (player.is_playing)
-		{
-			player.buff_state = BUFFER_HALF;
-			if(player.is_stoped)
-				player.audio_state = AUDIO_STOP;
+	if (hi2s->Instance != SPI2)  return;
+	if (!player.is_playing || player.audio_state == AUDIO_STOP) return;
 
-			xQueueSendFromISR(xAudioQueueHandle, &player.audio_state, NULL);
-		}
-	}
+	player.buff_state = BUFFER_HALF;
+	if(player.is_stoped)
+		player.audio_state = AUDIO_STOP;
+
+	xQueueSendFromISR(xAudioQueueHandle, &player.audio_state, NULL);
 }
 
 void HAL_I2S_TxCpltCallback(I2S_HandleTypeDef *hi2s)
 {
-	if (hi2s->Instance == SPI2)
-	{
-		if (player.is_playing)
-		{
-			player.buff_state = BUFFER_FULL;
-			if(player.is_stoped)
-				player.audio_state = AUDIO_STOP;
+	if (hi2s->Instance != SPI2)  return;
+	if (!player.is_playing || player.audio_state == AUDIO_STOP) return;
 
-			xQueueSendFromISR(xAudioQueueHandle, &player.audio_state, NULL);
-		}
-	}
+	player.buff_state = BUFFER_FULL;
+	if(player.is_stoped)
+		player.audio_state = AUDIO_STOP;
+
+	xQueueSendFromISR(xAudioQueueHandle, &player.audio_state, NULL);
 }
 /*
 void audio_start_record(void)
@@ -366,8 +347,8 @@ void audio_set_volume(uint8_t level)
     player.current_volume = corrected_vol;
 
     uint8_t vol;
-    if(corrected_vol == MAX_VOLUME) vol = MAX_VOLUME_CODEC;
-    else if(corrected_vol == MAX_VOLUME) vol = MIN_VOLUME_CODEC;
+    if(corrected_vol >= MAX_VOLUME) vol = MAX_VOLUME_CODEC;
+    else if(corrected_vol <= MIN_VOLUME) vol = MIN_VOLUME_CODEC;
     else vol = CNVR_VOL(corrected_vol);
 
     char msg[64];
@@ -382,24 +363,3 @@ void audio_set_volume(uint8_t level)
     //VolumeIndicator_SetLevelSilent(&volumeIndicator, bar_index);
 }
 
-//static void audio_playback_duration(void)
-//{
-//	uint32_t current_tick = osKernelGetTickCount();
-//	uint32_t elapsed = (current_tick >= interval_timer.step_start_tick) ?
-//					   (current_tick - interval_timer.step_start_tick) :
-//					   (0xFFFFFFFF - interval_timer.step_start_tick + current_tick + 1);
-//
-//	if (elapsed >= interval_timer.intervals[interval_timer.current_step])
-//	{
-//		interval_timer.current_step++;
-//
-//		if (interval_timer.current_step < interval_timer.interval_count)
-//		{
-//			interval_timer.step_start_tick = current_tick;
-//		}
-//		else
-//		{
-//			player.audio_state = AUDIO_STOP;
-//		}
-//	}
-//}
