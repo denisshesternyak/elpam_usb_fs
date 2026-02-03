@@ -39,7 +39,7 @@ void handle_arm(void)
     set_system_mode(SYSTEM_MODE_ARMING);
     player.last_time_arming = 0;
     player.is_arming = true;
-	Print_Msg("ARM is started\r\n");
+//	Print_Msg("ARM is started\r\n");
 
 #if defined(USE_DEBUG_COMMAND_DISPATCHER)
     //sprintf(debug_msg, "CMD: ARM\r\n");
@@ -389,6 +389,8 @@ void handle_unknown_command(void)
 
 void handle_enter_command(void)
 {
+	player.priority = AUDIO_PRIORITY_LOW;
+
 	LCDTaskEvent_t lcd_event = { .event = LCD_EVENT_BTN, .btn = { .action = BA_PRESSED } };
 	lcd_event.btn.button = BTN_ENTER;
 	xQueueSendFromISR(xLCDQueueHandle, &lcd_event, NULL);
@@ -396,6 +398,8 @@ void handle_enter_command(void)
 
 void handle_up_command(void)
 {
+	player.priority = AUDIO_PRIORITY_LOW;
+
 	LCDTaskEvent_t lcd_event = { .event = LCD_EVENT_BTN, .btn = { .action = BA_PRESSED } };
 	lcd_event.btn.button = BTN_UP;
 	xQueueSendFromISR(xLCDQueueHandle, &lcd_event, NULL);
@@ -403,6 +407,8 @@ void handle_up_command(void)
 
 void handle_down_command(void)
 {
+	player.priority = AUDIO_PRIORITY_LOW;
+
 	LCDTaskEvent_t lcd_event = { .event = LCD_EVENT_BTN, .btn = { .action = BA_PRESSED } };
 	lcd_event.btn.button = BTN_DOWN;
 	xQueueSendFromISR(xLCDQueueHandle, &lcd_event, NULL);
@@ -410,6 +416,8 @@ void handle_down_command(void)
 
 void handle_esc_command(void)
 {
+	player.priority = AUDIO_PRIORITY_LOW;
+
 	LCDTaskEvent_t lcd_event = { .event = LCD_EVENT_BTN, .btn = { .action = BA_PRESSED } };
 	lcd_event.btn.button = BTN_ESC;
 	xQueueSendFromISR(xLCDQueueHandle, &lcd_event, NULL);
@@ -417,6 +425,8 @@ void handle_esc_command(void)
 
 void handle_cancel_command(void)
 {
+	player.priority = AUDIO_PRIORITY_LOW;
+
 	LCDTaskEvent_t lcd_event = { .event = LCD_EVENT_BTN, .btn = { .action = BA_PRESSED } };
 	lcd_event.btn.button = BTN_CXL;
 	xQueueSendFromISR(xLCDQueueHandle, &lcd_event, NULL);
@@ -424,6 +434,8 @@ void handle_cancel_command(void)
 
 void handle_test_command(void)
 {
+	player.priority = AUDIO_PRIORITY_LOW;
+
 	LCDTaskEvent_t lcd_event = { .event = LCD_EVENT_BTN, .btn = { .action = BA_PRESSED } };
 	lcd_event.btn.button = BTN_TEST;
 	xQueueSendFromISR(xLCDQueueHandle, &lcd_event, NULL);
@@ -431,6 +443,8 @@ void handle_test_command(void)
 
 void handle_announc_command(void)
 {
+	player.priority = AUDIO_PRIORITY_LOW;
+
 	LCDTaskEvent_t lcd_event = { .event = LCD_EVENT_BTN, .btn = { .action = BA_PRESSED } };
 	lcd_event.btn.button = BTN_ANNOUNCEMENT;
 	xQueueSendFromISR(xLCDQueueHandle, &lcd_event, NULL);
@@ -438,6 +452,8 @@ void handle_announc_command(void)
 
 void handle_message_command(void)
 {
+	player.priority = AUDIO_PRIORITY_LOW;
+
 	LCDTaskEvent_t lcd_event = { .event = LCD_EVENT_BTN, .btn = { .action = BA_PRESSED } };
 	lcd_event.btn.button = BTN_MESSAGE;
 	xQueueSendFromISR(xLCDQueueHandle, &lcd_event, NULL);
@@ -445,6 +461,8 @@ void handle_message_command(void)
 
 void handle_alarm_command(void)
 {
+	player.priority = AUDIO_PRIORITY_LOW;
+
 	LCDTaskEvent_t lcd_event = { .event = LCD_EVENT_BTN, .btn = { .action = BA_PRESSED } };
 	lcd_event.btn.button = BTN_ALARM;
 	xQueueSendFromISR(xLCDQueueHandle, &lcd_event, NULL);
@@ -452,6 +470,8 @@ void handle_alarm_command(void)
 
 void handle_arm_command(void)
 {
+	player.priority = AUDIO_PRIORITY_LOW;
+
 	LCDTaskEvent_t lcd_event = { .event = LCD_EVENT_BTN, .btn = { .action = BA_PRESSED } };
 	lcd_event.btn.button = BTN_ARM;
 	xQueueSendFromISR(xLCDQueueHandle, &lcd_event, NULL);

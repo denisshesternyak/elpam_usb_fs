@@ -1089,7 +1089,7 @@ void InputTask(void *argument)
 {
   /* USER CODE BEGIN InputTask */
 	mcp23008_btns_init();
-	char msg[64];
+//	char msg[64];
 
 	LCDTaskEvent_t lcd_event = { .event = LCD_EVENT_BTN };
 

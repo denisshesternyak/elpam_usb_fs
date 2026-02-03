@@ -69,12 +69,13 @@ void audio_init(void)
 
     audio_init_sin_table();
 
-	/*HAL_Delay(10);
-	audio_reset();
+    osDelay(10);
+	audio_cmd_reset();
+	osDelay(50);
 
-	HAL_Delay(50);*/
-
-	audio_init_playback();
+	audio_cmd_init_power();
+	audio_cmd_init_playback();
+	audio_cmd_init_record();
 	//audiofs_init_record();
 
 //	audiofs_init();
@@ -108,14 +109,24 @@ static void audio_idle(void)
 	{
 		player.last_time_arming++;
 		player.is_arming = player.last_time_arming < ARMING_TIME;
-		if(!player.is_arming) Print_Msg("ARM time's up\r\n");
+		if(!player.is_arming)
+		{
+			player.last_time_arming = 0;
+			Print_Msg("ARM time's up\r\n");
+		}
 	}
 
 	if (player.is_announcement)
 	{
 		player.last_time_announcement++;
 		player.is_announcement = player.last_time_announcement < ANNOUNCEMENT_TIME;
-		if(!player.is_announcement) Print_Msg("ANNOUNCEMENT time's up\r\n");
+		if(!player.is_announcement)
+		{
+			player.last_time_announcement = 0;
+			Print_Msg("ANNOUNCEMENT time's up\r\n");
+			LCDTaskEvent_t lcd_event = { .event = LCD_EVENT_BTN, .btn = { .button = BTN_ESC, .action = BA_PRESSED } };
+			xQueueSend(xLCDQueueHandle, &lcd_event, portMAX_DELAY);
+		}
 	}
 }
 
@@ -136,8 +147,10 @@ static void audio_start_playback(void)
 	case AUDIO_SIN:
 		init_generation(player.current_sin);
 		audio_generate_sine(dma_buffer, AUDIO_STEREO_PAIRS_FULL);
+		audio_cmd_playback_enable();
 		break;
 	case AUDIO_SD:
+		audio_cmd_playback_enable();
 //		if(!audio_get_track_name()) return;
 //		if (!audiofs_load_file())
 //		{
@@ -148,6 +161,7 @@ static void audio_start_playback(void)
 //		}
 		break;
 	case AUDIO_IN1:
+		audio_cmd_microphone_enable();
 	case AUDIO_IN2:
 	case AUDIO_IN3:
 	default:
@@ -158,7 +172,6 @@ static void audio_start_playback(void)
 	HAL_I2S_Init(&hi2s2);
     HAL_I2S_Transmit_DMA(&hi2s2, (uint16_t*)dma_buffer, AUDIO_HALF_BUFFER_SIZE);
 
-	audio_unmute();
 	if(player.new_volume != player.current_volume) audio_set_volume(player.new_volume);
 
     player.is_playing = true;
@@ -240,7 +253,21 @@ static void audio_stop_playback(void)
     hi2s2.Init.MCLKOutput = I2S_MCLKOUTPUT_DISABLE;
     HAL_I2S_Init(&hi2s2);
 
-	audio_mute();
+	switch(player.type_input)
+	{
+	case AUDIO_SIN:
+		audio_cmd_playback_disable();
+		break;
+	case AUDIO_SD:
+		audio_cmd_playback_disable();
+		break;
+	case AUDIO_IN1:
+		audio_cmd_microphone_disable();
+	case AUDIO_IN2:
+	case AUDIO_IN3:
+	default:
+		break;
+	}
 
 //    audiofs_close_file();
 }
@@ -351,11 +378,11 @@ void audio_set_volume(uint8_t level)
     else if(corrected_vol <= MIN_VOLUME) vol = MIN_VOLUME_CODEC;
     else vol = CNVR_VOL(corrected_vol);
 
-    char msg[64];
-    sprintf(msg, "Volume set %d\r\n", corrected_vol);
-    Print_Msg(msg);
+//    char msg[64];
+//    sprintf(msg, "Volume set %d\r\n", corrected_vol);
+//    Print_Msg(msg);
 
-    audio_send_volume(vol);
+    audio_cmd_send_volume(vol);
 
     system_status.max_volume = (corrected_vol == MAX_VOLUME);
 

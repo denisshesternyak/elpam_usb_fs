@@ -171,6 +171,7 @@ static void display_menu_item(uint8_t visualIndex, uint8_t index, const MenuItem
 static void menu_draw_image(Menu *m);
 static void MenuLoadSDCardMessages(void);
 static void MenuLoadSDCardSirens(void);
+static void prepare_announcement(void);
 static void prepare_sinuse_items(void);
 static void draw_menu_clock(void);
 
@@ -301,6 +302,7 @@ void menu_init(void)
     rootMenu->items[2] = (MenuItem){ .name = {
     		get_root_menu_items_str(STR_ROOT_ITEM_ANNOUNCEMENT, LANG_EN),
 			get_root_menu_items_str(STR_ROOT_ITEM_ANNOUNCEMENT, LANG_HE) },
+			.prepareAction = &prepare_announcement,
 			.submenu = announcementMenu };
     rootMenu->items[3] = (MenuItem){ .name = {
     		get_root_menu_items_str(STR_ROOT_ITEM_TESTS, LANG_EN),
@@ -783,10 +785,10 @@ static void siren_post_action(void)
 
 	if (!item || !item->menu) return;
 
-	player.type_input = AUDIO_SIN;
 	player.current_sin = (SinTask_t)currentMenu->currentSelection;
 	player.audio_state = AUDIO_START;
 	player.priority = AUDIO_PRIORITY_LOW;
+	player.type_input = AUDIO_SIN;
 	xQueueSend(xAudioQueueHandle, &player.audio_state, portMAX_DELAY);
 
 	currentMenu = item->menu;
@@ -797,6 +799,17 @@ static void siren_post_action(void)
 	MenuResetProgressBar();
 
 	draw_menuScreen(true);
+}
+
+static void prepare_announcement(void)
+{
+//	if (player.current_priority < AUDIO_PRIORITY_LOW) return true;
+	player.last_time_announcement = 0;
+	player.is_announcement = true;
+	player.priority = AUDIO_PRIORITY_LOW;
+	player.audio_state = AUDIO_START;
+	player.type_input = AUDIO_IN1;
+	xQueueSend(xAudioQueueHandle, &player.audio_state, portMAX_DELAY);
 }
 
  void IncreaseVolume(void)
@@ -1253,7 +1266,7 @@ void update_date_time()
 {
 	if (!isBacklightOn) return;
 
-	if (!player.is_playing) lastInteractionTick++;
+	if (!player.is_playing || !player.is_announcement) lastInteractionTick++;
 
 	if (currentMenu != idleMenu && lastInteractionTick >= INACTIVITY_TIMEOUT_MS)
 	{
@@ -1328,9 +1341,7 @@ bool hot_key_handle_button(ButtonEvent_t event)
 		draw_menuScreen(true);
 		return true;
 	case BTN_ANNOUNCEMENT:
-		if (player.current_priority < AUDIO_PRIORITY_LOW) return true;
-		player.last_time_announcement = 0;
-		player.is_announcement = true;
+		prepare_announcement();
 		currentMenu = announcementMenu;
 		clear_position(currentMenu);
 		draw_menuScreen(true);
@@ -1357,6 +1368,7 @@ bool hot_key_handle_button(ButtonEvent_t event)
 
 		player.priority = AUDIO_PRIORITY_LOW;
 		player.audio_state = AUDIO_STOP;
+//		player.type_input = AUDIO_SIN;
 		xQueueSend(xAudioQueueHandle, &player.audio_state, portMAX_DELAY);
 		return true;
 	default:
@@ -1460,6 +1472,7 @@ static void button_esc_handler(void)
 		if (AUDIO_PRIORITY_LOW < player.current_priority) return;
 		player.priority = AUDIO_PRIORITY_LOW;
 		player.audio_state = AUDIO_STOP;
+//		player.type_input = AUDIO_SIN;
 		xQueueSend(xAudioQueueHandle, &player.audio_state, portMAX_DELAY);
 	}
 
