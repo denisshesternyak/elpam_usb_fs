@@ -3,6 +3,7 @@
 
 //#include "fatfs.h"
 #include "stdbool.h"
+#include "defines.h"
 
 #define AUDIO_BUFFER_SIZE  				16384
 #define AUDIO_HALF_BUFFER_SIZE  		8192
@@ -16,7 +17,8 @@ typedef enum {
 	AUDIO_START,
 	AUDIO_PLAY,
 	AUDIO_STOP,
-	AUDIO_PAUSE
+	AUDIO_PAUSE,
+	AUDIO_VOLUME
 }AudioEvent_t;
 
 typedef enum {
@@ -110,8 +112,10 @@ typedef struct
     volatile bool is_announcement;
 
     char current_filename[32];
-    uint8_t current_volume;
-    uint8_t new_volume;
+    uint8_t valid_volume_levels[NUM_VALID_LEVELS];
+
+    uint8_t volume_level;
+    uint8_t volume;
     uint8_t duration;
 } Audio_Player_t;
 

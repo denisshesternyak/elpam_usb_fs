@@ -4,6 +4,7 @@
 #include "main.h"
 
 void audio_cmd_reset(void);
+void audio_cmd_init_power(void);
 void audio_cmd_init_playback(void);
 void audio_cmd_init_record(void);
 void audio_cmd_send_volume(uint8_t lvl);

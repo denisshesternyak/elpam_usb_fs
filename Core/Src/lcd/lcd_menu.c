@@ -145,6 +145,9 @@ void RunDriversTest(void);
 void run_clock(void);
 void prepare_clock(void);
 static void menu_init_language(void);
+static void change_volume(void);
+static void increase_volume(void);
+static void decrease_volume(void);
 
 static bool hot_key_handle_button(ButtonEvent_t event);
 //void passwordMenu_handle_button_press(ButtonEvent_t event);
@@ -154,6 +157,7 @@ static void languageMenu_handle_button_press(ButtonEvent_t event);
 static void sinus_info_menu_handler(ButtonEvent_t event);
 static void alarm_info_menu_handler(ButtonEvent_t event);
 static void idle_menu_handler(ButtonEvent_t event);
+static void volume_control_handler(ButtonEvent_t event);
 
 ///////////////////////////////////////////////////////////////////
 
@@ -357,14 +361,7 @@ void menu_init(void)
 	announcementMenu->screenText[LANG_EN] = get_menu_header_str(STR_HEADER_ANNOUNCEMENT, LANG_EN);
 	announcementMenu->screenText[LANG_HE] = get_menu_header_str(STR_HEADER_ANNOUNCEMENT, LANG_HE);
 	announcementMenu->imageData = &menu_microfon_img;
-//	announcementMenu->buttonHandler = VolumeControlButtonHandler;
-	announcementMenu->buttonHandler = handle_button_press;
-
-//	// VolumeIndicator_Init(&volumeIndicator, 30, 250, 420, 30,
-//	// 		             //30,
-//	// 					 system_get_volume(),
-//	// 					 COLOR_DARKGRAY, 0x00FF, 0xC618, 0x0D00, 1, 1);
-
+	announcementMenu->buttonHandler = volume_control_handler;
 
 	testMenu->parent = rootMenu;
 	testMenu->screenText[LANG_EN] = get_menu_header_str(STR_HEADER_TEST, LANG_EN);
@@ -479,7 +476,6 @@ void menu_init(void)
 	update_date_time();
 	draw_menuScreen(true);
 }
-
 
 static void menu_draw_image(Menu *menu)
 {
@@ -782,6 +778,35 @@ void menu_init_language(void)
 	languageMenu->itemCount = LANG_COUNT;
 }
 
+static void change_volume(void)
+{
+	player.volume = player.valid_volume_levels[player.volume_level-1];
+	volume_indicator_draw_bar(player.volume_level, player.valid_volume_levels[player.volume_level-1]);
+
+//	char msg[64];
+//	sprintf(msg, "lvl %d, vol %d\r\n", player.volume_level, player.volume );
+//	Print_Msg(msg);
+
+	player.audio_state = AUDIO_VOLUME;
+	xQueueSend(xAudioQueueHandle, &player.audio_state, portMAX_DELAY);
+}
+
+static void increase_volume(void)
+{
+	if (currentMenu != announcementMenu || player.volume_level >= NUM_VALID_LEVELS)  return;
+
+	player.volume_level++;
+	change_volume();
+}
+
+static void decrease_volume(void)
+{
+	if (currentMenu != announcementMenu || player.volume_level == 1)  return;
+
+	player.volume_level--;
+	change_volume();
+}
+
 static void siren_post_action(void)
 {
 	if (!currentMenu ||
@@ -820,99 +845,6 @@ static void prepare_announcement(void)
 	xQueueSend(xAudioQueueHandle, &player.audio_state, portMAX_DELAY);
 }
 
- void IncreaseVolume(void)
- {
-     if (currentMenu->type == MENU_TYPE_ANNOUNCEMENT) {
-         uint8_t level = volumeIndicator.level;
-
-         if (level < volumeIndicator.numBars) {
-             level++;
-             VolumeIndicator_SetLevel(level);
- 			//system_set_volume(volumeIndicator.level);
-         }
-     }
- }
-
- void DecreaseVolume(void)
- {
-     if (currentMenu->type == MENU_TYPE_ANNOUNCEMENT) {
-         uint8_t level = volumeIndicator.level;
-
-         if (level > 0) {
-             level--;
-             VolumeIndicator_SetLevel(level);
-// 			system_set_volume(volumeIndicator.level);
-         }
-     }
- }
-//
-////
-////void IncreaseVolume(void)
-////{
-////    if (currentMenu->type == MENU_TYPE_ANNOUNCEMENT) {
-////        uint8_t current_bars = volumeIndicator.level;
-////
-////        if (current_bars < NUM_VOLUME_BARS) {
-////            uint8_t new_bars = current_bars + 1;
-////            int new_volume_db = volume_bars_to_db(new_bars);
-////
-////
-////
-////            VolumeIndicator_StepUp(&volumeIndicator);
-////            system_set_volume(new_volume_db);
-////
-////        }
-////    }
-////}
-////
-////void DecreaseVolume(void)
-////{
-////    if (currentMenu->type == MENU_TYPE_ANNOUNCEMENT) {
-////        uint8_t current_bars = volumeIndicator.level;
-////
-////        if (current_bars > 0) {
-////            uint8_t new_bars = current_bars - 1;
-////            int new_volume_db = volume_bars_to_db(new_bars);
-////
-////
-////
-////            VolumeIndicator_StepDown(&volumeIndicator);
-////            system_set_volume(new_volume_db);
-////        }
-////    }
-////}
-//
-//void IncreaseVolume(void)
-//{
-//    if (currentMenu->type == MENU_TYPE_ANNOUNCEMENT) {
-//    	if (system_get_volume() >= MAX_VOLUME){
-//    		return;
-//    	}
-//
-//       int new_volume = system_get_volume() + VOLUME_STEP;
-//
-//        if (new_volume <= MAX_VOLUME) {
-//        	system_set_volume(new_volume);
-//
-//        	VolumeIndicator_StepUp(&volumeIndicator);
-//        }
-//    }
-//}
-//
-//void DecreaseVolume(void)
-//{
-//    if (currentMenu->type == MENU_TYPE_ANNOUNCEMENT) {
-//        int new_volume = system_get_volume() - VOLUME_STEP;
-//        if (new_volume >= MIN_VOLUME) {
-//        	system_set_volume(new_volume);
-//        	VolumeIndicator_StepDown(&volumeIndicator);
-//            //
-//
-//
-//        }
-//    }
-//}
-
 void Draw_MENU_TYPE_IDLE()
 {
 	FaultsDisplay_DrawAll(MENU_BASE_X, IDLE_Y_POS);
@@ -921,12 +853,13 @@ void Draw_MENU_TYPE_IDLE()
 void Draw_MENU_TYPE_ANNOUNCEMENT(void)
 {
 	menu_draw_image(currentMenu);
-	VolumeIndicator_Draw(&volumeIndicator);
 
-	// Set the initial level
-	//uint8_t initial_bars = volume_db_to_bars(system_get_volume());
-	//VolumeIndicator_SetLevel(&volumeIndicator, initial_bars);
+//	char msg[64];
+//	sprintf(msg, "-*-lvl %d, vol %d\r\n", player.volume_level, player.volume );
+//	Print_Msg(msg);
 
+	volume_indicator_set_level_silent(player.volume_level, player.valid_volume_levels[player.volume_level-1]);
+	volume_indicators_draw();
 }
 
 void Draw_MENU_TYPE_SIREN_INFO(void)
@@ -1052,8 +985,8 @@ void draw_menu_clock(void)
 			 sDate->Date, sDate->Month, sDate->Year,
 			 sTime->Hours, sTime->Minutes, sTime->Seconds);
 
-	Print_Msg(buf);
-	Print_Msg("\r\n");
+//	Print_Msg(buf);
+//	Print_Msg("\r\n");
 
 	hx8357_write_alignedX_string(baseX, y, buf, font, COLOR_YELLOW, COLOR_BLACK, ALIGN_LEFT);
 
@@ -1580,30 +1513,27 @@ void alarm_info_menu_handler(ButtonEvent_t event)
 //
 //}
 
-//void VolumeControlButtonHandler(ButtonEvent_t event)
-//{
-//	 if (!currentMenu) return;
-//
-//	switch (event.button)
-//	{
-//		case BTN_UP:
-//			IncreaseVolume(); // VOLUME +
-//			break;
-//		case BTN_DOWN:
-//			DecreaseVolume(); // VOLUME -
-//			break;
-//		case BTN_ENTER:
-//			break;
-//		case BTN_ESC:
-//			currentMenu = currentMenu->parent;
-//			draw_menuScreen(true);
-//			break;
-//
-//		default:
-//			return;
-//	}
-//
-//}
+void volume_control_handler(ButtonEvent_t event)
+{
+	 if (!currentMenu) return;
+
+	switch (event.button)
+	{
+	case BTN_UP:
+		increase_volume();
+		break;
+	case BTN_DOWN:
+		decrease_volume();
+		break;
+	case BTN_ESC:
+		player.is_announcement = false;
+		currentMenu = currentMenu->parent;
+		draw_menuScreen(true);
+		break;
+	default:
+		return;
+	}
+}
 
 void clockMenu_handle_button_press(ButtonEvent_t event)
 {

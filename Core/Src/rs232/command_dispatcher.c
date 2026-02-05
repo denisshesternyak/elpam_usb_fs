@@ -294,7 +294,9 @@ void volume_up_handler(int value)
 {
 
     //system_set_volume(value);
-	player.new_volume = value;
+	player.volume = value;
+	player.audio_state = AUDIO_VOLUME;
+	xQueueSendFromISR(xAudioQueueHandle, &player.audio_state, NULL);
 
 #if defined(USE_DEBUG_COMMAND_DISPATCHER)
     //sprintf(debug_msg, "VOL UP: %d (now: %d)\r\n", value, system_get_volume());
@@ -312,7 +314,9 @@ void volume_up_handler(int value)
 void volume_down_handler(int value)
 {
     //system_set_volume(value);
-	player.new_volume = value;
+	player.volume = value;
+	player.audio_state = AUDIO_VOLUME;
+	xQueueSendFromISR(xAudioQueueHandle, &player.audio_state, NULL);
 
 #if defined(USE_DEBUG_COMMAND_DISPATCHER)
     //sprintf(debug_msg, "VOL DOWN: %d (now: %d)\r\n", value, system_get_volume());

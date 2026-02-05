@@ -17,7 +17,6 @@ Audio_Player_t player;
 extern osMessageQueueId_t xAudioQueueHandle;
 extern osMessageQueueId_t xLCDQueueHandle;
 
-static volatile uint32_t start_play;
 static uint8_t dma_buffer[AUDIO_BUFFER_SIZE] __attribute__((aligned(32)));
 
 // List of acceptable levels
@@ -64,8 +63,12 @@ static void audio_idle(void);
 void audio_init(void)
 {
     memset(&player, 0, sizeof(player));
-    player.new_volume = MAX_VOLUME;
-//    player.new_volume = DEF_VALUE_VOLUME;
+    memcpy(player.valid_volume_levels, valid_volume_levels, NUM_VALID_LEVELS);
+
+    player.volume_level = 15;
+    if(player.volume_level < 1) player.volume_level = 1;
+    player.volume = player.valid_volume_levels[player.volume_level-1];
+//    player.volume = DEF_VALUE_VOLUME;
 
     audio_init_sin_table();
 
@@ -99,6 +102,15 @@ void audio_process(AudioEvent_t event)
 		break;
 	case AUDIO_PAUSE:
 		audio_pause_playback();
+		break;
+	case AUDIO_VOLUME:
+		if(!player.is_playing)
+		{
+			char msg[64];
+			sprintf(msg, "*--lvl %d, vol %d\r\n", player.volume_level, player.volume );
+			Print_Msg(msg);
+			audio_set_volume(player.volume);
+		}
 		break;
 	}
 }
@@ -162,8 +174,11 @@ static void audio_start_playback(void)
 		break;
 	case AUDIO_IN1:
 		audio_cmd_microphone_enable();
+		return;
 	case AUDIO_IN2:
+		return;
 	case AUDIO_IN3:
+		return;
 	default:
 		break;
 	}
@@ -172,7 +187,7 @@ static void audio_start_playback(void)
 	HAL_I2S_Init(&hi2s2);
     HAL_I2S_Transmit_DMA(&hi2s2, (uint16_t*)dma_buffer, AUDIO_HALF_BUFFER_SIZE);
 
-	if(player.new_volume != player.current_volume) audio_set_volume(player.new_volume);
+//	audio_set_volume(player.volume);
 
     player.is_playing = true;
     player.is_stoped = false;
@@ -360,8 +375,12 @@ static int audio_find_closest_valid_volume(uint8_t target)
     if (target >= MAX_VOLUME) return MAX_VOLUME;
 
     for (int i = 0; i < NUM_VOLUME_BARS; i++) {
-        if (valid_volume_levels[i] >= target) {
-            return valid_volume_levels[i];
+        if (player.valid_volume_levels[i] >= target) {
+        	player.volume_level = i+1;
+        	char msg[64];
+        	sprintf(msg, "*lvl %d\r\n", player.volume_level );
+        	Print_Msg(msg);
+            return player.valid_volume_levels[i];
         }
     }
     return MAX_VOLUME;
@@ -371,7 +390,11 @@ void audio_set_volume(uint8_t level)
 {
 	uint8_t corrected_vol = audio_find_closest_valid_volume(level);
 
-    player.current_volume = corrected_vol;
+	player.volume = corrected_vol;
+
+	char msg[64];
+	sprintf(msg, "*vol %d\r\n", player.volume );
+	Print_Msg(msg);
 
     uint8_t vol;
     if(corrected_vol >= MAX_VOLUME) vol = MAX_VOLUME_CODEC;

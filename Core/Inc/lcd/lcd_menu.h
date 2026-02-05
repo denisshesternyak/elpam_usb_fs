@@ -93,7 +93,6 @@ void update_progress_bar(uint8_t value);
 //
 ////---------------------------------------------
 //// MENU_TYPE_ANNOUNCEMENT
-//void VolumeControlButtonHandler(ButtonEvent_t event);
 //void DecreaseVolume();
 //void IncreaseVolume();
 ////---------------------------------------------
