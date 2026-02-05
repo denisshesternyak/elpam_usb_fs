@@ -62,8 +62,6 @@ void Error_Handler(void);
 /* Private defines -----------------------------------------------------------*/
 #define CS_AUDIO_Pin GPIO_PIN_3
 #define CS_AUDIO_GPIO_Port GPIOE
-#define USB_PWR_EN_Pin GPIO_PIN_10
-#define USB_PWR_EN_GPIO_Port GPIOD
 #define LCD_LED_Pin GPIO_PIN_8
 #define LCD_LED_GPIO_Port GPIOC
 #define LCD_DC_Pin GPIO_PIN_9

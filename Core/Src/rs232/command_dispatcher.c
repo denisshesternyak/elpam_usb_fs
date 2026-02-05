@@ -36,7 +36,7 @@ extern osMessageQueueId_t xLCDQueueHandle;
  */
 void handle_arm(void)
 {
-    set_system_mode(SYSTEM_MODE_ARMING);
+    system_status_set_mode(SYSTEM_MODE_ARMING);
     player.last_time_arming = 0;
     player.is_arming = true;
 //	Print_Msg("ARM is started\r\n");
@@ -55,7 +55,7 @@ void handle_arm(void)
  */
 void handle_all_clear_1(void)
 {
-    set_system_mode(SYSTEM_MODE_ALL_CLEAR_1);
+    system_status_set_mode(SYSTEM_MODE_ALL_CLEAR_1);
     if(player.is_arming)
     {
 		player.type_input = AUDIO_SIN;
@@ -79,7 +79,7 @@ void handle_all_clear_1(void)
  */
 void handle_all_clear_2(void)
 {
-    set_system_mode(SYSTEM_MODE_ALL_CLEAR_2);
+    system_status_set_mode(SYSTEM_MODE_ALL_CLEAR_2);
     if(player.is_arming)
 	{
 		player.type_input = AUDIO_SIN;
@@ -103,7 +103,7 @@ void handle_all_clear_2(void)
  */
 void handle_alarm(void)
 {
-     set_system_mode(SYSTEM_MODE_ALARM_WAIL);
+     system_status_set_mode(SYSTEM_MODE_ALARM_WAIL);
      if(player.is_arming)
      {
 		player.type_input = AUDIO_SIN;
@@ -127,7 +127,7 @@ void handle_alarm(void)
  */
 void handle_chemical(void)
 {
-    set_system_mode(SYSTEM_MODE_CHEMICAL);
+    system_status_set_mode(SYSTEM_MODE_CHEMICAL);
     if(player.is_arming)
 	{
 		player.type_input = AUDIO_SIN;
@@ -153,7 +153,7 @@ void handle_chemical(void)
  */
 void handle_disarm(void)
 {
-    set_system_mode(SYSTEM_MODE_CANCEL_IMMEDIATE);
+    system_status_set_mode(SYSTEM_MODE_CANCEL_IMMEDIATE);
     player.is_arming = false;
 
 #if defined(USE_DEBUG_COMMAND_DISPATCHER)
@@ -170,7 +170,7 @@ void handle_disarm(void)
  */
 void handle_cancel(void)
 {
-    set_system_mode(SYSTEM_MODE_CANCEL_DELAYED);
+    system_status_set_mode(SYSTEM_MODE_CANCEL_DELAYED);
     player.audio_state = AUDIO_STOP;
 	player.priority = AUDIO_PRIORITY_HIGH;
 	xQueueSendFromISR(xAudioQueueHandle, &player.audio_state, NULL);
@@ -189,7 +189,7 @@ void handle_cancel(void)
  */
 void handle_quiet_test(void)
 {
-    set_system_mode(SYSTEM_MODE_QUIET_TEST);
+    system_status_set_mode(SYSTEM_MODE_QUIET_TEST);
 
 
 #if defined(USE_DEBUG_COMMAND_DISPATCHER)
@@ -206,7 +206,7 @@ void handle_quiet_test(void)
  */
 void handle_reserve_1(void)
 {
-	set_system_mode(SYSTEM_MODE_FUTURE_SIREN_1);
+	system_status_set_mode(SYSTEM_MODE_FUTURE_SIREN_1);
 
 #if defined(USE_DEBUG_COMMAND_DISPATCHER)
     //sprintf(debug_msg, "CMD: RESERVE 1\r\n");
@@ -222,7 +222,7 @@ void handle_reserve_1(void)
  */
 void handle_reserve_2(void)
 {
-	set_system_mode(SYSTEM_MODE_FUTURE_SIREN_2);
+	system_status_set_mode(SYSTEM_MODE_FUTURE_SIREN_2);
 
 
 #if defined(USE_DEBUG_COMMAND_DISPATCHER)
@@ -239,7 +239,7 @@ void handle_reserve_2(void)
  */
 void handle_reserve_3(void)
 {
-	set_system_mode(SYSTEM_MODE_FUTURE_SIREN_3);
+	system_status_set_mode(SYSTEM_MODE_FUTURE_SIREN_3);
 
 
 #if defined(USE_DEBUG_COMMAND_DISPATCHER)
@@ -256,7 +256,7 @@ void handle_reserve_3(void)
  */
 void handle_remote_pa(void)
 {
-    set_system_mode(SYSTEM_MODE_VOICE);
+    system_status_set_mode(SYSTEM_MODE_VOICE);
 
 #if defined(USE_DEBUG_COMMAND_DISPATCHER)
     //sprintf(debug_msg, "CMD: REMOTE PA\r\n");
@@ -274,7 +274,7 @@ void handle_reset(void)
 {
     system_status_reset();
 
-    //set_system_mode(SYSTEM_MODE_RESET);
+    //system_status_set_mode(SYSTEM_MODE_RESET);
 
 
 #if defined(USE_DEBUG_COMMAND_DISPATCHER)

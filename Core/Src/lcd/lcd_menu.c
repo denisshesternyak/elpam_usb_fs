@@ -23,6 +23,7 @@
 #include "lcd_widget_test_ampl_indicator.h"
 #include "lcd_widget_report_indicator.h"
 #include "audio_types.h"
+#include "analog.h"
 
 //bool isResetPasswordAfterIdle = false;
 //
@@ -571,6 +572,15 @@ void MenuShowMessages(void)
 
 void RunSilentTest(void)
 {
+//	char msg[64];
+//	sprintf(msg, "12v %dmv, 24v %dmv, cur %d, amp %d, drv %d",
+//			getRData(1, adc_buff[ADC_12V]),
+//			getRData(1, adc_buff[ADC_24V]),
+//			getRData(1, adc_buff[ADC_CURRENT_MEAS]),
+//			getRData(1, adc_buff[ADC_AMPLIFIER_MEAS]),
+//			getRData(1, adc_buff[ADC_DRIVER_MEAS]) );
+//	Print_Msg(msg);
+
 	currentMenu = batteriesTestMenu;
 	clear_position(currentMenu);
 	draw_menuScreen(true);
@@ -609,7 +619,6 @@ void RunSilentTest(void)
 
 void RunBatteriesTest(void)
 {
-
 	BatteriesDisplay_SetStatus(0, true);
 	BatteriesDisplay_SetStatus(1, false);
 	BatteriesDisplay_SetStatus(2, true);
@@ -617,7 +626,6 @@ void RunBatteriesTest(void)
 
 void RunAmplifiresTest(void)
 {
-
 	TestAmplDisplay_SetStatus(0, true);
 	TestAmplDisplay_SetStatus(1, true);
 	TestAmplDisplay_SetStatus(2, true);
@@ -1266,7 +1274,7 @@ void update_date_time()
 {
 	if (!isBacklightOn) return;
 
-	if (!player.is_playing || !player.is_announcement) lastInteractionTick++;
+	if (!(player.is_playing || player.is_announcement)) lastInteractionTick++;
 
 	if (currentMenu != idleMenu && lastInteractionTick >= INACTIVITY_TIMEOUT_MS)
 	{

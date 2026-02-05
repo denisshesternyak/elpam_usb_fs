@@ -28,7 +28,6 @@ typedef enum {
     SYSTEM_MODE_UNKNOWN           // for error handling
 } system_mode_t;
 
-// System status structure
 typedef struct {
     system_mode_t mode;                 // Current mode 
     bool amplifier_driver[10];          // Driver 1–10: true = OK
@@ -44,30 +43,16 @@ typedef struct {
     bool door_sensor;                   // Door open
 } system_status_t;
 
-// Global state variable
-extern system_status_t system_status;
-
-
 void system_status_init(void);
-//void system_status_update_mode(system_mode_t new_mode);
-void set_system_mode(system_mode_t mode);
-
-// Auxiliary function: get mode character (for reporting)
-char system_status_get_mode_char(void);
-
-// volume
-int system_get_volume(void);
-void system_set_volume(int level);
-int volume_bars_to_db(uint8_t bars);
-uint8_t volume_db_to_bars(int db);
-
-
-/**
- *   @brief Fully resets the system state to default values,
- *      except for byte 1 (mode) and byte 14 (charger_unit),
- *      which are preserved from the current state.
- *
- */
 void system_status_reset(void);
+char system_status_get_mode_char(void);
+void system_status_set_mode(system_mode_t mode);
+
+//int system_get_volume(void);
+//void system_set_volume(int level);
+//int volume_bars_to_db(uint8_t bars);
+//uint8_t volume_db_to_bars(int db);
+
+extern system_status_t system_status;
 
 #endif // SYSTEM_STATUS_H
