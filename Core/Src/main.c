@@ -117,6 +117,11 @@ osMessageQueueId_t xAudioQueueHandle;
 const osMessageQueueAttr_t xAudioQueue_attributes = {
   .name = "xAudioQueue"
 };
+/* Definitions for xUartQueue */
+osMessageQueueId_t xUartQueueHandle;
+const osMessageQueueAttr_t xUartQueue_attributes = {
+  .name = "xUartQueue"
+};
 /* Definitions for timeRtcMutex */
 osMutexId_t timeRtcMutexHandle;
 const osMutexAttr_t timeRtcMutex_attributes = {
@@ -267,6 +272,9 @@ int main(void)
 
   /* creation of xAudioQueue */
   xAudioQueueHandle = osMessageQueueNew (16, sizeof(AudioEvent_t), &xAudioQueue_attributes);
+
+  /* creation of xUartQueue */
+  xUartQueueHandle = osMessageQueueNew (16, sizeof(UartEvent_t), &xUartQueue_attributes);
 
   /* USER CODE BEGIN RTOS_QUEUES */
   /* add queues, ... */
@@ -1123,12 +1131,17 @@ void UART_Receive_Task(void *argument)
 	rs232_register_armbtn(handle_arm_command);
 
 	system_status_init();
+	UartEvent_t event;
 
   /* Infinite loop */
 	for(;;)
 	{
-		rs232_process();
-		osDelay(10);
+
+		if (xQueueReceive(xUartQueueHandle, &event, portMAX_DELAY))
+		{
+			rs232_process(event);
+		}
+//		osDelay(10);
 	}
   /* USER CODE END UART_Receive_Task */
 }

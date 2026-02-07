@@ -39,7 +39,7 @@ void handle_arm(void)
     system_status_set_mode(SYSTEM_MODE_ARMING);
     player.last_time_arming = 0;
     player.is_arming = true;
-//	Print_Msg("ARM is started\r\n");
+	Print_Msg("ARM is started\r\n");
 
 #if defined(USE_DEBUG_COMMAND_DISPATCHER)
     //sprintf(debug_msg, "CMD: ARM\r\n");
@@ -62,7 +62,7 @@ void handle_all_clear_1(void)
 		player.current_sin = SINUS_ALL_CLEAR_90S;
 		player.audio_state = AUDIO_START;
 		player.priority = AUDIO_PRIORITY_HIGH;
-		xQueueSendFromISR(xAudioQueueHandle, &player.audio_state, NULL);
+		xQueueSend(xAudioQueueHandle, &player.audio_state, portMAX_DELAY);
     }
 
 #if defined(USE_DEBUG_COMMAND_DISPATCHER)
@@ -86,7 +86,7 @@ void handle_all_clear_2(void)
 		player.current_sin = SINUS_ALL_CLEAR_120S;
 		player.audio_state = AUDIO_START;
 		player.priority = AUDIO_PRIORITY_HIGH;
-		xQueueSendFromISR(xAudioQueueHandle, &player.audio_state, NULL);
+		xQueueSend(xAudioQueueHandle, &player.audio_state, portMAX_DELAY);
 	}
 
 #if defined(USE_DEBUG_COMMAND_DISPATCHER)
@@ -110,7 +110,7 @@ void handle_alarm(void)
 		player.current_sin = SINUS_ALARM_90S;
 		player.audio_state = AUDIO_START;
 		player.priority = AUDIO_PRIORITY_HIGH;
-		xQueueSendFromISR(xAudioQueueHandle, &player.audio_state, NULL);
+		xQueueSend(xAudioQueueHandle, &player.audio_state, portMAX_DELAY);
      }
 
 #if defined(USE_DEBUG_COMMAND_DISPATCHER)
@@ -134,10 +134,8 @@ void handle_chemical(void)
 		player.current_sin = SINUS_ABC_120S;
 		player.priority = AUDIO_PRIORITY_HIGH;
 		player.audio_state = AUDIO_START;
-		xQueueSendFromISR(xAudioQueueHandle, &player.audio_state, NULL);
+		xQueueSend(xAudioQueueHandle, &player.audio_state, portMAX_DELAY);
 	}
-
-
 
 #if defined(USE_DEBUG_COMMAND_DISPATCHER)
     //sprintf(debug_msg, "CMD: CHEMICAL ALARM\r\n");
@@ -155,6 +153,8 @@ void handle_disarm(void)
 {
     system_status_set_mode(SYSTEM_MODE_CANCEL_IMMEDIATE);
     player.is_arming = false;
+//	Print_Msg("DISARM\r\n");
+
 
 #if defined(USE_DEBUG_COMMAND_DISPATCHER)
     //sprintf(debug_msg, "CMD: DISARM\r\n");
@@ -173,7 +173,7 @@ void handle_cancel(void)
     system_status_set_mode(SYSTEM_MODE_CANCEL_DELAYED);
     player.audio_state = AUDIO_STOP;
 	player.priority = AUDIO_PRIORITY_HIGH;
-	xQueueSendFromISR(xAudioQueueHandle, &player.audio_state, NULL);
+	xQueueSend(xAudioQueueHandle, &player.audio_state, portMAX_DELAY);
 
 #if defined(USE_DEBUG_COMMAND_DISPATCHER)
     //sprintf(debug_msg, "CMD: CANCEL\r\n");
@@ -296,7 +296,7 @@ void volume_up_handler(int value)
     //system_set_volume(value);
 	player.volume = value;
 	player.audio_state = AUDIO_VOLUME;
-	xQueueSendFromISR(xAudioQueueHandle, &player.audio_state, NULL);
+	xQueueSend(xAudioQueueHandle, &player.audio_state, portMAX_DELAY);
 
 #if defined(USE_DEBUG_COMMAND_DISPATCHER)
     //sprintf(debug_msg, "VOL UP: %d (now: %d)\r\n", value, system_get_volume());
@@ -316,7 +316,7 @@ void volume_down_handler(int value)
     //system_set_volume(value);
 	player.volume = value;
 	player.audio_state = AUDIO_VOLUME;
-	xQueueSendFromISR(xAudioQueueHandle, &player.audio_state, NULL);
+	xQueueSend(xAudioQueueHandle, &player.audio_state, portMAX_DELAY);
 
 #if defined(USE_DEBUG_COMMAND_DISPATCHER)
     //sprintf(debug_msg, "VOL DOWN: %d (now: %d)\r\n", value, system_get_volume());
@@ -384,6 +384,7 @@ void system_fill_report()
  */
 void handle_unknown_command(void)
 {
+	Print_Msg("Unknown command\r\n");
 #if defined(USE_DEBUG_COMMAND_DISPATCHER)
     ///HAL_UART_Transmit(&huart2, (uint8_t*)"ERR:UNKNOWN\r\n", 13, HAL_MAX_DELAY);
     LCD_WriteString(LCD_USART_TEXT_X, LCD_USART_TEXT_Y, "                             ", LCD_USART_TEXT_FONT, COLOR_YELLOW, COLOR_BLACK);

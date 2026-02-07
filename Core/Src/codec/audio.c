@@ -106,9 +106,9 @@ void audio_process(AudioEvent_t event)
 	case AUDIO_VOLUME:
 		if(!player.is_playing)
 		{
-			char msg[64];
-			sprintf(msg, "*--lvl %d, vol %d\r\n", player.volume_level, player.volume );
-			Print_Msg(msg);
+//			char msg[64];
+//			sprintf(msg, "*--lvl %d, vol %d\r\n", player.volume_level, player.volume );
+//			Print_Msg(msg);
 			audio_set_volume(player.volume);
 		}
 		break;
@@ -377,9 +377,9 @@ static int audio_find_closest_valid_volume(uint8_t target)
     for (int i = 0; i < NUM_VOLUME_BARS; i++) {
         if (player.valid_volume_levels[i] >= target) {
         	player.volume_level = i+1;
-        	char msg[64];
-        	sprintf(msg, "*lvl %d\r\n", player.volume_level );
-        	Print_Msg(msg);
+//        	char msg[64];
+//        	sprintf(msg, "*lvl %d\r\n", player.volume_level );
+//        	Print_Msg(msg);
             return player.valid_volume_levels[i];
         }
     }
@@ -392,9 +392,9 @@ void audio_set_volume(uint8_t level)
 
 	player.volume = corrected_vol;
 
-	char msg[64];
-	sprintf(msg, "*vol %d\r\n", player.volume );
-	Print_Msg(msg);
+//	char msg[64];
+//	sprintf(msg, "*vol %d\r\n", player.volume );
+//	Print_Msg(msg);
 
     uint8_t vol;
     if(corrected_vol >= MAX_VOLUME) vol = MAX_VOLUME_CODEC;

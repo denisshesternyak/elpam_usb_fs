@@ -3,6 +3,8 @@
 #include <string.h>
 #include "defines.h"  // For USE_DEBUG_COMMAND_DISPATCHER
 #include "audio_types.h"
+#include "cmsis_os.h"
+#include "queue.h"
 
 #if defined(USE_DEBUG_COMMAND_DISPATCHER)
    // static char debug_msg[32];
@@ -44,10 +46,10 @@ static rs232_cmd_handler_t handler_reset = NULL;
 static rs232_volume_handler_t handler_volume_up = NULL;
 static rs232_volume_handler_t handler_volume_down = NULL;
 static rs232_cmd_handler_t handler_unknown = NULL;
+
 static rs232_cmd_handler_t handler_enter = NULL;
 static rs232_cmd_handler_t handler_up = NULL;
 static rs232_cmd_handler_t handler_down = NULL;
-
 static rs232_cmd_handler_t handler_esc = NULL;
 static rs232_cmd_handler_t handler_cnlbtn = NULL;
 static rs232_cmd_handler_t handler_test = NULL;
@@ -61,7 +63,9 @@ static void call_or_default(rs232_cmd_handler_t h);
 static void call_or_default_unknown(void);
 static void process_command(char *cmd);
 
-extern Audio_Player_t player;
+extern osMessageQueueId_t xUartQueueHandle;
+static uint16_t volume_value = 0;
+static bool sent_unknown = false;
 
 void rs232_init(UART_HandleTypeDef *huart)
 {
@@ -77,10 +81,11 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 	if (huart->Instance == USART2)
 	{
 		static uint32_t last_rx_time = 0;
-		uint32_t now = HAL_GetTick();
+		uint32_t now = osKernelGetTickCount();
 
-		if (rx_count > 0 && (now - last_rx_time > ACTIVATION_CMD_TIMEOUT)) {
+		if ((now - last_rx_time) > ACTIVATION_CMD_TIMEOUT) {
 			rx_count = 0;
+			sent_unknown = false;
 		}
 
 		last_rx_time = now;
@@ -91,18 +96,23 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 
 static void rs232_uart_rx_callback(void)
 {
-    if (reception_active && (rx_byte >= 32 && rx_byte <= 126) && rx_count < 7)
+    if (reception_active && (rx_byte >= 32 && rx_byte <= 126) && rx_count < CMD_LENGTH)
     {
-    	if (rx_count == 0 && rx_byte != '*') {
-    		// Ignore everything up to the ‘*’ character
-    	    rx_count = 0;
-            call_or_default_unknown();
-    	}else {
-
-			rx_buffer[rx_count++] = rx_byte;
-			if (rx_count == 7)
+    	if (rx_count == 0 && rx_byte != '*')
+    	{
+    		if(!sent_unknown)
 			{
-				rx_buffer[7] = '\0';
+    			sent_unknown = true;
+				UartEvent_t event = UART_EVENT_UNKNOWN;
+				xQueueSendFromISR(xUartQueueHandle, &event, NULL);
+			}
+    	}
+    	else
+    	{
+			rx_buffer[rx_count++] = rx_byte;
+			if (rx_count == CMD_LENGTH)
+			{
+				rx_buffer[CMD_LENGTH] = '\0';
 				process_command(rx_buffer);
 				rx_count = 0;
 			}
@@ -116,64 +126,150 @@ static void rs232_uart_rx_callback(void)
     HAL_UART_Receive_IT(&huart2, &rx_byte, 1);
 }
 
-void rs232_process(void)
+void rs232_process(UartEvent_t event)
 {
+	switch(event)
+	{
+	case UART_EVENT_ARM:
+		call_or_default(handler_arm);
+		break;
+	case UART_EVENT_A_CLR1:
+		call_or_default(handler_all_clear_1);
+		break;
+	case UART_EVENT_A_CLR2:
+		call_or_default(handler_all_clear_2);
+		break;
+	case UART_EVENT_I_WAIL:
+		call_or_default(handler_alarm);
+		break;
+	case UART_EVENT_CHEM_A:
+		call_or_default(handler_chemical);
+		break;
+	case UART_EVENT_DISARM:
+		call_or_default(handler_disarm);
+		break;
+	case UART_EVENT_CANCEL:
+		call_or_default(handler_cancel);
+		break;
+	case UART_EVENT_Q_TEST:
+		call_or_default(handler_quiet_test);
+		break;
+	case UART_EVENT_WAIL:
+		call_or_default(handler_reserve_1);
+		break;
+	case UART_EVENT_P_WAIL:
+		call_or_default(handler_reserve_2);
+		break;
+	case UART_EVENT_YELP:
+		call_or_default(handler_reserve_3);
+		break;
+	case UART_EVENT_REPORT:
+		call_or_default(handler_report);
+		break;
+	case UART_EVENT_VOICE:
+		call_or_default(handler_remote_pa);
+		break;
+	case UART_EVENT_RESET:
+		call_or_default(handler_reset);
+		break;
+	case UART_EVENT_VOL_UP:
+		handler_volume_up(volume_value);
+		break;
+	case UART_EVENT_VOL_DOWN:
+        handler_volume_down(volume_value - 900 + 1);
+		break;
+	case UART_EVENT_UNKNOWN:
+		call_or_default_unknown();
+		break;
 
+	case UART_EVENT_ENTER_BTN:
+		call_or_default(handler_enter);
+		break;
+	case UART_EVENT_UP_BTN:
+		call_or_default(handler_up);
+		break;
+	case UART_EVENT_DOWEN_BTN:
+		call_or_default(handler_down);
+		break;
+	case UART_EVENT_ESC_BTN:
+		call_or_default(handler_esc);
+		break;
+	case UART_EVENT_CANCEL_BTN:
+		call_or_default(handler_cnlbtn);
+		break;
+	case UART_EVENT_TEST_BTN:
+		call_or_default(handler_test);
+		break;
+	case UART_EVENT_ANNOUNCEMENT_BTN:
+		call_or_default(handler_announc);
+		break;
+	case UART_EVENT_MESSAGE_BTN:
+		call_or_default(handler_message);
+		break;
+	case UART_EVENT_ALARM_BTN:
+		call_or_default(handler_almbtn);
+		break;
+	case UART_EVENT_ARM_BTN:
+		call_or_default(handle_armbtn);
+		break;
+	}
 }
 
 static void process_command(char *cmd)
 {
-    if      (strncmp(cmd, "*_ARM__", 7) == 0) { call_or_default(handler_arm); }
-    else if (strncmp(cmd, "*A_CLR1", 7) == 0) { call_or_default(handler_all_clear_1); }
-    else if (strncmp(cmd, "*A_CLR2", 7) == 0) { call_or_default(handler_all_clear_2); }
-    else if (strncmp(cmd, "*I_WAIL", 7) == 0) { call_or_default(handler_alarm); }
-    else if (strncmp(cmd, "*CHEM_A", 7) == 0) { call_or_default(handler_chemical); }
-    else if (strncmp(cmd, "*DISARM", 7) == 0) { call_or_default(handler_disarm); }
-    else if (strncmp(cmd, "*CANCEL", 7) == 0) { call_or_default(handler_cancel); }
-    else if (strncmp(cmd, "*Q_TEST", 7) == 0) { call_or_default(handler_quiet_test); }
-    else if (strncmp(cmd, "*_WAIL_", 7) == 0) { call_or_default(handler_reserve_1); }
-    else if (strncmp(cmd, "*P_WAIL", 7) == 0) { call_or_default(handler_reserve_2); }
-    else if (strncmp(cmd, "*YELP__", 7) == 0) { call_or_default(handler_reserve_3); }
-    else if (strncmp(cmd, "*REPORT", 7) == 0) { call_or_default(handler_report); }
-    else if (strncmp(cmd, "*_VOICE", 7) == 0) { call_or_default(handler_remote_pa); }
-    else if (strncmp(cmd, "*RESET_", 7) == 0) { call_or_default(handler_reset); }
+	UartEvent_t event;
 
-    else if (strncmp(cmd, "*ENTER_", 7) == 0) { call_or_default(handler_enter); }
-	else if (strncmp(cmd, "*UP____", 7) == 0) { call_or_default(handler_up); }
-	else if (strncmp(cmd, "*DOWN__", 7) == 0) { call_or_default(handler_down); }
-    else if (strncmp(cmd, "*ESC___", 7) == 0) { call_or_default(handler_esc); }
-	else if (strncmp(cmd, "*CNLBTN", 7) == 0) { call_or_default(handler_cnlbtn); }
-	else if (strncmp(cmd, "*TEST__", 7) == 0) { call_or_default(handler_test); }
-    else if (strncmp(cmd, "*ANNOUN", 7) == 0) { call_or_default(handler_announc); }
-	else if (strncmp(cmd, "*MESSAG", 7) == 0) { call_or_default(handler_message); }
-	else if (strncmp(cmd, "*ALMBTN", 7) == 0) { call_or_default(handler_almbtn); }
-	else if (strncmp(cmd, "*ARMBTN", 7) == 0) { call_or_default(handle_armbtn); }
+	if      (strncmp(cmd, "*_ARM__", CMD_LENGTH) == 0) { event = UART_EVENT_ARM; }
+	else if (strncmp(cmd, "*A_CLR1", CMD_LENGTH) == 0) { event = UART_EVENT_A_CLR1; }
+	else if (strncmp(cmd, "*A_CLR2", CMD_LENGTH) == 0) { event = UART_EVENT_A_CLR2; }
+	else if (strncmp(cmd, "*I_WAIL", CMD_LENGTH) == 0) { event = UART_EVENT_I_WAIL; }
+	else if (strncmp(cmd, "*CHEM_A", CMD_LENGTH) == 0) { event = UART_EVENT_CHEM_A; }
+	else if (strncmp(cmd, "*DISARM", CMD_LENGTH) == 0) { event = UART_EVENT_DISARM; }
+	else if (strncmp(cmd, "*CANCEL", CMD_LENGTH) == 0) { event = UART_EVENT_CANCEL; }
+	else if (strncmp(cmd, "*Q_TEST", CMD_LENGTH) == 0) { event = UART_EVENT_Q_TEST; }
+	else if (strncmp(cmd, "*_WAIL_", CMD_LENGTH) == 0) { event = UART_EVENT_WAIL; }
+	else if (strncmp(cmd, "*P_WAIL", CMD_LENGTH) == 0) { event = UART_EVENT_P_WAIL; }
+	else if (strncmp(cmd, "*YELP__", CMD_LENGTH) == 0) { event = UART_EVENT_YELP; }
+	else if (strncmp(cmd, "*REPORT", CMD_LENGTH) == 0) { event = UART_EVENT_REPORT; }
+	else if (strncmp(cmd, "*_VOICE", CMD_LENGTH) == 0) { event = UART_EVENT_VOICE; }
+	else if (strncmp(cmd, "*RESET_", CMD_LENGTH) == 0) { event = UART_EVENT_RESET; }
 
-    else if (strncmp(cmd, "*VOL", 4) == 0)
-    {
-    	int d1 = (cmd[4] == ' ') ? 0 : (cmd[4] - '0');
-    	int d2 = (cmd[5] - '0');
-    	int d3 = (cmd[6] - '0');
+	else if (strncmp(cmd, "*ENTER_", CMD_LENGTH) == 0) { event = UART_EVENT_ENTER_BTN; }
+	else if (strncmp(cmd, "*UP____", CMD_LENGTH) == 0) { event = UART_EVENT_UP_BTN; }
+	else if (strncmp(cmd, "*DOWN__", CMD_LENGTH) == 0) { event = UART_EVENT_DOWEN_BTN; }
+	else if (strncmp(cmd, "*ESC___", CMD_LENGTH) == 0) { event = UART_EVENT_ESC_BTN; }
+	else if (strncmp(cmd, "*CNLBTN", CMD_LENGTH) == 0) { event = UART_EVENT_CANCEL_BTN; }
+	else if (strncmp(cmd, "*TEST__", CMD_LENGTH) == 0) { event = UART_EVENT_TEST_BTN; }
+	else if (strncmp(cmd, "*ANNOUN", CMD_LENGTH) == 0) { event = UART_EVENT_ANNOUNCEMENT_BTN; }
+	else if (strncmp(cmd, "*MESSAG", CMD_LENGTH) == 0) { event = UART_EVENT_MESSAGE_BTN; }
+	else if (strncmp(cmd, "*ALMBTN", CMD_LENGTH) == 0) { event = UART_EVENT_ALARM_BTN; }
+	else if (strncmp(cmd, "*ARMBTN", CMD_LENGTH) == 0) { event = UART_EVENT_ARM_BTN; }
 
-    	if ((cmd[4] == ' ' || (cmd[4] >= '0' && cmd[4] <= '9')) &&
-    	    (cmd[5] >= '0' && cmd[5] <= '9') &&
-    	    (cmd[6] >= '0' && cmd[6] <= '9'))
-        {
-    		int value = d1 * 100 + d2 * 10 + d3;
-            if (value >= MIN_VOLUME && value <= MAX_VOLUME && handler_volume_up)
-                handler_volume_up(value);
-            else if (value >= 900 && value <= 999 && handler_volume_down)
-                handler_volume_down(value - 900 + 1);
-            else
-                call_or_default_unknown();
-        }
-        else
-            call_or_default_unknown();
-    }
-    else
-    {
-        call_or_default_unknown();
-    }
+	else if (strncmp(cmd, "*VOL", 4) == 0)
+	{
+		int d1 = (cmd[4] == ' ') ? 0 : (cmd[4] - '0');
+		int d2 = (cmd[5] - '0');
+		int d3 = (cmd[6] - '0');
+
+		if ((cmd[4] == ' ' || (cmd[4] >= '0' && cmd[4] <= '9')) &&
+			(cmd[5] >= '0' && cmd[5] <= '9') &&
+			(cmd[6] >= '0' && cmd[6] <= '9'))
+		{
+			volume_value = d1 * 100 + d2 * 10 + d3;
+			if (volume_value >= MIN_VOLUME && volume_value <= MAX_VOLUME && handler_volume_up)
+				event = UART_EVENT_VOL_UP;
+			else if (volume_value >= 900 && volume_value <= 999 && handler_volume_down)
+				event = UART_EVENT_VOL_DOWN;
+			else
+				event = UART_EVENT_UNKNOWN;
+		}
+		else
+			event = UART_EVENT_UNKNOWN;
+	}
+	else event = UART_EVENT_UNKNOWN;
+
+
+	xQueueSendFromISR(xUartQueueHandle, &event, NULL);
 }
 
 static void call_or_default(rs232_cmd_handler_t h)
@@ -186,7 +282,7 @@ static void call_or_default_unknown(void)
 {
     if (handler_unknown) handler_unknown();
     else HAL_UART_Transmit(&huart2, (uint8_t*)"ERR:UNKNOWN\r\n", 13, HAL_MAX_DELAY);
-     rx_count = 0;
+    rx_count = 0;
 }
 
 // ————————————————————————
