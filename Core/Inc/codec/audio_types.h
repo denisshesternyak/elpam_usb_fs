@@ -13,11 +13,11 @@
 #define AUDIO_HEADER_SIZE  				44
 
 typedef enum {
-	AUDIO_IDLE,
 	AUDIO_START,
 	AUDIO_PLAY,
 	AUDIO_STOP,
 	AUDIO_PAUSE,
+	AUDIO_TIMER,
 	AUDIO_VOLUME
 }AudioEvent_t;
 
@@ -50,9 +50,9 @@ typedef enum {
 	AUDIO_NONE,
 	AUDIO_SIN,
 	AUDIO_SD,
-	AUDIO_IN1,
-	AUDIO_IN2,
-	AUDIO_IN3,
+	AUDIO_MIC,
+	AUDIO_MOTOROLA,
+	AUDIO_DTMF,
 }AudioTypeInput_t;
 
 typedef struct
@@ -110,6 +110,7 @@ typedef struct
 //    volatile bool file_opened;
     volatile bool is_arming;
     volatile bool is_announcement;
+    volatile bool is_motorola;
 
     char current_filename[32];
     uint8_t valid_volume_levels[NUM_VALID_LEVELS];

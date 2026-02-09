@@ -30,7 +30,8 @@ typedef enum {
     BTN_ALARM,
     BTN_CXL,
     BTN_ARM,
-    
+    BTN_MOTOROLA,
+
     //------------------------
     BTN_0,
     BTN_1,

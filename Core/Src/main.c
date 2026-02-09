@@ -173,7 +173,7 @@ void HAL_RTCEx_WakeUpTimerEventCallback(RTC_HandleTypeDef *hrtc)
 	LCDTaskEvent_t lcd_event = {.event = LCD_EVENT_RTC};
     xQueueSendFromISR(xLCDQueueHandle, &lcd_event, NULL);
 
-    AudioEvent_t audio_event = AUDIO_IDLE;
+    AudioEvent_t audio_event = AUDIO_TIMER;
 	xQueueSendFromISR(xAudioQueueHandle, &audio_event, NULL);
 }
 /* USER CODE END PFP */
@@ -1192,7 +1192,6 @@ void LCDStartTask(void *argument)
 	{
 		if (xQueueReceive(xLCDQueueHandle, &lcd_event, portMAX_DELAY))
 		{
-
 			switch(lcd_event.event)
 			{
 			case LCD_EVENT_IDLE:

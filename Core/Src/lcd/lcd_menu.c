@@ -22,6 +22,7 @@
 #include "lcd_widget_test_drivers_indicator.h"
 #include "lcd_widget_test_ampl_indicator.h"
 #include "lcd_widget_report_indicator.h"
+#include "lcd_widget_motorola.h"
 #include "audio_types.h"
 #include "analog.h"
 
@@ -78,6 +79,7 @@ Menu* clockMenu = NULL;
 Menu* languageMenu = NULL;
 Menu* sinusMenu = NULL;
 Menu* sinusInfoMenu = NULL;
+Menu* motorolaInfoMenu = NULL;
 
 //Menu* passwordMenu = NULL;
 //
@@ -154,7 +156,8 @@ static bool hot_key_handle_button(ButtonEvent_t event);
 static void handle_button_press(ButtonEvent_t event);
 static void clockMenu_handle_button_press(ButtonEvent_t event);
 static void languageMenu_handle_button_press(ButtonEvent_t event);
-static void sinus_info_menu_handler(ButtonEvent_t event);
+static void motorolaInfoMenu_handle_button_press(ButtonEvent_t event);
+//static void sinus_info_menu_handler(ButtonEvent_t event);
 static void alarm_info_menu_handler(ButtonEvent_t event);
 static void idle_menu_handler(ButtonEvent_t event);
 static void volume_control_handler(ButtonEvent_t event);
@@ -179,6 +182,7 @@ static void MenuLoadSDCardSirens(void);
 static void prepare_announcement(void);
 static void prepare_sinuse_items(void);
 static void draw_menu_clock(void);
+static void draw_menu_motorola(void);
 
 static void siren_post_action(void);
 
@@ -276,6 +280,7 @@ void menu_init(void)
 	languageMenu = &menuPool[menuPoolIndex++];
 	sinusMenu = &menuPool[menuPoolIndex++];
 	sinusInfoMenu = &menuPool[menuPoolIndex++];
+	motorolaInfoMenu = &menuPool[menuPoolIndex++];
 
 //	passwordMenu->type = MENU_TYPE_PASSWORD;
 //	passwordMenu->parent = rootMenu;
@@ -466,6 +471,11 @@ void menu_init(void)
 	languageMenu->type = MENU_TYPE_LIST;
 	languageMenu->buttonHandler = languageMenu_handle_button_press;
 
+	motorolaInfoMenu->parent = rootMenu;
+	motorolaInfoMenu->screenText[LANG_EN] = get_menu_header_str(STR_HEADER_MOTOROLA, LANG_EN);
+	motorolaInfoMenu->screenText[LANG_HE] = get_menu_header_str(STR_HEADER_MOTOROLA, LANG_HE);
+	motorolaInfoMenu->type = MENU_TYPE_MOTOROLA;
+	motorolaInfoMenu->buttonHandler = motorolaInfoMenu_handle_button_press;
 
 	BLK_ON();
 	isBacklightOn = true;
@@ -841,7 +851,7 @@ static void prepare_announcement(void)
 	player.is_announcement = true;
 	player.priority = AUDIO_PRIORITY_LOW;
 	player.audio_state = AUDIO_START;
-	player.type_input = AUDIO_IN1;
+	player.type_input = AUDIO_MIC;
 	xQueueSend(xAudioQueueHandle, &player.audio_state, portMAX_DELAY);
 }
 
@@ -1015,6 +1025,13 @@ void draw_menu_clock(void)
 	}
 }
 
+static void draw_menu_motorola(void)
+{
+	motorola_draw();
+
+//	osDelay(3);
+}
+
 static void display_menu_item(uint8_t visualIndex, uint8_t index, const MenuItem* item, bool selected, bool dummy)
 {
 	uint16_t y_pos = MENU_BASE_Y + (visualIndex * MENU_ITEM_HEIGHT);
@@ -1155,9 +1172,13 @@ void draw_menuScreen(bool forceFullRedraw)
 	{
 		Draw_MENU_TYPE_LIST();
 	}
-	else if(currentMenu->type == MENU_TYPE_CLOCK)
+	else if (currentMenu->type == MENU_TYPE_CLOCK)
 	{
 		draw_menu_clock();
+	}
+	else if (currentMenu->type == MENU_TYPE_MOTOROLA)
+	{
+		draw_menu_motorola();
 	}
 
 	prevMenu = currentMenu;
@@ -1206,6 +1227,8 @@ void draw_status_bar()
 void update_date_time()
 {
 	if (!isBacklightOn) return;
+
+	if (player.is_motorola) motorola_update();
 
 	if (!(player.is_playing || player.is_announcement)) lastInteractionTick++;
 
@@ -1259,6 +1282,13 @@ void menu_handle_button(ButtonEvent_t event)
 
 	if (!isBacklightOn)
 	{
+		if (event.button == BTN_MOTOROLA) return;
+		if (player.is_motorola)
+		{
+			currentMenu = motorolaInfoMenu;
+			draw_menuScreen(true);
+		}
+
 		BLK_ON();
 		isBacklightOn = true;
 		return;
@@ -1303,18 +1333,23 @@ bool hot_key_handle_button(ButtonEvent_t event)
 	    player.last_time_arming = 0;
 	    player.is_arming = true;
 		return true;
+	case BTN_MOTOROLA:
+		currentMenu = motorolaInfoMenu;
+		draw_menuScreen(true);
+		break;
 	case BTN_CXL:
 		if (!player.is_playing ||
 			AUDIO_PRIORITY_LOW < player.current_priority) return true;
 
 		player.priority = AUDIO_PRIORITY_LOW;
 		player.audio_state = AUDIO_STOP;
-//		player.type_input = AUDIO_SIN;
+		player.type_input = AUDIO_SIN;
 		xQueueSend(xAudioQueueHandle, &player.audio_state, portMAX_DELAY);
 		return true;
 	default:
 		return false;
 	}
+	return false;
 }
 
 void handle_button_press(ButtonEvent_t event)
@@ -1413,7 +1448,7 @@ static void button_esc_handler(void)
 		if (AUDIO_PRIORITY_LOW < player.current_priority) return;
 		player.priority = AUDIO_PRIORITY_LOW;
 		player.audio_state = AUDIO_STOP;
-//		player.type_input = AUDIO_SIN;
+		player.type_input = AUDIO_SIN;
 		xQueueSend(xAudioQueueHandle, &player.audio_state, portMAX_DELAY);
 	}
 
@@ -1462,7 +1497,7 @@ static void button_esc_handler(void)
 //}
 //
 
-void idle_menu_handler(ButtonEvent_t event)
+static void idle_menu_handler(ButtonEvent_t event)
 {
 	if (!rootMenu) return;
 
@@ -1478,7 +1513,7 @@ void idle_menu_handler(ButtonEvent_t event)
     }
 }
 
-void alarm_info_menu_handler(ButtonEvent_t event)
+static void alarm_info_menu_handler(ButtonEvent_t event)
 {
 	if (!alarm_info_menu) return;
 
@@ -1513,7 +1548,7 @@ void alarm_info_menu_handler(ButtonEvent_t event)
 //
 //}
 
-void volume_control_handler(ButtonEvent_t event)
+static void volume_control_handler(ButtonEvent_t event)
 {
 	 if (!currentMenu) return;
 
@@ -1535,7 +1570,7 @@ void volume_control_handler(ButtonEvent_t event)
 	}
 }
 
-void clockMenu_handle_button_press(ButtonEvent_t event)
+static void clockMenu_handle_button_press(ButtonEvent_t event)
 {
 	if (!clockMenu) return;
 
@@ -1560,7 +1595,7 @@ void clockMenu_handle_button_press(ButtonEvent_t event)
 	handle_button_press(event);
 }
 
-void languageMenu_handle_button_press(ButtonEvent_t event)
+static void languageMenu_handle_button_press(ButtonEvent_t event)
 {
 	if (!languageMenu || languageMenu->itemCount == 0) return;
 
@@ -1575,6 +1610,20 @@ void languageMenu_handle_button_press(ButtonEvent_t event)
 			break;
 	}
 	handle_button_press(event);
+}
+
+static void motorolaInfoMenu_handle_button_press(ButtonEvent_t event)
+{
+	switch(event.button)
+	{
+		case BTN_ESC:
+			if(player.is_motorola || !currentMenu->parent) return;
+			currentMenu = currentMenu->parent;
+			draw_menuScreen(true);
+			return;
+		default:
+			break;
+	}
 }
 
 

@@ -17,7 +17,8 @@ static const char* menu_header_str[][2] = {
 	{ "### Report ###", "### -Report- ###" },
 	{ "### Maintenance ###", "### -Maintenance- ###" },
 	{ "### Time and Date ###", "### -Time and Date- ###" },
-	{ "### Language ###", "### -Language- ###" }
+	{ "### Language ###", "### -Language- ###" },
+	{ "### Motorola ###", "### -Motorola- ###" }
 };
 const uint8_t MENU_HEADER_ITEM_COUNT = ARRAY_SIZE(menu_header_str);
 

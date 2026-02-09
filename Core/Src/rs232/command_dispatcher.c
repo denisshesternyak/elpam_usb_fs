@@ -56,10 +56,10 @@ void handle_arm(void)
 void handle_all_clear_1(void)
 {
     system_status_set_mode(SYSTEM_MODE_ALL_CLEAR_1);
-    if(player.is_arming)
+    if(player.is_arming && !player.is_motorola)
     {
-		player.type_input = AUDIO_SIN;
-		player.current_sin = SINUS_ALL_CLEAR_90S;
+		player.type_input = AUDIO_MOTOROLA;
+//		player.current_sin = SINUS_ALL_CLEAR_90S;
 		player.audio_state = AUDIO_START;
 		player.priority = AUDIO_PRIORITY_HIGH;
 		xQueueSend(xAudioQueueHandle, &player.audio_state, portMAX_DELAY);
@@ -80,10 +80,10 @@ void handle_all_clear_1(void)
 void handle_all_clear_2(void)
 {
     system_status_set_mode(SYSTEM_MODE_ALL_CLEAR_2);
-    if(player.is_arming)
+    if(player.is_arming && !player.is_motorola)
 	{
-		player.type_input = AUDIO_SIN;
-		player.current_sin = SINUS_ALL_CLEAR_120S;
+		player.type_input = AUDIO_MOTOROLA;
+//		player.current_sin = SINUS_ALL_CLEAR_120S;
 		player.audio_state = AUDIO_START;
 		player.priority = AUDIO_PRIORITY_HIGH;
 		xQueueSend(xAudioQueueHandle, &player.audio_state, portMAX_DELAY);
@@ -104,10 +104,10 @@ void handle_all_clear_2(void)
 void handle_alarm(void)
 {
      system_status_set_mode(SYSTEM_MODE_ALARM_WAIL);
-     if(player.is_arming)
+     if(player.is_arming && !player.is_motorola)
      {
-		player.type_input = AUDIO_SIN;
-		player.current_sin = SINUS_ALARM_90S;
+		player.type_input = AUDIO_MOTOROLA;
+//		player.current_sin = SINUS_ALARM_90S;
 		player.audio_state = AUDIO_START;
 		player.priority = AUDIO_PRIORITY_HIGH;
 		xQueueSend(xAudioQueueHandle, &player.audio_state, portMAX_DELAY);
@@ -128,10 +128,10 @@ void handle_alarm(void)
 void handle_chemical(void)
 {
     system_status_set_mode(SYSTEM_MODE_CHEMICAL);
-    if(player.is_arming)
+    if(player.is_arming && !player.is_motorola)
 	{
-		player.type_input = AUDIO_SIN;
-		player.current_sin = SINUS_ABC_120S;
+		player.type_input = AUDIO_MOTOROLA;
+//		player.current_sin = SINUS_ABC_120S;
 		player.priority = AUDIO_PRIORITY_HIGH;
 		player.audio_state = AUDIO_START;
 		xQueueSend(xAudioQueueHandle, &player.audio_state, portMAX_DELAY);
@@ -170,10 +170,14 @@ void handle_disarm(void)
  */
 void handle_cancel(void)
 {
-    system_status_set_mode(SYSTEM_MODE_CANCEL_DELAYED);
-    player.audio_state = AUDIO_STOP;
-	player.priority = AUDIO_PRIORITY_HIGH;
-	xQueueSend(xAudioQueueHandle, &player.audio_state, portMAX_DELAY);
+	if (player.is_motorola)
+	{
+	    system_status_set_mode(SYSTEM_MODE_CANCEL_DELAYED);
+	    player.type_input = AUDIO_MOTOROLA;
+	    player.audio_state = AUDIO_STOP;
+		player.priority = AUDIO_PRIORITY_HIGH;
+		xQueueSend(xAudioQueueHandle, &player.audio_state, portMAX_DELAY);
+	}
 
 #if defined(USE_DEBUG_COMMAND_DISPATCHER)
     //sprintf(debug_msg, "CMD: CANCEL\r\n");
