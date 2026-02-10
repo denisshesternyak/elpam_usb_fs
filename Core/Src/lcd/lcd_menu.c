@@ -43,7 +43,6 @@ uint8_t menuPoolIndex = 0;
 extern osMessageQueueId_t xAudioQueueHandle;
 extern RTC_HandleTypeDef hrtc;
 
-#define MAX_FILENAME_LEN 		64
 #define CLOCK_MAX_SYMBOLS		6
 
 typedef struct {
@@ -56,7 +55,7 @@ typedef struct {
 ClockEdit_t clock;
 
 
-char messageFilenames[MAX_MENU_ITEMS][MAX_FILENAME_LEN];
+char listFilenames[MAX_MENU_ITEMS][_MAX_LFN];
 const char* selectedFile = NULL;
 
 extern Audio_Player_t player;
@@ -525,13 +524,13 @@ void MenuShowMessages(void)
 //
 //    while ((f_readdir(&dir, &fno) == FR_OK) && fno.fname[0] && count < MAX_MESSAGES) {
 //        if (strncmp(fno.fname, "msg_", 4) == 0) {
-//            strncpy(messageFilenames[count], fno.fname, MAX_FILENAME_LEN);
+//            strncpy(listFilenames[count], fno.fname, _MAX_LFN);
 //
-//            messagesMenu->items[count].name[LANG_EN] = messageFilenames[count];
-//            messagesMenu->items[count].name[LANG_HE] = messageFilenames[count];
+//            messagesMenu->items[count].name[LANG_EN] = listFilenames[count];
+//            messagesMenu->items[count].name[LANG_HE] = listFilenames[count];
 //            messagesMenu->items[count].prepareAction = &PlaySelectedMessageWrapper;
 //            messagesMenu->items[count].submenu = messagePlayMenu;
-//            messagesMenu->items[count].filepath = messageFilenames[count];
+//            messagesMenu->items[count].filepath = listFilenames[count];
 //
 //            count++;
 //        }
@@ -638,34 +637,36 @@ void MenuLoadSDCardSirens(void)
 
 	clear_menu(sirenMenu);
 
-	static const char* list[] =
-	{
-	  "ALARM 1",
-	  "ALARM 2",
-	  "ALARM 3",
-	  "ALARM 4",
-	  "ALARM 5",
-	  "ALARM 6",
-	  "ALARM 7",
-	  "ALARM 8",
-	  "ALARM 9",
-	  "ALARM 10",
-	  "ALARM 11",
-	  "ALARM 12",
-	  "ALARM 13",
-	  "ALARM 14"
-	};
-
-	const uint8_t count = sizeof(list) / sizeof(list[0]);
+//	static const char* list[] =
+//	{
+//	  "ALARM 1",
+//	  "ALARM 2",
+//	  "ALARM 3",
+//	  "ALARM 4",
+//	  "ALARM 5",
+//	  "ALARM 6",
+//	  "ALARM 7",
+//	  "ALARM 8",
+//	  "ALARM 9",
+//	  "ALARM 10",
+//	  "ALARM 11",
+//	  "ALARM 12",
+//	  "ALARM 13",
+//	  "ALARM 14"
+//	};
+//
+//	const uint8_t count = sizeof(list) / sizeof(list[0]);
+	uint8_t count = 0;
+	audiofs_list_alarms(listFilenames, &count);
 
 	for (uint8_t i = 0; i < count && i < MAX_MENU_ITEMS; ++i)
 	{
-		strncpy(messageFilenames[i], list[i], MAX_FILENAME_LEN);
+//		strncpy(listFilenames[i], list[i], _MAX_LFN);
 
 		MenuItem* item = &sirenMenu->items[i];
 		for (uint8_t j = 0; j < LANG_COUNT; j++)
 		{
-			item->name[j] = messageFilenames[i];
+			item->name[j] = listFilenames[i];
 		}
 		item->menu = alarm_info_menu;
 		item->postAction = &siren_post_action;
@@ -680,35 +681,38 @@ void MenuLoadSDCardMessages(void)
 
    clear_menu(messagesMenu);
 
-    static const char* dummyFilenames[] = {
-        "msg1_hello.wav",
-        "msg2_alert.wav",
-        "msg3_night.wav",
-        "msg4_test.wav",
-		"msg5_test-00.wav",
-		"msg6_test-11.wav",
-		"msg7_test-22.wav",
-		"msg8_test-33.wav",
-		"msg9_test-44.wav",
-		"msg10_test-55.wav",
-		"msg11_test-66.wav",
-		"msg12_test-77.wav",
-		"msg13_test-77.wav",
-		"msg14_test-77.wav",
-		"msg15_test-77.wav",
-		"msg16_test-77.wav"
-    };
+//    static const char* dummyFilenames[] = {
+//        "msg1_hello.wav",
+//        "msg2_alert.wav",
+//        "msg3_night.wav",
+//        "msg4_test.wav",
+//		"msg5_test-00.wav",
+//		"msg6_test-11.wav",
+//		"msg7_test-22.wav",
+//		"msg8_test-33.wav",
+//		"msg9_test-44.wav",
+//		"msg10_test-55.wav",
+//		"msg11_test-66.wav",
+//		"msg12_test-77.wav",
+//		"msg13_test-77.wav",
+//		"msg14_test-77.wav",
+//		"msg15_test-77.wav",
+//		"msg16_test-77.wav"
+//    };
+//
+//    const uint8_t count = sizeof(dummyFilenames) / sizeof(dummyFilenames[0]);
 
-    const uint8_t count = sizeof(dummyFilenames) / sizeof(dummyFilenames[0]);
+	uint8_t count = 0;
+	audiofs_list_messages(listFilenames, &count);
 
     for (uint8_t i = 0; i < count && i < MAX_MENU_ITEMS; ++i)
     {
-        strncpy(messageFilenames[i], dummyFilenames[i], MAX_FILENAME_LEN);
+//        strncpy(listFilenames[i], dummyFilenames[i], _MAX_LFN);
 
         MenuItem* item = &messagesMenu->items[i];
 		for (uint8_t j = 0; j < LANG_COUNT; j++)
 		{
-			item->name[j] = messageFilenames[i];
+			item->name[j] = listFilenames[i];
 		}
 		item->menu = alarm_info_menu;
 		item->postAction = &siren_post_action;
@@ -746,11 +750,11 @@ void menu_init_language(void)
 	for (uint8_t i = 0; i < LANG_COUNT && i < MAX_MENU_ITEMS; ++i)
 	{
 		char langSel = (GetLanguage() == i) ? '*' : ' ';
-		sprintf(messageFilenames[i], "%s %c", LanguageToString(i), langSel);
+		sprintf(listFilenames[i], "%s %c", LanguageToString(i), langSel);
 
 		for (uint8_t j = 0; j < LANG_COUNT; j++)
 		{
-			languageMenu->items[i].name[j] = messageFilenames[i];
+			languageMenu->items[i].name[j] = listFilenames[i];
 		}
 	}
 
@@ -1009,7 +1013,7 @@ static void display_menu_item(uint8_t visualIndex, uint8_t index, const MenuItem
 
     hx8357_fill_rect(MENU_BASE_X , y_pos,  hx8357_get_width() - (MENU_BASE_X*2), MENU_ITEM_HEIGHT, bg_color);
 
-    char upd_text[MAX_FILENAME_LEN];
+    char upd_text[_MAX_LFN];
     Alignment align;
     Language lang = GetLanguage();
     const char* text = (dummy) ? "..." : item->name[GetLanguage()];

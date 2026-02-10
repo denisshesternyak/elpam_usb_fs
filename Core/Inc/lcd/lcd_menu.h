@@ -11,8 +11,9 @@
 //#include "ds3231.h"
 //#include "lcd_widget_volume_indicator.h"
 #include <stdbool.h>
+#include "defines.h"
+#include "audiofs.h"
 
-#define MAX_MENU_ITEMS 			25
 #define INACTIVITY_TIMEOUT_MS 	60
 #define BACKLIGHT_TIMEOUT_MS 	10
 

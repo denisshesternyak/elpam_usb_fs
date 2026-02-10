@@ -30,6 +30,6 @@
 
 #define NUM_VOLUME_BARS     NUM_VALID_LEVELS   // Number of bars on the indicator
 
-
+#define MAX_MENU_ITEMS 			25
 
 #endif /* INC_DEFINES_H_ */

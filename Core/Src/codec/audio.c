@@ -83,7 +83,7 @@ void audio_init(void)
 	//audiofs_init_record();
 
 	audiofs_mount_drive();
-	audiofs_list_root_directory();
+	audiofs_list_root();
 }
 
 void audio_process(AudioEvent_t event)

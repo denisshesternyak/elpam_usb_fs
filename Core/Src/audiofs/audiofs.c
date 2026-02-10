@@ -1,6 +1,11 @@
 #include "audiofs.h"
 #include <string.h>
 
+#define ROOT_DIR_PATH 		"/"
+#define ALARMS_DIR_PATH 	"/alarms"
+#define MESSAGES_DIR_PATH 	"/messages"
+
+static void audiofs_list_directory(const TCHAR* path, char list[][_MAX_LFN], uint8_t* size);
 static bool audiofs_read_wav_header(AudioFileInfo_t* info);
 
 FATFS fs;
@@ -8,6 +13,7 @@ FIL fil;
 DIR dir;
 FILINFO fno;
 FRESULT fresult;
+static bool isMounted;
 
 FRESULT audiofs_mount_drive(void)
 {
@@ -19,6 +25,8 @@ FRESULT audiofs_mount_drive(void)
         sprintf(msg, "ERROR! Mount failed: %d\r\n", fresult);
         Print_Msg(msg);
     }
+
+    isMounted = fresult == FR_OK;
     return fresult;
 }
 
@@ -29,22 +37,26 @@ void audiofs_unmount_drive(void)
 	else Print_Msg("ERROR! in unmounting SD Card\r\n\n\n");
 }
 
-void audiofs_list_root_directory(void)
+static void audiofs_list_directory(const TCHAR* path, char list[][_MAX_LFN], uint8_t* size)
 {
+	if(!isMounted)
+	{
+		Print_Msg("SD Card is not mounted!\r\n");
+		return;
+	}
+
     char msg[64];
+    uint8_t count = 0;
 
-    sprintf(msg, "\r\nRoot directory contents:\r\n");
-    Print_Msg(msg);
-
-    fresult = f_opendir(&dir, "/");
+    fresult = f_opendir(&dir, path);
     if (fresult != FR_OK)
     {
-        sprintf(msg, "Failed to open root directory: %d\r\n", fresult);
+        sprintf(msg, "Failed to open %s directory: %d\r\n", path, fresult);
         Print_Msg(msg);
         return;
     }
 
-    for (;;)
+    for (; count < MAX_MENU_ITEMS; count++)
     {
     	fresult = f_readdir(&dir, &fno);
         if (fresult != FR_OK || fno.fname[0] == 0)
@@ -52,16 +64,41 @@ void audiofs_list_root_directory(void)
 
         if (fno.fattrib & AM_DIR)
         {
-            sprintf(msg, " DIR: %s\r\n", fno.fname);
+        	sprintf(msg, " DIR: %s\r\n", fno.fname);
         }
         else
         {
-        	sprintf(msg, " FILE: %s\r\n", fno.fname);
+        	sprintf(msg, " File: %s", fno.fname);
+        	if(list)
+        	{
+        		strncpy(list[count], fno.fname, _MAX_LFN);
+            	list[count][_MAX_LFN - 1] = '\0';
+        	}
         }
         Print_Msg(msg);
     }
 
     f_closedir(&dir);
+
+    if(size) *size = count+1;
+}
+
+void audiofs_list_root(void)
+{
+    Print_Msg("\r\nRoot directory contents:\r\n");
+    audiofs_list_directory(ROOT_DIR_PATH, NULL, NULL);
+}
+
+void audiofs_list_alarms(char list[][_MAX_LFN], uint8_t* size)
+{
+    Print_Msg("\r\nAlarms directory contents:\r\n");
+    audiofs_list_directory(ALARMS_DIR_PATH, list, size);
+}
+
+void audiofs_list_messages(char list[][_MAX_LFN], uint8_t* size)
+{
+    Print_Msg("\r\nMessages directory contents:\r\n");
+    audiofs_list_directory(MESSAGES_DIR_PATH, list, size);
 }
 
 void audiofs_close_file(AudioFileInfo_t* info)
