@@ -1,6 +1,6 @@
 #include "lcd_strings_menu.h"
 
-static const char* menu_header_str[][2] = {
+static const char* menu_header_str[][LANG_COUNT] = {
 	{ "### Menu ###", "### -Menu- ###" },
 	{ "### Fault indication ###", "### -Fault indication- ###" },
 	{ "### Siren ###", "### -Siren- ###" },
@@ -22,7 +22,7 @@ static const char* menu_header_str[][2] = {
 };
 const uint8_t MENU_HEADER_ITEM_COUNT = ARRAY_SIZE(menu_header_str);
 
-//static const char* menu_items_str[][2] = {
+//static const char* menu_items_str[][LANG_COUNT] = {
 //	{ "Siren", "-Siren-" },
 //	{ "Messages", "-Messages-" },
 //	{ "Announcement", "-Announcement-" },
@@ -48,7 +48,7 @@ const uint8_t MENU_HEADER_ITEM_COUNT = ARRAY_SIZE(menu_header_str);
 //};
 //const uint8_t MENU_ITEMS_COUNT = ARRAY_SIZE(menu_items_str);
 
-static const char* root_menu_items_str[][2] = {
+static const char* root_menu_items_str[][LANG_COUNT] = {
 	{ "Siren", "-Siren-" },
 	{ "Messages", "-Messages-" },
 	{ "Announcement", "-Announcement-" },
@@ -58,7 +58,7 @@ static const char* root_menu_items_str[][2] = {
 };
 const uint8_t ROOT_MENU_ITEM_COUNT = ARRAY_SIZE(root_menu_items_str);
 
-static const char* test_menu_items_str[][2] = {
+static const char* test_menu_items_str[][LANG_COUNT] = {
 	{ "Silent Test", "-Silent Test-" },
 	{ "Batteries Test", "-Batteries Test-" },
 	{ "Amplifiers Test", "-Amplifiers Test-" },
@@ -67,13 +67,13 @@ static const char* test_menu_items_str[][2] = {
 };
 const uint8_t TEST_MENU_ITEM_COUNT = ARRAY_SIZE(test_menu_items_str);
 
-static const char* maintenance_menu_items_str[][2] = {
+static const char* maintenance_menu_items_str[][LANG_COUNT] = {
 	{ "Time and Date", "Time and Date" },
 	{ "Language select", "Language select" }
 };
 const uint8_t MAINTENCE_MENU_ITEM_COUNT = ARRAY_SIZE(maintenance_menu_items_str);
 
-static const char* sinus_menu_items_str[][2] = {
+static const char* sinus_menu_items_str[][LANG_COUNT] = {
 	{ "Sinus 420Hz 120s", "סינוס 420 הרץ 120 שניות" },
 	{ "Sinus 1000Hz 120s", "סינוס 1000 הרץ 120 שניות" },
 	{ "Sinus 1020Hz 120s", "סינוס 1020 הרץ 120 שניות" },
@@ -85,6 +85,11 @@ static const char* sinus_menu_items_str[][2] = {
 	{ "Sinus ABC 120s", "120s ABC סינוס" }
 };
 const uint8_t SINUS_ITEM_COUNT = ARRAY_SIZE(sinus_menu_items_str);
+
+static const char* service_str[][LANG_COUNT] = {
+	{ "The directory is empty", "-The directory is empty-" }
+};
+const uint8_t SERVICE_COUNT = ARRAY_SIZE(service_str);
 
 const char* get_menu_header_str(uint8_t task, Language lang)
 {
@@ -114,6 +119,12 @@ const char* get_sinus_menu_items_str(uint8_t task, Language lang)
 {
     if (task >= SINUS_ITEM_COUNT) return "";
     return sinus_menu_items_str[task][lang];
+}
+
+const char* get_service_str(uint8_t task, Language lang)
+{
+    if (task >= SERVICE_COUNT) return "";
+    return service_str[task][lang];
 }
 
 //char* get_menu_items_str(uint8_t task, Language lang)

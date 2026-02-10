@@ -136,6 +136,8 @@ MenuImage menu_microfon_img = {
 #define MENU_BASE_X 20
 #define MENU_BASE_Y (TITLE_MENU_Y_POS + 25)
 
+#define DIR_IS_EMPTY_Y_POS  147
+
 #define SERIAL_NUMBER "123456"
 
 ///////////////////////////////////////////////////////////////////
@@ -1034,6 +1036,13 @@ static void display_menu_item(uint8_t visualIndex, uint8_t index, const MenuItem
 
 void Draw_MENU_TYPE_LIST()
 {
+	if(currentMenu->itemCount == 0)
+	{
+	    const char* text = get_service_str(STR_SERVICE_EMPTY_DIR_STR, GetLanguage());
+	    hx8357_write_alignedX_string(0, DIR_IS_EMPTY_Y_POS, text, &Font_16x26, COLOR_YELLOW, COLOR_BLACK, ALIGN_CENTER);
+	    return;
+	}
+
 	uint8_t old_selection = currentMenu->oldSelection;
 	uint8_t old_offset = currentMenu->oldOffset;
 

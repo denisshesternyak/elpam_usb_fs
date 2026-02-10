@@ -51,35 +51,16 @@ typedef enum {
 	STR_SINUS_ALARM_90S,
 	STR_SINUS_ALL_CLEAR_90S,
 	STR_SINUS_ALL_CLEAR_120S,
-	STR_SINUS_ABC_120S
+	STR_SINUS_ABC_120S,
+	STR_SERVICE_EMPTY_DIR_STR = 0
 } MenuItemStrings;
-
-//typedef enum {
-//	STR_ROOT_ITEM_SIREN,
-//	STR_ROOT_ITEM_MESSAGES,
-//	STR_ROOT_ITEM_ANNOUNCEMENT,
-//	STR_ROOT_ITEM_TESTS,
-//	STR_ROOT_ITEM_REPORT,
-//	STR_ROOT_ITEM_MAINTENANCE
-//} RootMenuItemsStrings;
-//
-//typedef enum {
-//	STR_TEST_ITEM_SILENT_TEST,
-//	STR_TEST_ITEM_BATTERIES_TEST,
-//	STR_TEST_ITEM_APLIFIERS_TEST,
-//	STR_TEST_ITEM_DRIVERS_TEST
-//} TestMenuItemsStrings;
-//
-//typedef enum {
-//	STR_TIME_AND_DATE,
-//	STR_LANGUAGES
-//} MaintenanceMenuItemsStrings;
 
 const char* get_menu_header_str(uint8_t task, Language lang);
 const char* get_root_menu_items_str(uint8_t task, Language lang);
 const char* get_test_menu_items_str(uint8_t task, Language lang);
 const char* get_maintenance_menu_items_str(uint8_t task, Language lang);
 const char* get_sinus_menu_items_str(uint8_t task, Language lang);
+const char* get_service_str(uint8_t task, Language lang);
 //const char* get_menu_items_str(uint8_t task, Language lang);
 
 extern const uint8_t MENU_HEADER_ITEM_COUNT;
@@ -87,6 +68,7 @@ extern const uint8_t ROOT_MENU_ITEM_COUNT;
 extern const uint8_t TEST_MENU_ITEM_COUNT;
 extern const uint8_t MAINTENCE_MENU_ITEM_COUNT;
 extern const uint8_t SINUS_ITEM_COUNT;
+extern const uint8_t SERVICE_COUNT;
 //extern const uint8_t MENU_ITEMS_COUNT;
 
 #endif /* INC_LCD_LCD_STRINGS_MENU_H_ */
