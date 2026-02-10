@@ -1212,6 +1212,8 @@ void update_date_time()
 
 	if (player.is_motorola) motorola_update();
 
+	if (player.is_announcement) volume_indicator_blink_bar();
+
 	if (!(player.is_playing || player.is_announcement)) lastInteractionTick++;
 
 	if (currentMenu != idleMenu && lastInteractionTick >= INACTIVITY_TIMEOUT_MS)
