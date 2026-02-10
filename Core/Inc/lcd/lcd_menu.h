@@ -88,30 +88,4 @@ void menu_handle_button(ButtonEvent_t event);
 void update_date_time(void);
 void update_progress_bar(uint8_t value);
 
-//void MenuShowMessages(void);
-//void ShowUartCommand(void);
-
-//
-////---------------------------------------------
-//// MENU_TYPE_ANNOUNCEMENT
-//void DecreaseVolume();
-//void IncreaseVolume();
-////---------------------------------------------
-//
-//
-////---------------------------------------------
-void PlayMessageStart(void);
-bool PlayMessageProgress(const uint8_t value);
-void PlayMessageEnd(void);
-////---------------------------------------------
-//
-////void GoToRootMenu(void) ;
-////void MenuBack(void) ;
-//
-//
-//// debug
-//const char* ButtonToString(Button_t btn) ;
-//const char* ButtonActionToString(ButtonAction_t ba);
-//void DrawDebugInfo(const ButtonEvent_t* event);
-
 #endif /* INC_SCREENS_LCD_MENU_H_ */

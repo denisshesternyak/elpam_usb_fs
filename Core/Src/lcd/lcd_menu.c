@@ -501,37 +501,6 @@ static void menu_draw_image(Menu *menu)
 //
 //    NVIC_SystemReset();
 //}
-//
-//
-////#action
-//void PlayMessageStart(void)
-//{
-//	uint8_t index = currentMenu->currentSelection;
-//	if (!currentMenu || index >= currentMenu->itemCount) return;
-//
-//	const char* filepath = currentMenu->items[index].filepath;
-//	if (!filepath || !messagePlayMenu) return;
-//
-//	messagePlayMenu->textFilename = filepath;
-//	currentMenu = messagePlayMenu;
-//}
-
-//void PlayMessageStartPost(void)
-//{
-//	isPlayAudioFile = true;
-//	xQueueSend(audioQueue, &messagePlayMenu->textFilename, 0);
-//}
-
-bool PlayMessageProgress(const uint8_t value)
-{
-	if (isPlayAudioFile == false) return false;
-
-	MenuDrawProgress(value);
-	//MenuDrawProgress((LCD_GetWidth() - PROGRESS_BAR_W) / 2, PROGRESS_BAR_Y, PROGRESS_BAR_W, PROGRESS_BAR_HEIGHT, value);
-
-	//MenuDrawProgress2(&bar, value);
-	return true;
-}
 
 void PlayMessageEnd(void)
 {

@@ -72,31 +72,39 @@ typedef struct
 	uint32_t SubChunk2Size;
 } WAV_BaseHeader_t;
 
-typedef struct
-{
-    uint32_t sample_rate;
-    uint16_t num_channels;
-    uint16_t bits_per_sample;
-    uint32_t byte_rate;
-    uint32_t block_align;
-    uint32_t data_chunk_offset;
-    uint32_t data_size;
-} WAV_Info_t;
+//typedef struct
+//{
+//    uint32_t sample_rate;
+//    uint16_t num_channels;
+//    uint16_t bits_per_sample;
+//    uint32_t byte_rate;
+//    uint32_t block_align;
+//    uint32_t data_chunk_offset;
+//    uint32_t data_size;
+//} AudioWAVInfo_t;
 
 typedef struct
 {
-//    FIL	file;
-//    WAV_Info_t wav_info;
+    char* filename;
+//	AudioWAVInfo_t wav_info;
+	WAV_BaseHeader_t header;
+	uint32_t file_size;
+	uint32_t bytes_read;
+	uint32_t position;
+
+	volatile bool isEnd;
+	volatile bool isOpened;
+} AudioFileInfo_t;
+
+typedef struct
+{
+	AudioFileInfo_t file_info;
     BufferState_t buff_state;
     AudioEvent_t audio_state;
     SinTask_t current_sin;
     AudioTypeInput_t type_input;
     AudioPriority_t priority;
     AudioPriority_t current_priority;
-
-//    uint32_t file_size;
-//    uint32_t bytes_read;
-//    uint32_t current_file_pos;
 
     uint32_t last_time_arming;
     uint32_t last_time_announcement;
@@ -106,13 +114,10 @@ typedef struct
     volatile bool is_stoped;
     volatile bool is_prepare_stoped;
 
-//    volatile bool end_of_file;
-//    volatile bool file_opened;
     volatile bool is_arming;
     volatile bool is_announcement;
     volatile bool is_motorola;
 
-    char current_filename[32];
     uint8_t valid_volume_levels[NUM_VALID_LEVELS];
 
     uint8_t volume_level;

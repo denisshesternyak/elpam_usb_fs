@@ -1,198 +1,162 @@
-//#include "audiofs.h"
-//#include "audio_types.h"
-//
-//static FRESULT audiofs_mount_drive(void);
-//static void audiofs_unmount_drive(void);
-//static void audiofs_list_root_directory(void);
-//static void audiofs_read_wav_header(WAV_BaseHeader_t *header);
-//
-//FATFS fss;
-//DIR dir;
-//FILINFO fnoo;
-//extern Audio_Player_t player;
-//
-//static FRESULT audiofs_mount_drive(void)
-//{
-//    //FRESULT res = f_mount(&USBHFatFS, (const TCHAR *)USBHPath, 0);
-//	FRESULT res = f_mount(&fss, "", 0);
-//    if (res == FR_OK)
-//    {
-//        Print_Msg("SD Drive mounted successfully\r\n");
-//    }
-//    else
-//    {
-//        char msg[64];
-//        sprintf(msg, "Mount failed: %d\r\n", res);
-//        Print_Msg(msg);
-//    }
-//    return res;
-//}
-//
-//static void audiofs_unmount_drive(void)
-//{
-//    f_mount(NULL, "", 0);
-//    Print_Msg("USB Drive unmounted\r\n");
-//}
-//
-//static void audiofs_list_root_directory(void)
-//{
-//    FRESULT res;
-//    char msg[128];
-//
-//    sprintf(msg, "\r\nRoot directory contents:\r\n");
-//    Print_Msg(msg);
-//
-//    res = f_opendir(&dir, "/");
-//    if (res != FR_OK)
-//    {
-//        sprintf(msg, "Failed to open root directory: %d\r\n", res);
-//        Print_Msg(msg);
-//        return;
-//    }
-//
-//    for (;;)
-//    {
-//        res = f_readdir(&dir, &fnoo);
-//        if (res != FR_OK || fnoo.fname[0] == 0)
-//            break;
-//
-//        if (fnoo.fattrib & AM_DIR)
-//        {
-//            sprintf(msg, "  <DIR>  %s\r\n", fnoo.fname);
-//        }
-//        else
-//        {
-//        	sprintf(msg, "%s\r\n", fnoo.fname);
-//            //audiofs_read_wav_header(fnoo.fname);
-//        }
-//        Print_Msg(msg);
-//    }
-//
-//    f_closedir(&dir);
-//}
-//
-//void audiofs_init(void)
-//{
-//	audiofs_mount_drive();
-//	audiofs_list_root_directory();
-//}
-//
-//void audiofs_close_file(void)
-//{
-//	if(player.file_opened)
-//	{
-//		f_close(&player.file);
-//		player.file_opened = false;
-//	}
-//}
-//
-//static void audiofs_read_wav_header(WAV_BaseHeader_t *header)
-//{
-//    FRESULT res;
-//    UINT br;
-//    char msg[200];
-//
-//    res = f_read(&player.file, header, AUDIO_HEADER_SIZE, &br);
-//    if (res != FR_OK || br != 44)
-//    {
-//        sprintf(msg, "Failed to read header of %s (read %u bytes)\r\n", (char *)player.current_filename, br);
-//        Print_Msg(msg);
-//        f_close(&player.file);
-//        return;
-//    }
-//
-//    sprintf(msg, "\r\n=== %s Header ===\r\n", (char *)player.current_filename);
-//    Print_Msg(msg);
-//    sprintf(msg, " File size     : %lu bytes\r\n", (unsigned long)header->ChunkSize);
-//	Print_Msg(msg);
-//	sprintf(msg, " Format        : %c%c%c%c\r\n", (char)header->Format, (char)(header->Format>>8), (char)(header->Format>>16), (char)(header->Format>>24));
-//	Print_Msg(msg);
-//	sprintf(msg, " Sample Rate   : %lu Hz\r\n", (unsigned long)header->SampleRate);
-//	Print_Msg(msg);
-//	sprintf(msg, " Channels      : %u\r\n", (unsigned)header->NumChannels);
-//	Print_Msg(msg);
-//	sprintf(msg, " Bits/Sample   : %u\r\n", (unsigned)header->BitPerSample);
-//	Print_Msg(msg);
-//	sprintf(msg, " ByteRate      : %lu\r\n", (unsigned long)header->ByteRate);
-//	Print_Msg(msg);
-//	sprintf(msg, " Data ID       : %c%c%c%c\r\n", (char)header->SubChunk2ID, (char)(header->SubChunk2ID>>8), (char)(header->SubChunk2ID>>16), (char)(header->SubChunk2ID>>24));
-//	Print_Msg(msg);
-//	sprintf(msg, " Data size     : %lu bytes\r\n", (unsigned long)header->SubChunk2Size);
-//	Print_Msg(msg);
-//	sprintf(msg, " Data size hex : 0x%04lx bytes\r\n", header->SubChunk2Size);
-//	Print_Msg(msg);
+#include "audiofs.h"
+#include <string.h>
+
+static bool audiofs_read_wav_header(AudioFileInfo_t* info);
+
+FATFS fs;
+FIL fil;
+DIR dir;
+FILINFO fno;
+FRESULT fresult;
+
+FRESULT audiofs_mount_drive(void)
+{
+	fresult = f_mount(&fs, "", 1);
+    if (fresult == FR_OK) Print_Msg("SD Card mounted successfully\r\n");
+    else
+    {
+        char msg[64];
+        sprintf(msg, "ERROR! Mount failed: %d\r\n", fresult);
+        Print_Msg(msg);
+    }
+    return fresult;
+}
+
+void audiofs_unmount_drive(void)
+{
+	fresult = f_mount(NULL, "", 1);
+	if (fresult == FR_OK) Print_Msg ("SD Card unmounted successfully...\r\n\n\n");
+	else Print_Msg("ERROR! in unmounting SD Card\r\n\n\n");
+}
+
+void audiofs_list_root_directory(void)
+{
+    char msg[64];
+
+    sprintf(msg, "\r\nRoot directory contents:\r\n");
+    Print_Msg(msg);
+
+    fresult = f_opendir(&dir, "/");
+    if (fresult != FR_OK)
+    {
+        sprintf(msg, "Failed to open root directory: %d\r\n", fresult);
+        Print_Msg(msg);
+        return;
+    }
+
+    for (;;)
+    {
+    	fresult = f_readdir(&dir, &fno);
+        if (fresult != FR_OK || fno.fname[0] == 0)
+            break;
+
+        if (fno.fattrib & AM_DIR)
+        {
+            sprintf(msg, " DIR: %s\r\n", fno.fname);
+        }
+        else
+        {
+        	sprintf(msg, " FILE: %s\r\n", fno.fname);
+        }
+        Print_Msg(msg);
+    }
+
+    f_closedir(&dir);
+}
+
+void audiofs_close_file(AudioFileInfo_t* info)
+{
+	if(info->isOpened)
+	{
+		f_close(&fil);
+		info->isOpened = false;
+	}
+}
+
+static bool audiofs_read_wav_header(AudioFileInfo_t* info)
+{
+    char msg[128];
+
+    fresult = f_read(&fil, &info->header, (UINT)AUDIO_HEADER_SIZE, (UINT *)&info->bytes_read);
+    if (fresult != FR_OK || info->bytes_read != AUDIO_HEADER_SIZE)
+    {
+        sprintf(msg, "Failed to read header of %s (read %lu bytes)\r\n", (char *)info->filename, info->bytes_read);
+        Print_Msg(msg);
+        f_close(&fil);
+        return false;
+    }
+
+    sprintf(msg, "\r\n=== %s Header ===\r\n", (char *)info->filename);
+    Print_Msg(msg);
+    sprintf(msg, " File size     : %lu bytes\r\n", (unsigned long)info->header.ChunkSize);
+	Print_Msg(msg);
+	sprintf(msg, " Format        : %c%c%c%c\r\n", (char)info->header.Format, (char)(info->header.Format>>8), (char)(info->header.Format>>16), (char)(info->header.Format>>24));
+	Print_Msg(msg);
+	sprintf(msg, " Sample Rate   : %lu Hz\r\n", (unsigned long)info->header.SampleRate);
+	Print_Msg(msg);
+	sprintf(msg, " Channels      : %u\r\n", (unsigned)info->header.NumChannels);
+	Print_Msg(msg);
+	sprintf(msg, " Bits/Sample   : %u\r\n", (unsigned)info->header.BitPerSample);
+	Print_Msg(msg);
+	sprintf(msg, " ByteRate      : %lu\r\n", (unsigned long)info->header.ByteRate);
+	Print_Msg(msg);
+	sprintf(msg, " Data ID       : %c%c%c%c\r\n", (char)info->header.SubChunk2ID, (char)(info->header.SubChunk2ID>>8), (char)(info->header.SubChunk2ID>>16), (char)(info->header.SubChunk2ID>>24));
+	Print_Msg(msg);
+	sprintf(msg, " Data size     : %lu bytes\r\n", (unsigned long)info->header.SubChunk2Size);
+	Print_Msg(msg);
+	sprintf(msg, " Data size hex : 0x%04lx bytes\r\n", info->header.SubChunk2Size);
+	Print_Msg(msg);
 //	uint32_t duration = 0;
-//	if (header->ByteRate > 0)
+//	if (info->header.ByteRate > 0)
 //	{
-//		duration = header->ChunkSize / header->ByteRate;
+//		duration = info->header.ChunkSize / info->header.ByteRate;
 //		sprintf(msg, " Duration      : %02lu:%02lu\r\n", duration / 60, duration % 60);
 //		Print_Msg(msg);
 //	}
-//}
-//
-//bool audiofs_load_file(void)
-//{
-//    FRESULT res;
-//    UINT br;
-//
-//    res = f_open(&player.file, player.current_filename, FA_READ);
-//    if (res != FR_OK) return false;
-//
-//    player.file_opened = true;
-//    player.file_size = f_size(&player.file);
-//
-//    WAV_BaseHeader_t base_hdr;
-//    audiofs_read_wav_header(&base_hdr);
-//    player.bytes_read += AUDIO_HEADER_SIZE;
-//    res = f_read(&player.file, player.dma_buffer, AUDIO_BUFFER_SIZE, &br);
-//	if (res != FR_OK)
-//	{
-//		f_close(&player.file);
-//		player.file_opened = false;
-//		return false;
-//	}
-//	player.bytes_read += br;
-//
-//	if (br < AUDIO_HALF_BUFFER_SIZE) {
-//		memset(player.dma_buffer + br, 0, AUDIO_HALF_BUFFER_SIZE - br);
-//	}
-//
-//    player.wav_info.sample_rate     = base_hdr.SampleRate;
-//    player.wav_info.num_channels    = base_hdr.NumChannels;
-//    player.wav_info.bits_per_sample = base_hdr.BitPerSample;
-//    player.wav_info.byte_rate       = base_hdr.ByteRate;
-//    player.wav_info.block_align     = base_hdr.BlockAlign;
-//    player.wav_info.data_chunk_offset = AUDIO_HEADER_SIZE;
-//    player.wav_info.data_size       = base_hdr.SubChunk2Size;
-//    player.buff_state = BUFFER_IDLE;
-//
-//    return true;
-//}
-//
-//UINT audiofs_read_buffer_part(uint8_t *buffer, uint32_t buffer_len)
-//{
-//	if(!player.file_opened) return -1;
-//
-//	UINT br;
-//	char msg[100];
-//
+	info->position = info->bytes_read;
+	return true;
+}
+
+bool audiofs_read_file_info(AudioFileInfo_t* info)
+{
+    fresult = f_open(&fil, info->filename, FA_READ);
+    if (fresult != FR_OK) return false;
+
+    info->isOpened = true;
+    info->isEnd = false;
+    info->file_size = f_size(&fil);
+
+    bool res = audiofs_read_wav_header(info);
+    return res;
+}
+
+bool audiofs_read_file(AudioFileInfo_t* info, uint8_t *buffer, uint32_t buffer_len)
+{
+	if(!info->isOpened) return false;
+
+	char msg[100];
+
 //		uint32_t start = HAL_GetTick();
-//	FRESULT res = f_read(&player.file, buffer, buffer_len, &br);
+	fresult = f_read(&fil, buffer, (UINT)buffer_len, (UINT *)&info->bytes_read);
 //		uint32_t duration = HAL_GetTick() - start;
 //		sprintf(msg, "f_read %lu ms\r\n", duration);
 //		Print_Msg(msg);
-//	if (res != FR_OK)
-//	{
-//		sprintf(msg, "f_read ERROR: %d\r\n", res);
-//		Print_Msg(msg);
-//		return -1;
-//	}
-//
-//	if (br < buffer_len)
-//	{
-//		memset(buffer + br, 0, buffer_len - br);
-//	}
-//	player.buff_state = BUFFER_IDLE;
-//	player.bytes_read += br;
-//	return br;
-//}
+	if (fresult != FR_OK)
+	{
+		sprintf(msg, "f_read ERROR: %d\r\n", fresult);
+		Print_Msg(msg);
+		return false;
+	}
+
+	if (info->bytes_read < buffer_len)
+	{
+		info->isEnd = true;
+		memset(buffer + info->bytes_read, 0, buffer_len - info->bytes_read);
+	}
+
+	info->position += info->bytes_read;
+
+	if(info->position >= info->file_size) info->isEnd = true;
+
+	return true;
+}

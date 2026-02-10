@@ -7,7 +7,7 @@
 #include "audio_cmd.h"
 #include "audio_regs.h"
 #include "audio_generate_sin.h"
-//#include "audiofs.h"
+#include "audiofs.h"
 #include "lcd_menu.h"
 #include "system_status.h"
 
@@ -57,35 +57,9 @@ static void audio_start_dtmf(void);
 static void audio_play_dtmf(void);
 static void audio_stop_dtmf(void);
 
-//static void audio_start_record(void);
-//static void audio_stop_record(void);
-
-//static bool audio_get_track_name();
-//
-//static bool audio_get_track_name(void)
-//{
-//    const char* name = NULL;
-//
-//    switch (player.current_sin) {
-//        case TRACK_1: name = "sine_4~1.wav"; break;
-//        case TRACK_2: name = "2.wav"; break;
-//        case TRACK_3: name = "3.wav"; break;
-//        case TRACK_4: name = "4.wav"; break;
-//        default:
-//            return false;
-//    }
-//
-//    if (!name) {
-//        player.current_filename[0] = '\0';
-//        return false;
-//    }
-//
-//    size_t len = sizeof(player.current_filename);
-//    strncpy(player.current_filename, name, len - 1);
-//    player.current_filename[len - 1] = '\0';
-//
-//    return true;
-//}
+static void start_playback(void);
+static void stop_playback(void);
+static void check_progress(void);
 
 void audio_init(void)
 {
@@ -108,7 +82,8 @@ void audio_init(void)
 	audio_cmd_init_record();
 	//audiofs_init_record();
 
-//	audiofs_init();
+	audiofs_mount_drive();
+	audiofs_list_root_directory();
 }
 
 void audio_process(AudioEvent_t event)
@@ -180,7 +155,6 @@ static void audio_pause(void)
 {
 
 }
-
 
 static void audio_timer(void)
 {
@@ -288,43 +262,18 @@ void audio_set_volume(uint8_t level)
     //VolumeIndicator_SetLevelSilent(&volumeIndicator, bar_index);
 }
 
-
 // SINUS
 static void audio_start_sinus(void)
 {
-	if (player.priority > player.current_priority && player.is_playing)
-	{
-		HAL_I2S_DMAStop(&hi2s2);
-	}
-
 	init_generation(player.current_sin);
 	audio_generate_sine(dma_buffer, AUDIO_STEREO_PAIRS_FULL);
-	audio_cmd_playback_enable();
 
-	hi2s2.Init.MCLKOutput = I2S_MCLKOUTPUT_ENABLE;
-	HAL_I2S_Init(&hi2s2);
-    HAL_I2S_Transmit_DMA(&hi2s2, (uint16_t*)dma_buffer, AUDIO_HALF_BUFFER_SIZE);
-
-//	audio_set_volume(player.volume);
-
-    player.is_playing = true;
-    player.is_stoped = false;
-    player.is_prepare_stoped = false;
-    player.audio_state = AUDIO_PLAY;
-
-	LCDTaskEvent_t lcd_event = { .event = LCD_EVENT_PROGRESS, .value = 0 };
-    xQueueSend(xLCDQueueHandle, &lcd_event, portMAX_DELAY);
+	start_playback();
 }
 
 static void audio_play_sinus(void)
 {
-	static uint8_t update_progree = 0;
-	if((update_progree++ > COUNT_PROGRESS) || player.is_prepare_stoped)
-	{
-		update_progree = 0;
-		LCDTaskEvent_t lcd_event = { .event = LCD_EVENT_PROGRESS, .value = player.duration };
-	    xQueueSend(xLCDQueueHandle, &lcd_event, portMAX_DELAY);
-	}
+	check_progress();
 
 	if(player.is_prepare_stoped)
 	{
@@ -343,55 +292,44 @@ static void audio_play_sinus(void)
 
 static void audio_stop_sinus(void)
 {
-	audio_cmd_playback_disable();
-
-	if (!player.is_playing) return;
-
-	if (player.is_stoped)
-	{
-		LCDTaskEvent_t lcd_event = { .event = LCD_EVENT_BTN, .btn = { .button = BTN_ESC, .action = BA_PRESSED } };
-		xQueueSend(xLCDQueueHandle, &lcd_event, portMAX_DELAY);
-	}
-
-	player.is_playing = false;
-	player.is_stoped = true;
-	player.audio_state = AUDIO_TIMER;
-	player.buff_state = BUFFER_IDLE;
-	player.duration = 0;
-//	player.bytes_read = 0;
-
-	HAL_I2S_DMAStop(&hi2s2);
-	hi2s2.Init.MCLKOutput = I2S_MCLKOUTPUT_DISABLE;
-	HAL_I2S_Init(&hi2s2);
-
-	player.current_priority = AUDIO_PRIORITY_IDLE;
-	player.priority = AUDIO_PRIORITY_IDLE;
+	stop_playback();
 }
 
 // SD
 static void audio_start_sd(void)
 {
-	audio_cmd_playback_enable();
-//		if(!audio_get_track_name()) return;
-//		if (!audiofs_load_file())
-//		{
-//			char msg[128];
-//			sprintf(msg, "Failure load %s\r\n", player.current_filename);
-//			Print_Msg(msg);
-//			return;
-//		}
+	if (!player.file_info.filename) return;
+	if (!audiofs_read_file_info(&player.file_info))
+	{
+		char msg[128];
+		sprintf(msg, "Failure load %s\r\n", player.file_info.filename);
+		Print_Msg(msg);
+		return;
+	}
+
+	start_playback();
 }
 
 static void audio_play_sd(void)
 {
-//		br = audiofs_read_buffer_part(buf_ptr, AUDIO_HALF_BUFFER_SIZE);
-//		if (br <= 0) audio_stop();
+	check_progress();
+
+	uint32_t offset = (player.buff_state == BUFFER_HALF) ? 0 : AUDIO_HALF_BUFFER_SIZE;
+	uint8_t *buf_ptr = dma_buffer + offset;
+
+	bool res = audiofs_read_file(&player.file_info, buf_ptr, AUDIO_HALF_BUFFER_SIZE);
+	if (player.file_info.isEnd || !res) audio_stop();
+
+	player.buff_state = BUFFER_IDLE;
+	player.audio_state = AUDIO_PLAY;
 }
 
 static void audio_stop_sd(void)
 {
-	audio_cmd_playback_disable();
-//    audiofs_close_file();
+    stop_playback();
+
+    audiofs_close_file(&player.file_info);
+    memset(&player.file_info, 0, sizeof(player.file_info));
 }
 
 // MIC
@@ -450,3 +388,61 @@ static void audio_stop_dtmf(void)
 
 }
 
+
+static void start_playback(void)
+{
+	if (player.priority > player.current_priority && player.is_playing)
+	{
+		HAL_I2S_DMAStop(&hi2s2);
+	}
+
+	audio_cmd_playback_enable();
+
+	hi2s2.Init.MCLKOutput = I2S_MCLKOUTPUT_ENABLE;
+	HAL_I2S_Init(&hi2s2);
+	HAL_I2S_Transmit_DMA(&hi2s2, (uint16_t*)dma_buffer, AUDIO_HALF_BUFFER_SIZE);
+
+//	audio_set_volume(player.volume);
+
+	player.is_playing = true;
+	player.is_stoped = false;
+	player.is_prepare_stoped = false;
+	player.audio_state = AUDIO_PLAY;
+}
+
+static void stop_playback(void)
+{
+	audio_cmd_playback_disable();
+
+	if (!player.is_playing) return;
+
+	if (player.is_stoped)
+	{
+		LCDTaskEvent_t lcd_event = { .event = LCD_EVENT_BTN, .btn = { .button = BTN_ESC, .action = BA_PRESSED } };
+		xQueueSend(xLCDQueueHandle, &lcd_event, portMAX_DELAY);
+	}
+
+	player.is_playing = false;
+	player.is_stoped = true;
+	player.audio_state = AUDIO_TIMER;
+	player.buff_state = BUFFER_IDLE;
+	player.duration = 0;
+
+	HAL_I2S_DMAStop(&hi2s2);
+	hi2s2.Init.MCLKOutput = I2S_MCLKOUTPUT_DISABLE;
+	HAL_I2S_Init(&hi2s2);
+
+	player.current_priority = AUDIO_PRIORITY_IDLE;
+	player.priority = AUDIO_PRIORITY_IDLE;
+}
+
+static void check_progress(void)
+{
+	static uint8_t update_progree = 0;
+	if((update_progree++ > COUNT_PROGRESS) || player.is_prepare_stoped)
+	{
+		update_progree = 0;
+		LCDTaskEvent_t lcd_event = { .event = LCD_EVENT_PROGRESS, .value = player.duration };
+		xQueueSend(xLCDQueueHandle, &lcd_event, portMAX_DELAY);
+	}
+}

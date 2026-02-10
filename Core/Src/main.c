@@ -32,7 +32,6 @@
 #include "lcd_menu.h"
 #include "mcp23008_btns.h"
 #include "fatfs_sd_spi.h"
-#include "File_Handling_RTOS.h"
 #include "analog.h"
 /* USER CODE END Includes */
 
@@ -180,18 +179,7 @@ void HAL_RTCEx_WakeUpTimerEventCallback(RTC_HandleTypeDef *hrtc)
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-extern uint16_t Timer1, Timer2;
 
-void SirenPlayFile(const char *filename)
-{
-	for (int i = 0; i < 100; ++i)
-	{
-		PlayMessageProgress(i);
-		osDelay(100);
-	}
-
-	PlayMessageEnd();
-}
 /* USER CODE END 0 */
 
 /**
@@ -896,7 +884,7 @@ static void MX_SPI4_Init(void)
   hspi4.Init.CLKPolarity = SPI_POLARITY_LOW;
   hspi4.Init.CLKPhase = SPI_PHASE_1EDGE;
   hspi4.Init.NSS = SPI_NSS_SOFT;
-  hspi4.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_4;
+  hspi4.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_256;
   hspi4.Init.FirstBit = SPI_FIRSTBIT_MSB;
   hspi4.Init.TIMode = SPI_TIMODE_DISABLE;
   hspi4.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
@@ -1077,9 +1065,6 @@ void StartDefaultTask(void *argument)
 	{
 		Error_Handler();
 	}
-//	Mount_SD("/");
-//	Scan_SD("/");
-//	Unmount_SD("/");
   /* Infinite loop */
   for(;;)
   {
